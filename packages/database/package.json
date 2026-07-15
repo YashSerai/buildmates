@@ -1,0 +1,15 @@
+{
+  "name": "@buildmates/database",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@buildmates/domain": "*",
+    "drizzle-orm": "0.45.2"
+  }
+}
