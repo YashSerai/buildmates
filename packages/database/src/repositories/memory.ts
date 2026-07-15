@@ -677,7 +677,7 @@ export function createMemoryRepositories(): BuildmatesRepositories {
           throw new Error("surface_revision_conflict");
         const { actorId: _actorId, ...stored } = value;
         void _actorId;
-        revisions.set(value.id, clone(stored));
+        revisions.set(value.id, clone({ ...stored, visibility: value.visibility ?? "private_preview" }));
         revisionStatuses.set(value.id, "draft");
         revisionNumbers.add(numberKey);
       },
@@ -694,8 +694,9 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         } catch { return null; }
         if (
           viewerUserId &&
-          (surface.ownerUserId === viewerUserId ||
-            revision.authorUserId === viewerUserId) &&
+          (revision.visibility === "personal_view"
+            ? revision.authorUserId === viewerUserId
+            : surface.ownerUserId === viewerUserId || revision.authorUserId === viewerUserId) &&
           (await canActOnSurface(revision.surfaceId, viewerUserId, "member"))
         )
           return clone(revision);
@@ -717,6 +718,7 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         if (
           !revision ||
           !surface ||
+          revision.visibility === "personal_view" ||
           revision.baseRevisionNumber !== current ||
           input.governanceVersion !== surface.governanceVersion ||
           !(await canActOnSurface(revision.surfaceId, input.actorId, "member"))
@@ -736,6 +738,7 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         if (
           !revision ||
           !surface ||
+          revision.visibility === "personal_view" ||
           revision.surfaceId !== input.surfaceId ||
           revision.baseRevisionNumber !== current ||
           input.expectedPublishedRevisionNumber !== current ||
@@ -824,6 +827,8 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         if (
           !surfaces.has(input.surfaceId) ||
           revision?.surfaceId !== input.surfaceId ||
+          revision.authorUserId !== input.actorId ||
+          revision.visibility !== "personal_view" ||
           !(await canActOnSurface(input.surfaceId, input.actorId, "member"))
         )
           throw new Error("forbidden");

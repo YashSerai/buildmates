@@ -1,6 +1,7 @@
 import { verifyDelegatedRequest } from "@/src/platform/delegated-request";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { completeIdentityLink, createD1IdentityLinkStore } from "@/src/platform/identity-link-store";
+import { BUILD_MATES_MCP_TOOLS, canonicalToolInputHash, createD1McpProductRepository, executeBuildmatesTool, pruneExpiredAssertionReplays } from "@buildmates/mcp-core";
 
 const ALLOWED_ACTIONS = {
   "identity.link-status.read": "identity:link-status:read",
@@ -16,8 +17,13 @@ export async function POST(request: Request) {
   try { body = await request.json(); } catch { body = {}; }
   if (containsUserId(body)) return Response.json({ error: "caller_user_id_forbidden" }, { status: 400 });
   const action = readString(body, "action");
-  const expectedScope = action && ALLOWED_ACTIONS[action as keyof typeof ALLOWED_ACTIONS];
+  const toolName = readString(body, "tool");
+  const toolInput = body && typeof body === "object" ? (body as Record<string, unknown>).input : null;
+  const isTool = Boolean(toolName && action === `tool.execute:${toolName}` && BUILD_MATES_MCP_TOOLS.includes(toolName));
+  const expectedScope = isTool ? `mcp:tool:${toolName}` : action && ALLOWED_ACTIONS[action as keyof typeof ALLOWED_ACTIONS];
   if (!action || !expectedScope) return Response.json({ error: "unsupported_action" }, { status: 400 });
+  if (isTool && (!toolInput || typeof toolInput !== "object")) return Response.json({ error: "invalid_tool_request" }, { status: 400 });
+  const expectedInputHash = isTool ? await canonicalToolInputHash(toolInput) : undefined;
 
   try {
     const { DB } = await getPlatformBindings();
@@ -28,8 +34,11 @@ export async function POST(request: Request) {
       audience: process.env.MCP_DELEGATION_AUDIENCE || "buildmates-web-data",
       expectedAction: action,
       expectedScope,
+      expectedTool: isTool ? toolName! : undefined,
+      expectedInputHash,
       consumeReplay: async ({ jti, iss, sub, action, exp }) => {
         try {
+          await pruneExpiredAssertionReplays(DB, Date.now());
           await DB.prepare(
             "INSERT INTO assertion_replays (jti, issuer, subject, action, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
           ).bind(jti, iss, sub, action, exp * 1000, Date.now()).run();
@@ -39,6 +48,26 @@ export async function POST(request: Request) {
     });
     if (action === "identity.link.complete") {
       return completeIdentityLinkResponse(DB, body, claims.sub);
+    }
+    if (isTool) {
+      try {
+        const value = await executeBuildmatesTool(toolName!, toolInput, claims.sub, {
+          linkBaseUrl: new URL(request.url).origin,
+          repository: createD1McpProductRepository(DB),
+          completeIdentityLink: async () => ({ linked: false, reason: "invalid_or_expired" }),
+          allowAttempt: async () => false,
+          resolveLinkedUser: async ({ mcpSubject, workspaceScope }) => {
+            const link = await DB.prepare("SELECT user_id AS userId FROM identity_links WHERE provider_channel = 'mcp' AND provider_issuer = 'buildmates_mcp' AND provider_subject = ? AND workspace_scope = ? AND revoked_at IS NULL LIMIT 1").bind(mcpSubject, workspaceScope).first<{ userId: string }>();
+            return link ?? null;
+          },
+          validateTaxonomy: (input) => validateTaxonomy(DB, input),
+        });
+        return Response.json({ value }, { headers: { "cache-control": "no-store" } });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "tool_failed";
+        const status = message === "identity_link_required" ? 403 : message.includes("not_authorized") ? 404 : 400;
+        return Response.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
+      }
     }
     const link = await DB.prepare(
       "SELECT id FROM identity_links WHERE provider_channel = 'mcp' AND provider_issuer = 'buildmates_mcp' AND provider_subject = ? AND workspace_scope = 'global' AND revoked_at IS NULL LIMIT 1",
@@ -50,9 +79,25 @@ export async function POST(request: Request) {
   }
 }
 
+async function validateTaxonomy(DB: D1Database, input: { taxonomyVersion: string; topicIds: string[]; toolIds: string[]; domainIds: string[]; stageIds: string[]; collaborationIntentIds: string[] }): Promise<boolean> {
+  const version = await DB.prepare("SELECT id FROM taxonomy_versions WHERE id = ? OR CAST(version AS TEXT) = ? LIMIT 1").bind(input.taxonomyVersion, input.taxonomyVersion).first<{ id: string }>();
+  if (!version) return false;
+  const groups: Array<[string, string[]]> = [["topics", input.topicIds], ["tools", input.toolIds], ["domains", input.domainIds], ["stages", input.stageIds], ["collaboration_intents", input.collaborationIntentIds]];
+  for (const [table, ids] of groups) {
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) continue;
+    if (uniqueIds.length > 30) return false;
+    const placeholders = uniqueIds.map(() => "?").join(",");
+    const rows = await DB.prepare(`SELECT id FROM ${table} WHERE taxonomy_version_id = ? AND id IN (${placeholders}) LIMIT 30`).bind(version.id, ...uniqueIds).all<{ id: string }>();
+    if (rows.results.length !== uniqueIds.length) return false;
+  }
+  return true;
+}
+
 async function completeIdentityLinkResponse(DB: D1Database, body: unknown, mcpSubject: string): Promise<Response> {
   const code = readString(body, "code")?.trim().toUpperCase();
   const workspaceScope = readString(body, "workspaceScope")?.trim() || "global";
+  if (workspaceScope !== "global") return Response.json({ error: "invalid_workspace_scope" }, { status: 400 });
   if (!code) {
     return Response.json({ linked: false, reason: "invalid_or_expired" }, { status: 400 });
   }

@@ -94,7 +94,7 @@ export type ConnectedAppPreference = {
   appId: string;
   displayName: string;
   category: string;
-  accessMode: "never" | "ask_each_time" | "approved_summaries";
+  accessMode: "never" | "ask_each_time" | "allow_approved_work_signals" | "actions_only";
   lastReviewedAt: Date;
 };
 export interface ConnectedAppRepository {
@@ -221,6 +221,7 @@ export type SurfaceRevisionRecord = {
   baseRevisionNumber: number | null;
   designPolicyId: string;
   designPolicyVersion: string;
+  visibility?: "private_preview" | "personal_view";
   specJson: string;
   createdAt: Date;
 };

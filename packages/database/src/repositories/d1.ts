@@ -723,7 +723,7 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           throw new Error("stale_surface_base");
         await run(
           DB,
-          "INSERT INTO surface_revisions (id, surface_id, revision_number, base_revision_number, author_user_id, design_policy_id, design_policy_version, spec_json, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)",
+          "INSERT INTO surface_revisions (id, surface_id, revision_number, base_revision_number, author_user_id, design_policy_id, design_policy_version, visibility, spec_json, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)",
           value.id,
           value.surfaceId,
           value.revisionNumber,
@@ -731,6 +731,7 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           value.authorUserId,
           value.designPolicyId,
           value.designPolicyVersion,
+          value.visibility ?? "private_preview",
           value.specJson,
           ms(value.createdAt),
         );
@@ -744,6 +745,7 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           baseRevisionNumber: number | null;
           designPolicyId: string;
           designPolicyVersion: string;
+          visibility: "private_preview" | "personal_view";
           specJson: string;
           createdAt: number;
           ownerUserId: string;
@@ -756,7 +758,7 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           policyJson: string;
         }>(
           DB,
-          "SELECT r.id,r.surface_id AS surfaceId,r.author_user_id AS authorUserId,r.revision_number AS revisionNumber,r.base_revision_number AS baseRevisionNumber,r.design_policy_id AS designPolicyId,r.design_policy_version AS designPolicyVersion,r.spec_json AS specJson,r.created_at AS createdAt,r.status,s.owner_user_id AS ownerUserId,s.kind,s.subject_id AS subjectId,s.published_revision_id AS publishedRevisionId,p.version AS policyVersion,p.source_hash AS policySourceHash,p.policy_json AS policyJson FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id JOIN design_policies p ON p.id=r.design_policy_id WHERE r.id=?",
+          "SELECT r.id,r.surface_id AS surfaceId,r.author_user_id AS authorUserId,r.revision_number AS revisionNumber,r.base_revision_number AS baseRevisionNumber,r.design_policy_id AS designPolicyId,r.design_policy_version AS designPolicyVersion,r.visibility,r.spec_json AS specJson,r.created_at AS createdAt,r.status,s.owner_user_id AS ownerUserId,s.kind,s.subject_id AS subjectId,s.published_revision_id AS publishedRevisionId,p.version AS policyVersion,p.source_hash AS policySourceHash,p.policy_json AS policyJson FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id JOIN design_policies p ON p.id=r.design_policy_id WHERE r.id=?",
           id,
         );
         if (!row) return null;
@@ -767,8 +769,9 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
         } catch { return null; }
         if (
           viewerUserId &&
-          (row.ownerUserId === viewerUserId ||
-            row.authorUserId === viewerUserId) &&
+          (row.visibility === "personal_view"
+            ? row.authorUserId === viewerUserId
+            : row.ownerUserId === viewerUserId || row.authorUserId === viewerUserId) &&
           (await surfaceAuthority(row.surfaceId, viewerUserId, "member"))
         )
           return surfaceRevision(row);
@@ -803,13 +806,15 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           surfaceId: string;
           baseRevisionNumber: number | null;
           governanceVersion: number;
+          visibility: "private_preview" | "personal_view";
         }>(
           DB,
-          "SELECT r.surface_id AS surfaceId,r.base_revision_number AS baseRevisionNumber,s.governance_version AS governanceVersion FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id WHERE r.id=?",
+          "SELECT r.surface_id AS surfaceId,r.base_revision_number AS baseRevisionNumber,r.visibility,s.governance_version AS governanceVersion FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id WHERE r.id=?",
           input.revisionId,
         );
         if (
           !revision ||
+          revision.visibility === "personal_view" ||
           revision.baseRevisionNumber !==
             (await currentSurfaceRevisionNumber(revision.surfaceId)) ||
           input.governanceVersion !== revision.governanceVersion ||
@@ -883,7 +888,7 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
 
         const statements: [string, ...unknown[]][] = [
           [
-            `UPDATE surfaces AS s SET published_revision_id=?,updated_at=? WHERE s.id=? AND s.governance_version=? AND COALESCE((SELECT current.revision_number FROM surface_revisions current WHERE current.id=s.published_revision_id AND current.surface_id=s.id),-1)=COALESCE(?,-1) AND EXISTS (SELECT 1 FROM surface_revisions target WHERE target.id=? AND target.surface_id=s.id AND target.base_revision_number IS ?) AND ${authoritySql}`,
+            `UPDATE surfaces AS s SET published_revision_id=?,updated_at=? WHERE s.id=? AND s.governance_version=? AND COALESCE((SELECT current.revision_number FROM surface_revisions current WHERE current.id=s.published_revision_id AND current.surface_id=s.id),-1)=COALESCE(?,-1) AND EXISTS (SELECT 1 FROM surface_revisions target WHERE target.id=? AND target.surface_id=s.id AND target.base_revision_number IS ? AND target.visibility<>'personal_view') AND ${authoritySql}`,
             input.revisionId,
             ms(input.at),
             input.surfaceId,
@@ -918,9 +923,10 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           !(await surfaceAuthority(input.surfaceId, input.actorId, "member")) ||
           !(await first(
             DB,
-            "SELECT 1 AS ok FROM surface_revisions WHERE id=? AND surface_id=?",
+            "SELECT 1 AS ok FROM surface_revisions WHERE id=? AND surface_id=? AND author_user_id=? AND visibility='personal_view'",
             input.revisionId,
             input.surfaceId,
+            input.actorId,
           ))
         )
           throw new Error("forbidden");
@@ -2143,6 +2149,7 @@ function surfaceRevision(row: {
   baseRevisionNumber: number | null;
   designPolicyId: string;
   designPolicyVersion: string;
+  visibility: "private_preview" | "personal_view";
   specJson: string;
   createdAt: number;
 }): SurfaceRevisionRecord {
@@ -2154,6 +2161,7 @@ function surfaceRevision(row: {
     baseRevisionNumber: row.baseRevisionNumber,
     designPolicyId: row.designPolicyId,
     designPolicyVersion: row.designPolicyVersion,
+    visibility: row.visibility,
     specJson: row.specJson,
     createdAt: new Date(row.createdAt),
   };

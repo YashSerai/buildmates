@@ -43,7 +43,8 @@ describe("object authorization", () => {
     expect(audienceSchema.safeParse("connections").success).toBe(false);
     expect(acceptanceModeSchema.safeParse("full_autopilot").success).toBe(true);
     expect(acceptanceModeSchema.safeParse("automatic-ish").success).toBe(false);
-    expect(appAccessModeSchema.safeParse("approved_summaries").success).toBe(true);
+    expect(appAccessModeSchema.safeParse("approved_summaries").success).toBe(false);
+    expect(appAccessModeSchema.safeParse("allow_approved_work_signals").success).toBe(true);
     expect(appAccessModeSchema.safeParse("read_everything").success).toBe(false);
   });
 });

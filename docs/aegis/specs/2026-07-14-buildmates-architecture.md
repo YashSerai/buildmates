@@ -76,7 +76,7 @@ identity_links
   provider_channel      web | mcp
   provider_issuer       chatgpt_sites | github | buildmates_mcp
   provider_subject
-  workspace_scope       normalized workspace identifier or global
+  workspace_scope       literal global for the public MCP contract
   linked_at
   revoked_at?
 
@@ -89,7 +89,7 @@ identity_link_codes
   consumed_at?
 ```
 
-The database uniquely constrains normalized `(provider_channel, provider_issuer, provider_subject, workspace_scope)`, permits only one active link for that scoped subject, uniquely constrains `code_hash`, and consumes codes with compare-and-set semantics. The sole pre-link mutation is OAuth-authenticated `complete_identity_link`; it can only consume one code and create the corresponding link, is rate-limited, and exposes no user data. `get_link_url` is an OAuth-authenticated pre-link read. Every other user-specific MCP read and mutation requires OAuth plus a current identity link.
+The database uniquely constrains normalized `(provider_channel, provider_issuer, provider_subject, workspace_scope)`, permits only one active link for that scoped subject, uniquely constrains `code_hash`, and consumes codes with compare-and-set semantics. The public MCP contract permits only the literal `global` scope until a safe multi-workspace authorization handoff is designed. The sole pre-link mutation is OAuth-authenticated `complete_identity_link`; it can only consume one code and create the corresponding link, is rate-limited, and exposes no user data. `get_link_url` is an OAuth-authenticated pre-link read. Every other user-specific MCP read and mutation requires OAuth plus a current identity link.
 
 ## 6. Mandatory agentic first run
 
@@ -105,7 +105,7 @@ The first Buildmates plugin run is a resumable state machine with a visible fini
 8. Configure the Networking Pulse.
 9. Select Manual or Full Autopilot.
 10. Configure automation cadence and source liveness.
-11. Complete one useful outcome: candidate, search, follow/watch, or invite.
+11. Complete one useful outcome available in the current MCP contract: candidate, follow/watch, or invite.
 
 Sparse context never blocks onboarding. Codex may ask adaptive questions, accept manual fields, let the user select one repository/project, accept a short pasted description, or inspect user-provided portfolio, GitHub, LinkedIn, and project links under permission. Required completion data is only identity/handle, short builder description, one project or active interest, privacy review, Networking Pulse, acceptance mode, and automation choice.
 

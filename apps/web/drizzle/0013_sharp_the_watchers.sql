@@ -1,0 +1,1 @@
+CREATE INDEX `identity_link_code_user_created_idx` ON `identity_link_codes` (`user_id`,`created_at`);

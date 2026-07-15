@@ -1,0 +1,30 @@
+{
+  "name": "buildmates",
+  "version": "0.2.0",
+  "description": "Meet builders through what you are working on now, with explicit privacy controls and reciprocal matching.",
+  "author": {
+    "name": "Yash Serai",
+    "url": "https://github.com/YashSerai"
+  },
+  "homepage": "https://buildmates-network.yashns.chatgpt.site",
+  "repository": "https://github.com/YashSerai/buildmates",
+  "license": "MIT",
+  "keywords": ["builders", "networking", "codex", "matching"],
+  "skills": "./skills/",
+  "apps": "./.app.json",
+  "interface": {
+    "displayName": "Buildmates",
+    "shortDescription": "Meet people through what you build",
+    "longDescription": "Buildmates turns user-approved summaries of current work into a living builder profile, relevant introductions, and lightweight shared rooms.",
+    "developerName": "Yash Serai",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Write"],
+    "websiteURL": "https://buildmates-network.yashns.chatgpt.site",
+    "defaultPrompt": [
+      "Set up my Buildmates profile.",
+      "Refresh my Work Pulse and find relevant builders.",
+      "Show my Buildmates connections and rooms."
+    ],
+    "brandColor": "#17594A"
+  }
+}

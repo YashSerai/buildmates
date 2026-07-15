@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
@@ -66,7 +66,10 @@ export const identityLinkCodes = sqliteTable(
     consumedByPrincipalId: text("consumed_by_principal_id"),
     ...timestamps,
   },
-  (table) => [uniqueIndex("identity_link_code_hash_unique").on(table.codeHash)],
+  (table) => [
+    uniqueIndex("identity_link_code_hash_unique").on(table.codeHash),
+    index("identity_link_code_user_created_idx").on(table.userId, table.createdAt),
+  ],
 );
 
 export const oauthTokens = sqliteTable(
@@ -100,11 +103,15 @@ export const platformCapabilityChecks = sqliteTable("platform_capability_checks"
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 });
 
-export const mcpRateLimits = sqliteTable("mcp_rate_limits", {
-  key: text("key").primaryKey(),
-  attemptCount: integer("attempt_count").notNull(),
-  windowExpiresAt: integer("window_expires_at", { mode: "timestamp_ms" }).notNull(),
-});
+export const mcpRateLimits = sqliteTable(
+  "mcp_rate_limits",
+  {
+    key: text("key").primaryKey(),
+    attemptCount: integer("attempt_count").notNull(),
+    windowExpiresAt: integer("window_expires_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("mcp_rate_limit_expiry_idx").on(table.windowExpiresAt)],
+);
 
 export const oauthAuthorizationHandoffs = sqliteTable("oauth_authorization_handoffs", {
   stateHash: text("state_hash").primaryKey(),
@@ -132,5 +139,8 @@ export const assertionReplays = sqliteTable(
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     ...timestamps,
   },
-  (table) => [uniqueIndex("assertion_replay_issuer_jti_unique").on(table.issuer, table.jti)],
+  (table) => [
+    uniqueIndex("assertion_replay_issuer_jti_unique").on(table.issuer, table.jti),
+    index("assertion_replay_expiry_idx").on(table.expiresAt),
+  ],
 );

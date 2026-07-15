@@ -3,6 +3,7 @@ import { createExternalIdentityLinkService } from "./link-identity";
 import { createExternalMcpFetchHandler } from "./server";
 import type { OAuth21Config } from "./oauth";
 import { createAuthorizationHandoff } from "./authorization-handoff";
+import { createMemoryMcpProductRepository, pruneExpiredMcpRateLimits } from "@buildmates/mcp-core";
 
 type Env = {
   DB: D1Database;
@@ -46,7 +47,11 @@ const worker = {
       identityTools: {
         linkBaseUrl: env.WEB_BASE_URL,
         completeIdentityLink: delegated.completeIdentityLink,
+        executeRemoteTool: delegated.executeRemoteTool,
         allowAttempt: ({ mcpSubject, operation }) => allowRateLimitedAttempt(env.DB, mcpSubject, operation),
+        repository: createMemoryMcpProductRepository(),
+        resolveLinkedUser: async () => null,
+        validateTaxonomy: async () => false,
       },
       resolveAuthorizationIdentity: (authorizationRequest) => handoff.identity(authorizationRequest),
       beginAuthorizationHandoff: (authorizationRequest) => handoff.begin(authorizationRequest),
@@ -59,6 +64,7 @@ export default worker;
 
 async function allowRateLimitedAttempt(DB: D1Database, subject: string, operation: string): Promise<boolean> {
   const now = Date.now();
+  await pruneExpiredMcpRateLimits(DB, now);
   const window = Math.floor(now / 600_000);
   const key = `${operation}:${subject}:${window}`;
   await DB.prepare("INSERT INTO mcp_rate_limits (key, attempt_count, window_expires_at) VALUES (?, 1, ?) ON CONFLICT(key) DO UPDATE SET attempt_count = attempt_count + 1")

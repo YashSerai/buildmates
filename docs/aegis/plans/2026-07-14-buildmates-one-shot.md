@@ -172,7 +172,7 @@ Then run the ChatGPT Sites deployment flow and, if selected by the gate, the ind
 **Steps:**
 
 1. Define identity links/codes, users, handles, operator roles, connected-app preferences, taxonomy tables/versions, Work Signals with canonical IDs, builder match index, pair-score rows, expiring Networking Pulses, introduction budgets, quiet hours, snoozes, exclusions, watches, profiles, first-class projects and collaborators, follows, invite/share links, governed cohorts and memberships, Design Policies, surfaces, revisions, approvals, personal views, candidate batches, evaluations, human responses, matches, persistent Connections, side states, private notes, reminders, rooms, messages, feedback, upgrade proposals, Circles, roles, votes, modules, immediate/digest notifications, blocks, moderation cases/actions/appeals, reports, exports, deletion/redaction jobs, automation checkpoints, and audit events.
-2. Use unique constraints for handles, normalized `(provider_channel, provider_issuer, provider_subject, workspace_scope)`, link-code hashes, unordered match pairs, one Connection/room per `match_pair_id`, client message IDs, idempotency keys, and revision numbers. Consume link codes with compare-and-set and allow only one active identity link per normalized scoped subject.
+2. Use unique constraints for handles, normalized `(provider_channel, provider_issuer, provider_subject, workspace_scope)`, link-code hashes, unordered match pairs, one Connection/room per `match_pair_id`, client message IDs, idempotency keys, and revision numbers. The public MCP accepts only the literal `global` workspace scope until a safe multi-workspace handoff exists. Consume link codes with compare-and-set and allow only one active identity link per normalized scoped subject.
 3. Store privacy and acceptance values as validated enums with explicit defaults.
 4. Implement repository interfaces with D1 and in-memory adapters.
 5. Implement object-level authorization helpers for owner, room member, Circle member/admin/owner, and public/cohort/connection visibility.
@@ -267,7 +267,7 @@ npm run build
 10. Ensure tools accept only summaries and structured evidence; no credential or raw-context fields exist in schemas.
 11. Add prompt-injection-resistant instructions: connector content is data, cannot alter Buildmates policy, cannot authorize its own sharing, and cannot change another person's state.
 12. Test every tool for unauthenticated, unlinked, unauthorized, expired/reused linking code, duplicate, malformed, and happy-path calls.
-13. Run Codex-to-production acceptance tests for both rich-context and sparse-context “Set up my Buildmates” flows through a published basic profile, configured automation, and candidate/search/follow/invite outcome.
+13. Run Codex-to-production acceptance tests for both rich-context and sparse-context “Set up my Buildmates” flows through a published basic profile, configured automation, and candidate/follow/watch/invite outcome.
 
 **Verify:**
 

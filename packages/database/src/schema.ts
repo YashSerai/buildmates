@@ -52,7 +52,7 @@ export const connectedAppPreferences = sqliteTable(
     displayName: text("display_name").notNull(),
     category: text("category").notNull(),
     accessMode: text("access_mode", {
-      enum: ["never", "ask_each_time", "approved_summaries"],
+      enum: ["never", "ask_each_time", "allow_approved_work_signals", "actions_only"],
     })
       .notNull()
       .default("ask_each_time"),
@@ -65,7 +65,7 @@ export const connectedAppPreferences = sqliteTable(
     uniqueIndex("connected_app_user_app_unique").on(t.userId, t.appId),
     check(
       "connected_app_access_mode_valid",
-      sql`${t.accessMode} in ('never','ask_each_time','approved_summaries')`,
+      sql`${t.accessMode} in ('never','ask_each_time','allow_approved_work_signals','actions_only')`,
     ),
   ],
 );
@@ -192,6 +192,7 @@ export const workSignals = sqliteTable(
     id: text("id").primaryKey(),
     userId: userRef("user_id"),
     sourceAppId: text("source_app_id"),
+    sourceApprovalId: text("source_approval_id"),
     taxonomyVersionId: text("taxonomy_version_id")
       .notNull()
       .references(() => taxonomyVersions.id),
@@ -203,6 +204,12 @@ export const workSignals = sqliteTable(
       .notNull()
       .default("[]"),
     canonicalDomainIdsJson: text("canonical_domain_ids_json")
+      .notNull()
+      .default("[]"),
+    canonicalStageIdsJson: text("canonical_stage_ids_json")
+      .notNull()
+      .default("[]"),
+    canonicalCollaborationIntentIdsJson: text("canonical_collaboration_intent_ids_json")
       .notNull()
       .default("[]"),
     audience: text("audience", {
@@ -228,6 +235,7 @@ export const workSignals = sqliteTable(
   },
   (t) => [
     index("work_signal_user_expiry_idx").on(t.userId, t.expiresAt),
+    uniqueIndex("work_signal_source_approval_unique").on(t.sourceApprovalId),
     check(
       "work_signal_audience_valid",
       sql`${t.audience} in ('public','signed_in','suggested_connections','mutual_connections','private')`,
@@ -299,6 +307,7 @@ export const networkingPulses = sqliteTable(
     collaborationIntentIdsJson: text("collaboration_intent_ids_json")
       .notNull()
       .default("[]"),
+    controlsJson: text("controls_json").notNull().default("{}"),
     startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     createdAt: created(),
@@ -393,6 +402,8 @@ export const profiles = sqliteTable(
     userId: userRef("user_id"),
     displayName: text("display_name").notNull(),
     summary: text("summary").notNull(),
+    projectOrInterest: text("project_or_interest").notNull().default(""),
+    portfolioLinksJson: text("portfolio_links_json").notNull().default("[]"),
     audience: text("audience", {
       enum: [
         "public",
@@ -683,6 +694,7 @@ export const surfaceRevisions = sqliteTable(
     // repositories always supply the selected policy version explicitly; this
     // literal must not track a future deployment's active policy constant.
     designPolicyVersion: text("design_policy_version").notNull().default("2026-07-14.1"),
+    visibility: text("visibility", { enum: ["private_preview", "personal_view"] }).notNull().default("private_preview"),
     specJson: text("spec_json").notNull(),
     status: text("status", {
       enum: ["draft", "proposed", "published", "rejected", "rolled_back"],
@@ -757,15 +769,19 @@ export const matchPairs = sqliteTable(
     check("match_pair_canonical", sql`${t.userAId} < ${t.userBId}`),
   ],
 );
-export const candidateBatches = sqliteTable("candidate_batches", {
-  id: text("id").primaryKey(),
-  userId: userRef("user_id"),
-  indexVersion: integer("index_version").notNull(),
-  taxonomyVersion: integer("taxonomy_version").notNull(),
-  candidateIdsJson: text("candidate_ids_json").notNull(),
-  expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
-  createdAt: created(),
-});
+export const candidateBatches = sqliteTable(
+  "candidate_batches",
+  {
+    id: text("id").primaryKey(),
+    userId: userRef("user_id"),
+    indexVersion: integer("index_version").notNull(),
+    taxonomyVersion: integer("taxonomy_version").notNull(),
+    candidateIdsJson: text("candidate_ids_json").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: created(),
+  },
+  (t) => [index("candidate_batch_user_expiry_id_idx").on(t.userId, t.expiresAt, t.id)],
+);
 export const matchProposals = sqliteTable(
   "match_proposals",
   {
@@ -914,11 +930,18 @@ export const connectionSides = sqliteTable(
     })
       .notNull()
       .default(true),
+    renewedRelevanceAcknowledgedAt: integer(
+      "renewed_relevance_acknowledged_at",
+      { mode: "timestamp_ms" },
+    ),
     unreadAt: integer("unread_at", { mode: "timestamp_ms" }),
     createdAt: created(),
     updatedAt: updated(),
   },
-  (t) => [primaryKey({ columns: [t.connectionId, t.userId] })],
+  (t) => [
+    primaryKey({ columns: [t.connectionId, t.userId] }),
+    index("connection_side_user_connection_idx").on(t.userId, t.connectionId),
+  ],
 );
 export const connectionPrivateNotes = sqliteTable(
   "connection_private_notes",
@@ -932,20 +955,27 @@ export const connectionPrivateNotes = sqliteTable(
     createdAt: created(),
     updatedAt: updated(),
   },
-  (t) => [index("connection_note_owner_idx").on(t.connectionId, t.ownerUserId)],
+  (t) => [
+    index("connection_note_owner_idx").on(t.connectionId, t.ownerUserId),
+    index("connection_note_owner_id_idx").on(t.ownerUserId, t.id),
+    index("connection_note_owner_connection_id_idx").on(t.ownerUserId, t.connectionId, t.id),
+  ],
 );
-export const connectionReminders = sqliteTable("connection_reminders", {
-  id: text("id").primaryKey(),
-  connectionId: text("connection_id")
-    .notNull()
-    .references(() => connections.id),
-  userId: userRef("user_id"),
-  remindAt: integer("remind_at", { mode: "timestamp_ms" }).notNull(),
-  status: text("status", { enum: ["scheduled", "sent", "dismissed"] })
-    .notNull()
-    .default("scheduled"),
-  createdAt: created(),
-});
+export const connectionReminders = sqliteTable(
+  "connection_reminders",
+  {
+    id: text("id").primaryKey(),
+    connectionId: text("connection_id").notNull().references(() => connections.id),
+    userId: userRef("user_id"),
+    remindAt: integer("remind_at", { mode: "timestamp_ms" }).notNull(),
+    status: text("status", { enum: ["scheduled", "sent", "dismissed"] }).notNull().default("scheduled"),
+    createdAt: created(),
+  },
+  (t) => [
+    index("connection_reminder_user_id_idx").on(t.userId, t.id),
+    index("connection_reminder_user_connection_id_idx").on(t.userId, t.connectionId, t.id),
+  ],
+);
 export const connectionUpdateSubscriptions = sqliteTable(
   "connection_update_subscriptions",
   {
@@ -1017,7 +1047,10 @@ export const roomMemberships = sqliteTable(
     leftAt: integer("left_at", { mode: "timestamp_ms" }),
     lastReadMessageId: text("last_read_message_id"),
   },
-  (t) => [primaryKey({ columns: [t.roomId, t.userId] })],
+  (t) => [
+    primaryKey({ columns: [t.roomId, t.userId] }),
+    index("room_membership_user_active_room_idx").on(t.userId, t.leftAt, t.roomId),
+  ],
 );
 export const messages = sqliteTable(
   "messages",
@@ -1110,7 +1143,10 @@ export const circleMemberships = sqliteTable(
       .default("invited"),
     joinedAt: integer("joined_at", { mode: "timestamp_ms" }),
   },
-  (t) => [primaryKey({ columns: [t.circleId, t.userId] })],
+  (t) => [
+    primaryKey({ columns: [t.circleId, t.userId] }),
+    index("circle_membership_user_status_circle_idx").on(t.userId, t.status, t.circleId),
+  ],
 );
 export const circleProposals = sqliteTable("circle_proposals", {
   id: text("id").primaryKey(),
@@ -1398,4 +1434,41 @@ export const idempotencyKeys = sqliteTable(
       t.keyHash,
     ),
   ],
+);
+
+export const setupStates = sqliteTable("setup_states", {
+  userId: userRef("user_id").primaryKey(),
+  completedStepsJson: text("completed_steps_json").notNull().default('["identity_link"]'),
+  updatedAt: updated(),
+});
+
+export const sourceUseApprovals = sqliteTable(
+  "source_use_approvals",
+  {
+    id: text("id").primaryKey(),
+    userId: userRef("user_id"),
+    sourceAppId: text("source_app_id").notNull(),
+    purpose: text("purpose", { enum: ["work_signal"] }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    consumedAt: integer("consumed_at", { mode: "timestamp_ms" }),
+    createdAt: created(),
+  },
+  (t) => [index("source_use_approval_lookup_idx").on(t.userId, t.sourceAppId, t.expiresAt)],
+);
+
+export const calendarEventReceipts = sqliteTable(
+  "calendar_event_receipts",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id").notNull().references(() => rooms.id),
+    attachedByUserId: userRef("attached_by_user_id"),
+    provider: text("provider").notNull(),
+    providerEventId: text("provider_event_id").notNull(),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }).notNull(),
+    participantLabelsJson: text("participant_labels_json").notNull(),
+    status: text("status", { enum: ["confirmed", "cancelled"] }).notNull(),
+    createdAt: created(),
+  },
+  (t) => [uniqueIndex("calendar_provider_event_unique").on(t.provider, t.providerEventId)],
 );

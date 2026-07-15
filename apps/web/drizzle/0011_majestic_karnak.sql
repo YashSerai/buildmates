@@ -1,0 +1,1 @@
+ALTER TABLE `connection_sides` ADD `renewed_relevance_acknowledged_at` integer;

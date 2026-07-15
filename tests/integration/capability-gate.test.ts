@@ -6,15 +6,18 @@ import { runD1Diagnostic, type D1Like } from "../../apps/web/src/platform/d1";
 import { runR2Diagnostic } from "../../apps/web/src/platform/r2";
 import { verifyDelegatedRequest } from "../../apps/web/src/platform/delegated-request";
 import { BUILD_MATES_MCP_TOOLS } from "../../packages/mcp-core/src/server";
+import { canonicalToolInputHash } from "../../packages/mcp-core/src/tool-hash";
 import { completeIdentityLink, sha256, type IdentityLinkStore } from "../../apps/web/src/platform/identity-link-store";
 import { createExternalMcpFetchHandler } from "../../apps/mcp/src/server";
 import type { DurableOAuthStore, OAuthTokenPair, ValidatedAccessToken } from "../../apps/mcp/src/oauth";
 
 describe("platform capability gate", () => {
-  it("keeps logical Sites bindings and one minimal MCP registry", async () => {
+  it("keeps logical Sites bindings and one complete shared MCP registry", async () => {
     const manifest = JSON.parse(await readFile(resolve("apps/web/.openai/hosting.json"), "utf8"));
     expect(manifest).toMatchObject({ project_id: expect.stringMatching(/^appgprj_/), d1: "DB", r2: "ASSETS" });
-    expect(BUILD_MATES_MCP_TOOLS).toEqual(["get_link_url", "complete_identity_link"]);
+    expect(BUILD_MATES_MCP_TOOLS.slice(0, 2)).toEqual(["get_link_url", "complete_identity_link"]);
+    expect(BUILD_MATES_MCP_TOOLS).toHaveLength(35);
+    expect(new Set(BUILD_MATES_MCP_TOOLS).size).toBe(BUILD_MATES_MCP_TOOLS.length);
   });
 
   it("proves actor-scoped D1 insert/read/delete without leaking the actor", async () => {
@@ -65,6 +68,25 @@ describe("platform capability gate", () => {
     });
     await expect(verify()).resolves.toMatchObject({ sub: "mcp_opaque_subject_123456789", jti: "once" });
     await expect(verify()).rejects.toThrow("replayed_assertion");
+  });
+
+  it("binds delegated tool assertions to the exact tool and canonical request input", async () => {
+    const { privateKey, publicKey } = await generateKeyPair("RS256");
+    const publicKeyPem = await exportSPKI(publicKey);
+    const now = Math.floor(Date.now() / 1000);
+    const input = { workspaceScope: "global", profileId: "profile-1" };
+    const inputHash = await canonicalToolInputHash(input);
+    const token = await new SignJWT({ action: "tool.execute:get_profile_model", scope: "mcp:tool:get_profile_model", tool: "get_profile_model", input_hash: inputHash })
+      .setProtectedHeader({ alg: "RS256" }).setIssuer("buildmates-mcp").setAudience("buildmates-web-data")
+      .setSubject("mcp_opaque_subject_123456789").setJti("tool-once").setIssuedAt(now).setExpirationTime(now + 60).sign(privateKey);
+    const verify = (expectedTool: string, expectedInputHash: string) => verifyDelegatedRequest({
+      authorization: `Bearer ${token}`, publicKeyPem, issuer: "buildmates-mcp", audience: "buildmates-web-data",
+      expectedAction: `tool.execute:${expectedTool}`, expectedScope: `mcp:tool:${expectedTool}`, expectedTool, expectedInputHash,
+      consumeReplay: async () => true,
+    });
+    await expect(verify("get_profile_model", inputHash)).resolves.toMatchObject({ tool: "get_profile_model", input_hash: inputHash });
+    await expect(verify("get_networking_pulse", inputHash)).rejects.toThrow("invalid_delegated_claims");
+    await expect(verify("get_profile_model", await canonicalToolInputHash({ ...input, profileId: "tampered" }))).rejects.toThrow("invalid_delegated_claims");
   });
 
   it("atomically converges one web user and one MCP subject under concurrent code consumption", async () => {

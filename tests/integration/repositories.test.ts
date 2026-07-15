@@ -568,11 +568,11 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     appId: "github",
     displayName: "GitHub",
     category: "Projects and code",
-    accessMode: "approved_summaries",
+    accessMode: "allow_approved_work_signals",
     lastReviewedAt: at,
   });
   await expect(r.connectedApps.listForUser(alice.id)).resolves.toMatchObject([
-    { appId: "github", accessMode: "approved_summaries" },
+    { appId: "github", accessMode: "allow_approved_work_signals" },
   ]);
 
   const cohortId = "cohort-one" as CohortId;
@@ -1141,12 +1141,25 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     decision: "approved",
     at,
   });
+  await r.surfaces.createRevision({
+    actorId: alice.id,
+    id: "personal-revision",
+    surfaceId: "surface",
+    authorUserId: alice.id,
+    revisionNumber: 50,
+    baseRevisionNumber: null,
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    visibility: "personal_view",
+    specJson: surfaceSpecJson("profile"),
+    createdAt: at,
+  });
   await expect(
     r.surfaces.setPersonalView({
       actorId: bob.id,
       id: "bad-personal",
       surfaceId: "surface",
-      revisionId: "revision",
+      revisionId: "personal-revision",
       at,
     }),
   ).rejects.toThrow();
@@ -1154,7 +1167,7 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     actorId: alice.id,
     id: "personal",
     surfaceId: "surface",
-    revisionId: "revision",
+    revisionId: "personal-revision",
     at,
   });
   await expect(

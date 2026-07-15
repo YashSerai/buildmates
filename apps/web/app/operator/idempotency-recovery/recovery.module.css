@@ -1,0 +1,19 @@
+.main { max-width: 52rem; margin: 0 auto; padding: 4rem 1.25rem; color: #171717; }
+.main header { margin-bottom: 2rem; }
+.main h1 { font-size: clamp(2rem, 5vw, 3.5rem); line-height: 1; margin: .35rem 0 1rem; letter-spacing: -.04em; }
+.eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; font-weight: 700; }
+.panel { display: grid; gap: .85rem; border-top: 1px solid #bbb; padding: 1.25rem 0 2rem; }
+.row, .grid { display: grid; grid-template-columns: 1fr auto; gap: .75rem; }
+.grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid label { display: grid; gap: .45rem; }
+.panel input, .panel textarea, .panel select { width: 100%; border: 1px solid #888; background: #fff; color: #171717; border-radius: .25rem; padding: .7rem; font: inherit; }
+.panel textarea { min-height: 7rem; resize: vertical; }
+.panel button { border: 1px solid #171717; background: #171717; color: #fff; border-radius: .25rem; padding: .7rem 1rem; font: inherit; font-weight: 650; cursor: pointer; }
+.panel button:focus-visible, .panel input:focus-visible, .panel textarea:focus-visible, .panel select:focus-visible { outline: 3px solid #f0a000; outline-offset: 2px; }
+.panel dl { margin: 0; display: grid; gap: .6rem; }
+.panel dl div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 1rem; }
+.panel dt { color: #666; }
+.panel dd { margin: 0; }
+.hash { overflow-wrap: anywhere; font-family: ui-monospace, monospace; }
+.status { border-left: 3px solid #f0a000; padding: .5rem .75rem; }
+@media (max-width: 38rem) { .main { padding-top: 2rem; } .row, .grid { grid-template-columns: 1fr; } .panel button { min-height: 2.75rem; } .panel dl div { grid-template-columns: 1fr; gap: .15rem; } }

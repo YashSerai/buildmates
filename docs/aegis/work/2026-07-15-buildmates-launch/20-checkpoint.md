@@ -1,16 +1,16 @@
 # Buildmates Launch Checkpoint
 
-Updated: 2026-07-15, Task 4 final quality repairs verified
+Updated: 2026-07-15, Task 5 MCP/plugin implementation candidate
 Status: active
 
 ## TodoCheckpointDraft
 
-- Current todo: integrate the fully verified Task 4 implementation.
-- Active slice: final Task 4 quality repairs complete and verified; no remaining implementation blocker in this slice.
+- Current todo: review and integrate the Task 5 MCP/plugin implementation.
+- Active slice: Task 5 final quality findings repaired and locally verified: fail-closed subject-backed Surface briefs, Sites-native authenticated administrator recovery, same-origin link mutations, global-only public MCP scope, the link-code rate-limit index, bounded direct pagination and taxonomy queries, indexed expiry cleanup, authenticated connection setup, follow/watch adapter parity, and shared canonical hashing; independent rereview pending.
 - Completed todos: Tasks 1-3; Task 4 candidate and all review repairs, including themed state shells, guaranteed two-tone focus, populated-safe historical policy backfill, a versioned parser/policy registry that preserves `.1` reads under active `.2`, srcdoc breakout defenses, iterative deep-input preflight, streaming upload caps, non-destructive object handling, no-store asset revocation, bounded indexed asset lookup, and removal of current font upload support.
-- Evidence refs: `GOAL.md`, canonical specs and plan, GitHub remote, `docs/evidence/sites-capability-gate.md`, migrations 0000-0007, 68 focused surface/security tests, 56 unit tests, 27 integration tests, 6 desktop/phone E2E tests, fresh/populated D1 migration output, and local lint/typecheck/build.
-- Blocked on: nothing.
-- Next step: commit and push Task 4, then begin Task 5 MCP app/plugin implementation.
+- Evidence refs: `GOAL.md`, canonical specs and plan, GitHub remote, `docs/evidence/sites-capability-gate.md`, migrations 0000-0013, 30 focused final-finding tests, 60 unit tests, 29 integration tests, 26 MCP contract tests, 10 desktop/phone E2E tests, fresh/populated D1 migration output, and local lint/typecheck/build.
+- Blocked on: only the account-side ChatGPT app creation needed to obtain a real app ID; source intentionally contains no invented ID. No local implementation blocker is open.
+- Next step: run Task 5 independent specification/security and quality reviews, repair findings, then bind the real app ID when account creation is available.
 
 ## ResumeStateHint
 

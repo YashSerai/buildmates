@@ -1,5 +1,5 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { createBuildmatesMcpServer, type IdentityToolServices } from "@buildmates/mcp-core";
+import { createBuildmatesMcpServer, type BuildmatesToolServices } from "@buildmates/mcp-core";
 import {
   oauthDiscovery, oauthIssuerCapability, protectedResourceMetadata, validateAuthorizationRequest,
   type AuthorizedWebIdentity, type DurableOAuthStore, type OAuth21Config,
@@ -8,7 +8,7 @@ import {
 export type ExternalMcpRuntime = {
   oauth: OAuth21Config;
   store: DurableOAuthStore;
-  identityTools: IdentityToolServices;
+  identityTools: BuildmatesToolServices;
   resolveAuthorizationIdentity(request: Request): Promise<AuthorizedWebIdentity | null>;
   beginAuthorizationHandoff?(request: Request): Promise<Response>;
 };

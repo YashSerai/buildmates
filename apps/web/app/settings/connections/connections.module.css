@@ -1,0 +1,190 @@
+.page {
+  --paper: #f5f1e8;
+  --ink: #1d211e;
+  --muted: #62665f;
+  --rule: #c9c5ba;
+  --accent: #176b51;
+  --accent-dark: #0e4d3a;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), sans-serif;
+  padding: 0 max(24px, calc((100vw - 1040px) / 2)) 72px;
+}
+
+.header {
+  min-height: 78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.wordmark {
+  color: var(--ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.28rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+}
+
+.account { display: flex; align-items: center; gap: 18px; font-size: 0.86rem; }
+.accountName { color: var(--muted); }
+.signOut { color: var(--ink); text-underline-offset: 4px; }
+
+.intro { max-width: 720px; padding: 76px 0 42px; }
+.sectionName, .statusLabel {
+  margin: 0 0 12px;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 720;
+}
+
+.intro h1 {
+  max-width: 620px;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.65rem, 7vw, 5.25rem);
+  font-weight: 500;
+  letter-spacing: -0.055em;
+  line-height: 0.98;
+}
+
+.lede {
+  max-width: 650px;
+  margin: 28px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.connectionPanel {
+  background: #fffdf7;
+  border: 1px solid #a8a59b;
+  box-shadow: 8px 8px 0 #d9d4c8;
+}
+
+.connectionLine {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 0;
+  min-height: 96px;
+  padding: 0 clamp(24px, 5vw, 56px);
+  background: #252a26;
+}
+
+.siteNode, .codexNode {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid #777d75;
+  border-radius: 50%;
+  color: #f5f1e8;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  transition: background-color 180ms ease, border-color 180ms ease;
+}
+
+.siteNode { background: var(--accent); border-color: var(--accent); }
+.line { height: 1px; background: #6b716a; position: relative; }
+.linePending::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: 0;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #80b8a2;
+  animation: handoff 1.8s ease-in-out infinite alternate;
+}
+.lineConnected { height: 2px; background: #80b8a2; }
+.nodeConnected { background: var(--accent); border-color: var(--accent); }
+
+.panelBody { padding: clamp(26px, 5vw, 56px); }
+.statusHeader { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; }
+.statusHeader h2 { margin: 0; font-size: clamp(1.45rem, 3vw, 2.05rem); letter-spacing: -0.035em; }
+.statusMark { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.82rem; white-space: nowrap; }
+.statusMark span { width: 9px; height: 9px; border-radius: 50%; background: #989b95; }
+.statusConnected { color: var(--accent-dark); }
+.statusConnected span { background: var(--accent); }
+
+.approvalStage, .connectedActions { margin-top: 34px; max-width: 660px; }
+.approvalStage p, .connectedActions p, .boundary p { color: var(--muted); line-height: 1.65; }
+.primaryButton, .dangerButton {
+  min-height: 48px;
+  margin-top: 12px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  padding: 0 20px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.primaryButton { background: var(--accent); color: white; }
+.primaryButton:hover { background: var(--accent-dark); }
+.dangerButton { border-color: #9b4237; background: transparent; color: #83352d; }
+.dangerButton:hover { background: #f8e9e4; }
+.primaryButton:disabled, .dangerButton:disabled { cursor: wait; opacity: 0.62; }
+
+.steps { display: grid; gap: 18px; margin: 34px 0 26px; padding: 0; list-style: none; }
+.steps li { display: grid; grid-template-columns: 34px 1fr; gap: 14px; align-items: start; }
+.steps li > span { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid var(--rule); border-radius: 50%; font-size: 0.78rem; font-weight: 700; }
+.steps p { margin: 0; color: var(--muted); line-height: 1.55; }
+.steps strong { color: var(--ink); font-weight: 700; }
+.codeRow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
+.code {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  border: 1px solid #aaa69c;
+  background: #f2eee5;
+  padding: 0 16px;
+  color: var(--ink);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: clamp(0.72rem, 2vw, 1rem);
+  letter-spacing: 0.07em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.codeRow .primaryButton { margin: 0; }
+.textButton { margin: 18px 0 0; border: 0; background: none; padding: 0; color: var(--accent-dark); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+.liveMessage { min-height: 1.4em; margin: 22px 0 0; color: var(--accent-dark); font-size: 0.88rem; }
+.errorMessage { color: #8b3028; }
+
+.boundary { max-width: 720px; margin-top: 50px; padding-left: 28px; border-left: 3px solid var(--ink); }
+.boundary h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.35rem; }
+.boundary p { margin: 10px 0 0; }
+
+.primaryButton:focus-visible, .dangerButton:focus-visible, .textButton:focus-visible, .signOut:focus-visible, .wordmark:focus-visible, .code:focus-visible {
+  outline: 3px solid #d9753b;
+  outline-offset: 3px;
+}
+
+@keyframes handoff { from { left: 0; } to { left: calc(100% - 9px); } }
+
+@media (max-width: 620px) {
+  .page { padding-inline: 18px; padding-bottom: 48px; }
+  .header { min-height: 68px; }
+  .accountName { display: none; }
+  .intro { padding: 52px 0 32px; }
+  .intro h1 { font-size: clamp(2.55rem, 14vw, 4rem); }
+  .connectionPanel { box-shadow: 5px 5px 0 #d9d4c8; }
+  .connectionLine { min-height: 78px; padding-inline: 22px; grid-template-columns: 38px 1fr 38px; }
+  .siteNode, .codexNode { width: 38px; height: 38px; }
+  .statusHeader { display: grid; }
+  .statusMark { grid-row: 1; }
+  .codeRow { grid-template-columns: 1fr; }
+  .code { min-height: 54px; font-size: 0.72rem; }
+  .codeRow .primaryButton { width: 100%; }
+  .boundary { margin-top: 42px; padding-left: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .linePending::after { animation: none; left: calc(50% - 4px); }
+  .siteNode, .codexNode { transition: none; }
+}

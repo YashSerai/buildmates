@@ -57,6 +57,48 @@
       "when": 1784124853567,
       "tag": "0007_perfect_forgotten_one",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784129995890,
+      "tag": "0008_yielding_azazel",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1784130627865,
+      "tag": "0009_wise_bromley",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1784132766250,
+      "tag": "0010_purple_boomer",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1784134253973,
+      "tag": "0011_majestic_karnak",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1784136159318,
+      "tag": "0012_curvy_daimon_hellstrom",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1784138171457,
+      "tag": "0013_sharp_the_watchers",
+      "breakpoints": true
     }
   ]
 }

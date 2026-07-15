@@ -9,6 +9,8 @@ export type DelegatedClaims = JWTPayload & {
   exp: number;
   action: string;
   scope: string;
+  tool?: string;
+  input_hash?: string;
 };
 
 export async function verifyDelegatedRequest(input: {
@@ -18,6 +20,8 @@ export async function verifyDelegatedRequest(input: {
   audience: string;
   expectedAction: string;
   expectedScope: string;
+  expectedTool?: string;
+  expectedInputHash?: string;
   consumeReplay: (claims: DelegatedClaims) => Promise<boolean>;
 }): Promise<DelegatedClaims> {
   const token = input.authorization?.match(/^Bearer (\S+)$/i)?.[1];
@@ -34,7 +38,9 @@ export async function verifyDelegatedRequest(input: {
     typeof payload.sub !== "string" || typeof payload.jti !== "string" ||
     typeof payload.iat !== "number" || typeof payload.exp !== "number" ||
     typeof payload.action !== "string" || typeof payload.scope !== "string" ||
-    payload.action !== input.expectedAction || payload.scope !== input.expectedScope
+    payload.action !== input.expectedAction || payload.scope !== input.expectedScope ||
+    (input.expectedTool !== undefined && payload.tool !== input.expectedTool) ||
+    (input.expectedInputHash !== undefined && payload.input_hash !== input.expectedInputHash)
   ) throw new Error("invalid_delegated_claims");
   const claims = payload as DelegatedClaims;
   if (!(await input.consumeReplay(claims))) throw new Error("replayed_assertion");

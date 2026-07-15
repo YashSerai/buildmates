@@ -32,7 +32,7 @@ export function registerIdentityTools(server: McpServer, services: IdentityToolS
       description: "Consumes a short-lived, single-use code. This is the only user-data mutation allowed before identity linking.",
       inputSchema: {
         code: z.string().trim().regex(/^[A-F0-9]{32}$/),
-        workspaceScope: z.string().trim().min(1).max(128).default("global"),
+        workspaceScope: z.literal("global").default("global"),
       },
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },

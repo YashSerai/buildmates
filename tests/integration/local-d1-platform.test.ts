@@ -9,6 +9,7 @@ import { createAuthorizationHandoff } from "../../apps/mcp/src/authorization-han
 import { createExternalMcpFetchHandler } from "../../apps/mcp/src/server";
 import { createMcpAuthorizationAssertion } from "../../apps/web/src/platform/mcp-authorization";
 import { createPrivateCapabilityRepository } from "../../packages/database/src/private-capability-repository";
+import { getIdentityConnectionStatus, revokeIdentityConnections } from "../../apps/web/src/platform/identity-connections";
 
 describe("real local D1 platform boundaries", () => {
   let mf: Miniflare;
@@ -38,6 +39,28 @@ describe("real local D1 platform boundaries", () => {
     expect(results.filter((result) => result.linked)).toHaveLength(1);
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM identity_links WHERE user_id = 'web-alice'").first<{ count: number }>()).toEqual({ count: 1 });
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM identity_principals").first<{ count: number }>()).toEqual({ count: 1 });
+  });
+
+  it("reports and revokes only the authenticated user's MCP connection", async () => {
+    const now = Date.now();
+    await DB.prepare("INSERT INTO identity_principals (id,channel,issuer,subject,workspace_scope,created_at) VALUES ('alice-principal','mcp','buildmates_mcp','mcp-alice','global',?),('bob-principal','mcp','buildmates_mcp','mcp-bob','global',?)")
+      .bind(now, now).run();
+    await DB.prepare("INSERT INTO identity_links (id,user_id,principal_id,provider_channel,provider_issuer,provider_subject,workspace_scope,linked_at) VALUES ('alice-link','web-alice','alice-principal','mcp','buildmates_mcp','mcp-alice','global',?),('bob-link','web-bob','bob-principal','mcp','buildmates_mcp','mcp-bob','global',?)")
+      .bind(now - 1_000, now).run();
+    await DB.prepare("INSERT INTO identity_link_codes (id,user_id,code_hash,workspace_scope,expires_at,attempt_count,max_attempts,created_at) VALUES ('alice-pending','web-alice',?,'global',?,0,5,?)")
+      .bind(await sha256("A".repeat(32)), now + 60_000, now).run();
+
+    await expect(getIdentityConnectionStatus(DB, "web-alice", "global")).resolves.toEqual({
+      connected: true,
+      connectionCount: 1,
+      linkedAt: new Date(now - 1_000).toISOString(),
+    });
+    await expect(revokeIdentityConnections(DB, "web-alice", "global", now + 2_000)).resolves.toBe(true);
+    await expect(getIdentityConnectionStatus(DB, "web-alice", "global")).resolves.toEqual({ connected: false, connectionCount: 0, linkedAt: null });
+    await expect(getIdentityConnectionStatus(DB, "web-bob", "global")).resolves.toMatchObject({ connected: true, connectionCount: 1 });
+    expect(await DB.prepare("SELECT revoked_at AS revokedAt FROM identity_principals WHERE id='alice-principal'").first<{ revokedAt: number | null }>()).toEqual({ revokedAt: now + 2_000 });
+    expect(await DB.prepare("SELECT revoked_at AS revokedAt FROM identity_principals WHERE id='bob-principal'").first<{ revokedAt: number | null }>()).toEqual({ revokedAt: null });
+    expect(await DB.prepare("SELECT expires_at AS expiresAt FROM identity_link_codes WHERE id='alice-pending'").first<{ expiresAt: number }>()).toEqual({ expiresAt: now + 2_000 });
   });
 
   it("enforces PKCE, audience, refresh single-use, and family revocation in D1", async () => {
