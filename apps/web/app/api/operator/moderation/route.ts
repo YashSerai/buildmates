@@ -1,0 +1,9 @@
+import {z} from "zod";
+import {getPlatformBindings} from "@/src/platform/bindings";
+import {internalUserKey,requireApiIdentity} from "@/src/platform/identity";
+import {requireSameOriginMutation} from "@/src/platform/same-origin";
+import {listModerationCases,moderateCase} from "@/src/moderation/service";
+const schema=z.object({caseId:z.string().min(1).max(160),action:z.enum(["review","dismiss","warn","restrict_matching","suspend_account"]),reasonCode:z.string().trim().min(3).max(120)}).strict();
+export async function GET(request:Request){const access=await operatorAccess();if(access instanceof Response)return access;const status=new URL(request.url).searchParams.get("status")??"open";return Response.json({cases:await listModerationCases(access.DB,status)},{headers:{"cache-control":"private, no-store"}})}
+export async function POST(request:Request){const origin=requireSameOriginMutation(request);if(origin)return origin;const access=await operatorAccess();if(access instanceof Response)return access;const parsed=schema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return Response.json({error:"invalid_command"},{status:400});try{await moderateCase(access.DB,{operatorId:access.userId,...parsed.data,now:Date.now()});return Response.json({ok:true})}catch(error){return Response.json({error:error instanceof Error?error.message:"moderation_failed"},{status:409})}}
+async function operatorAccess():Promise<{DB:D1Database;userId:string}|Response>{const identity=await requireApiIdentity();if(identity instanceof Response)return identity;const{DB}=await getPlatformBindings();const userId=internalUserKey(identity);const user=await DB.prepare("SELECT operator_role AS role FROM users WHERE id=? AND status='active'").bind(userId).first<{role:string}>();return user?.role==="admin"||user?.role==="moderator"?{DB,userId}:Response.json({error:"operator_required"},{status:403})}
