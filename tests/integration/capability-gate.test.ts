@@ -13,7 +13,7 @@ import type { DurableOAuthStore, OAuthTokenPair, ValidatedAccessToken } from "..
 describe("platform capability gate", () => {
   it("keeps logical Sites bindings and one minimal MCP registry", async () => {
     const manifest = JSON.parse(await readFile(resolve("apps/web/.openai/hosting.json"), "utf8"));
-    expect(manifest).toEqual({ d1: "DB", r2: "ASSETS" });
+    expect(manifest).toMatchObject({ project_id: expect.stringMatching(/^appgprj_/), d1: "DB", r2: "ASSETS" });
     expect(BUILD_MATES_MCP_TOOLS).toEqual(["get_link_url", "complete_identity_link"]);
   });
 
