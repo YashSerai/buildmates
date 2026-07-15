@@ -9,5 +9,5 @@ if (!appId || !/^(?:asdk_app|connector)_[a-zA-Z0-9_-]{12,}$/.test(appId)) {
 }
 const manifest = JSON.parse(await readFile(resolve(root, ".codex-plugin/plugin.json"), "utf8"));
 if (manifest.apps !== "./.app.json") throw new Error("plugin.json must use .app.json as its sole app registration");
-await writeFile(resolve(root, ".app.json"), `${JSON.stringify({ apps: { buildmates: { id: appId, required: true } } }, null, 2)}\n`);
+await writeFile(resolve(root, ".app.json"), `${JSON.stringify({ apps: { buildmates: { id: appId } } }, null, 2)}\n`);
 console.log("Bound the verified Buildmates app ID to plugin/.app.json");

@@ -1,0 +1,30 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "buildmates-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "buildmates-mcp",
+      "database_id": "5883557a-b60c-4e15-9bd7-b239ac3959b9",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "vars": {
+    "OAUTH_ISSUER": "https://buildmates-mcp.yashserai1.workers.dev",
+    "MCP_RESOURCE": "https://buildmates-mcp.yashserai1.workers.dev",
+    "OAUTH_CLIENTS_JSON": "{\"buildmates-chatgpt-prod\":[\"https://chatgpt.com/connector/oauth/X9cijyDLeWHf\"]}",
+    "WEB_BASE_URL": "https://buildmates-network.yashns.chatgpt.site",
+    "WEB_DATA_URL": "https://buildmates-network.yashns.chatgpt.site/api/internal/mcp-data",
+    "WEB_AUTHORIZATION_ISSUER": "buildmates-web",
+    "WEB_AUTHORIZATION_AUDIENCE": "buildmates-mcp-authorization",
+    "MCP_DELEGATION_KEY_ID": "delegation-2026-07-15"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

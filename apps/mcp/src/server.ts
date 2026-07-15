@@ -1,5 +1,6 @@
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { createBuildmatesMcpServer, type BuildmatesToolServices } from "@buildmates/mcp-core";
+import { ZodError } from "zod";
 import {
   oauthDiscovery, oauthIssuerCapability, protectedResourceMetadata, validateAuthorizationRequest,
   type AuthorizedWebIdentity, type DurableOAuthStore, type OAuth21Config,
@@ -19,14 +20,14 @@ export function createExternalMcpFetchHandler(runtime: ExternalMcpRuntime) {
     try {
       if (request.method === "GET" && (url.pathname === "/.well-known/oauth-authorization-server" || url.pathname === "/.well-known/openid-configuration")) return json(oauthDiscovery(runtime.oauth));
       if (request.method === "GET" && url.pathname === "/.well-known/oauth-protected-resource") return json(protectedResourceMetadata(runtime.oauth));
-      if (request.method === "GET" && url.pathname === "/oauth/authorize") return authorize(request, runtime);
-      if (request.method === "POST" && url.pathname === "/oauth/token") return token(request, runtime);
-      if (request.method === "POST" && url.pathname === "/oauth/revoke") return revoke(request, runtime);
-      if (url.pathname === "/mcp" && ["GET", "POST", "DELETE"].includes(request.method)) return mcp(request, runtime);
+      if (request.method === "GET" && url.pathname === "/oauth/authorize") return await authorize(request, runtime);
+      if (request.method === "POST" && url.pathname === "/oauth/token") return await token(request, runtime);
+      if (request.method === "POST" && url.pathname === "/oauth/revoke") return await revoke(request, runtime);
+      if (url.pathname === "/mcp" && ["GET", "POST", "DELETE"].includes(request.method)) return await mcp(request, runtime);
       return json({ error: "not_found" }, 404);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "server_error";
-      return json({ error: oauthError(message) }, message === "server_error" ? 500 : 400);
+      const failure = oauthError(error);
+      return json({ error: failure.code }, failure.status);
     }
   };
 }
@@ -99,8 +100,12 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
   return Response.json(body, { status, headers: { "content-type": "application/json", ...headers } });
 }
 
-function oauthError(message: string): string {
-  return ["unregistered_redirect_uri", "invalid_resource_audience", "invalid_scope"].includes(message) ? "invalid_request" : message;
+function oauthError(error: unknown): { code: "invalid_request" | "server_error"; status: 400 | 500 } {
+  const message = error instanceof Error ? error.message : "";
+  if (error instanceof ZodError || ["unregistered_redirect_uri", "invalid_resource_audience", "invalid_scope"].includes(message)) {
+    return { code: "invalid_request", status: 400 };
+  }
+  return { code: "server_error", status: 500 };
 }
 
 export const externalMcpCapability = oauthIssuerCapability;

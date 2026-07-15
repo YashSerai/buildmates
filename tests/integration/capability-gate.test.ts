@@ -164,6 +164,16 @@ describe("platform capability gate", () => {
     expect(authorization.status).toBe(302);
     expect(new URL(authorization.headers.get("location")!).searchParams.get("code")).toBe("authorization-code");
 
+    const invalidAuthorization = new URL(authUrl);
+    invalidAuthorization.searchParams.set("client_id", "unregistered-client");
+    const rejectedAuthorization = await handler(new Request(invalidAuthorization, { redirect: "manual" }));
+    expect(rejectedAuthorization.status).toBe(400);
+    expect(await rejectedAuthorization.json()).toEqual({ error: "invalid_request" });
+
+    const malformedAuthorization = await handler(new Request("https://mcp.example/oauth/authorize", { redirect: "manual" }));
+    expect(malformedAuthorization.status).toBe(400);
+    expect(await malformedAuthorization.json()).toEqual({ error: "invalid_request" });
+
     const token = await handler(formRequest("https://mcp.example/oauth/token", { grant_type: "authorization_code", client_id: "codex", code: "authorization-code", redirect_uri: "https://chatgpt.com/callback", code_verifier: "v".repeat(43), resource: "https://mcp.example/mcp" }));
     expect(await token.json()).toMatchObject({ access_token: "access", refresh_token: "refresh", token_type: "Bearer" });
 
