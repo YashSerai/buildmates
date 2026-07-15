@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const timestamps = {
@@ -46,7 +47,7 @@ export const identityLinks = sqliteTable(
       table.providerIssuer,
       table.providerSubject,
       table.workspaceScope,
-    ),
+    ).where(sql`${table.revokedAt} is null`),
     uniqueIndex("identity_link_principal_unique").on(table.principalId),
   ],
 );

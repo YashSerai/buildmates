@@ -1,0 +1,1 @@
+ALTER TABLE `surfaces` ADD `governance_version` integer DEFAULT 1 NOT NULL;
