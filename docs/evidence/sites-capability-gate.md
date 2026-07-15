@@ -37,6 +37,8 @@ This file separates local contract evidence from deployment and production-runti
 
 ## Live evidence still required
 
+- [x] Exact commit `88c6650a0f487b1f2f3608ccd405b7bbbc07d1d1` pushed to the Sites source repository, packaged, saved as version 1, and deployed owner-only at `https://buildmates-network.yashns.chatgpt.site`.
+- [x] Owner bypass reaches the deployed vinext application with HTTP 200 and `/api/mcp` returns the intentional external-topology 501 response.
 - [ ] Public non-owner reachability for the deployed nested Site.
 - [ ] Stable server-verifiable subject from a real non-owner Sign in with ChatGPT session.
 - [ ] Two-user object isolation using separate real identities.
@@ -47,3 +49,9 @@ This file separates local contract evidence from deployment and production-runti
 - [ ] End-to-end single-use identity link from web subject to opaque MCP subject.
 
 Until those boxes are backed by deployment/browser/runtime artifacts, the selected topology is not production-proven. If Sites cannot meet the web gate, use the prepared Cloudflare/Vercel web adapter. If only MCP fails, keep the web deployment and use `apps/mcp` independently.
+
+### 2026-07-15 owner-only production probe
+
+- Sites project: `appgprj_6a575511bda48191a95bead0c5f48eea`; version 1; deployment `appgdep_6a5755b22f1c8191a09ed8e548c96c93` succeeded.
+- In-app Browser had no authenticated OpenAI session. Chrome used its existing saved account, reached Buildmates consent, and returned `Site not found` after the callback. The Site remained active and owner-only, and the bypass route continued returning the app, so this is isolated as an account/access-policy identity check rather than a build/deployment failure.
+- The bypass token does not inject a user subject, so protected D1/R2 routes correctly remained 401 and were not misreported as authenticated storage proof.
