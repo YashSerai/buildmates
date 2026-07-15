@@ -1,7 +1,7 @@
 declare namespace Cloudflare {
   interface Env {
     DB: D1Database;
-    ASSETS: Fetcher;
+    ASSETS: R2Bucket;
     IMAGES: {
       input(stream: ReadableStream): {
         transform(options: Record<string, unknown>): {

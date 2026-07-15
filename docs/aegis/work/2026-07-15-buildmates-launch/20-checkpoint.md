@@ -1,26 +1,26 @@
 # Buildmates Launch Checkpoint
 
-Updated: 2026-07-15, Task 1 complete  
+Updated: 2026-07-15, Task 2 local implementation complete  
 Status: active
 
 ## TodoCheckpointDraft
 
-- Current todo: Task 2 — platform deployment, identity, OAuth/MCP topology, and explicit account linking.
-- Active slice: delegate the bounded Task 2 implementation, then run primary-thread integration and deployment checks.
-- Completed todos: Task 1, including baseline commit, private GitHub repository, isolated worktree, monorepo conversion, cross-platform scripts, real starter tests, spec review, and code-quality review.
-- Evidence refs: `GOAL.md`, canonical specs/plan, GitHub remote, baseline test output, `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`, Task 1 reviewer approvals.
+- Current todo: commit and push Task 2, run the private ChatGPT Sites production capability probe, then begin Task 3 domain schema and authorization core.
+- Active slice: source-control and deployment truth for the approved Task 2 substrate.
+- Completed todos: Tasks 1 and 2 local implementation, including stable web identity, OAuth 2.1 and PKCE, refresh-family replay defense, Streamable HTTP MCP, explicit identity linking, delegated assertions, D1/R2 capability routes, real local-D1 security tests, and Windows smoke automation.
+- Evidence refs: `GOAL.md`, canonical specs and plan, GitHub remote, `docs/evidence/sites-capability-gate.md`, migrations 0000-0002, 11 integration tests, smoke output, full lint/typecheck/test/build, and Task 2 spec and quality approvals.
 - Blocked on: nothing.
-- Next step: commit/push Task 1 and dispatch Task 2 implementation with identity and deployment contracts.
+- Next step: commit and push Task 2, then deploy the exact commit as an owner-only Sites version for live capability verification.
 
 ## ResumeStateHint
 
-Read `10-intent.md`, this checkpoint, `GOAL.md`, and `BUILD_INDEX.md`; verify the worktree/branch and Git status before resuming. Never resume from chat memory alone.
+Read `10-intent.md`, this checkpoint, `GOAL.md`, and `BUILD_INDEX.md`; verify the worktree, branch, and Git status before resuming. Never resume from chat memory alone.
 
 ## DriftCheckDraft
 
 - Intent: aligned.
-- Scope: aligned with Task 1 and launch goal.
-- Compatibility: existing Sites vinext starter preserved under `apps/web`; Unix-only scripts replaced with `cross-env`.
-- New owner/fallback: planned package boundaries only; no runtime fallback activated.
-- Evidence sufficiency: direct lint/typecheck/test/build evidence and both required reviews pass.
+- Scope: aligned with Task 2 and the launch goal.
+- Compatibility: web-standard MCP transport keeps Worker/Vercel fallback viable; the Sites MCP route remains a truthful 501 until live support is proven.
+- New owner/fallback: external MCP topology is prepared but not production-selected until live deployment evidence exists.
+- Evidence sufficiency: direct migration, real D1, smoke, lint, typecheck, test, build, and both required reviews pass locally; production evidence remains separate.
 - Decision: continue.
