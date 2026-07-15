@@ -1,6 +1,6 @@
 export type R2Like = {
-  put(key: string, value: string, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
-  get(key: string): Promise<{ text(): Promise<string> } | null>;
+  put(key: string, value: string | ArrayBuffer | Uint8Array, options?: { httpMetadata?: { contentType?: string } }): Promise<unknown>;
+  get(key: string): Promise<{ text(): Promise<string>; arrayBuffer?: () => Promise<ArrayBuffer> } | null>;
   delete(key: string): Promise<void>;
 };
 

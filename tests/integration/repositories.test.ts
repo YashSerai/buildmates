@@ -23,6 +23,7 @@ import {
   createD1IdentityLinkStore,
   sha256,
 } from "../../apps/web/src/platform/identity-link-store";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
 
 const at = new Date("2026-07-15T00:00:00Z");
 const later = new Date("2026-07-16T00:00:00Z");
@@ -51,6 +52,17 @@ const operator = {
   createdAt: at,
 };
 
+function surfaceSpecJson(kind: "profile" | "room" | "circle", overrides: Record<string, unknown> = {}): string {
+  const spec: SurfaceSpec = {
+    schemaVersion: "1", designPolicyVersion: DESIGN_POLICY_VERSION, kind, title: `${kind} surface`,
+    theme: { mode: "light", colors: { canvas: "#ffffff", surface: "#f8f8f4", ink: "#171814", mutedInk: "#55584f", accent: "#cad7ad", accentInk: "#181b12", rule: "#c4c6bd", focusInner: "#000000", focusOuter: "#ffffff" }, typography: { display: "editorial", body: "humanist", scale: "comfortable" }, shape: { corners: "soft", density: "comfortable" } },
+    root: { id: "root", type: "section", tone: "canvas", children: [{ id: "title", type: "heading", level: 1, binding: "surface.title", fallback: "Surface" }] },
+    bindingManifest: { content: [{ key: "surface.title", type: "text" }], media: [] }, approvedAssets: [], decorativeRegions: [],
+    responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable" }, accessibility: { label: `${kind} surface`, primaryHeadingNodeId: "title", reducedMotion: "required" },
+  };
+  return JSON.stringify({ ...spec, ...overrides });
+}
+
 describe("repository aggregate and authorization parity", () => {
   let mf: Miniflare;
   let d1: D1Database;
@@ -76,7 +88,7 @@ describe("repository aggregate and authorization parity", () => {
           ? createMemoryRepositories()
           : createD1Repositories(d1 as unknown as RepositoryD1);
       await exerciseAllAggregates(repositories);
-      if (adapter === "d1")
+      if (adapter === "d1") {
         await expect(
           d1
             .prepare(
@@ -84,7 +96,9 @@ describe("repository aggregate and authorization parity", () => {
             )
             .first(),
         ).resolves.toEqual({ publishedRevisionId: "room-revision" });
-    });
+        await expect(d1.prepare("SELECT design_policy_version AS version FROM surface_revisions WHERE id='revision'").first()).resolves.toEqual({ version: DESIGN_POLICY_VERSION });
+      }
+    }, 15_000);
   }
 
   it("enforces link-code hash uniqueness and one-use compare-and-set in D1", async () => {
@@ -297,7 +311,7 @@ describe("repository aggregate and authorization parity", () => {
       .run();
     await d1
       .prepare(
-        "INSERT INTO surface_revisions (id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,spec_json,status,created_at) VALUES ('atomic-profile-revision','atomic-profile-surface',1,NULL,'user_alice','atomic-policy','{}','draft',?)",
+        "INSERT INTO surface_revisions (id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,design_policy_version,spec_json,status,created_at) VALUES ('atomic-profile-revision','atomic-profile-surface',1,NULL,'user_alice','atomic-policy','1','{}','draft',?)",
       )
       .bind(now)
       .run();
@@ -421,7 +435,7 @@ describe("repository aggregate and authorization parity", () => {
       .run();
     await d1
       .prepare(
-        "INSERT INTO surface_revisions (id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,spec_json,status,created_at) VALUES ('atomic-circle-revision','atomic-circle-surface',1,NULL,'user_alice','atomic-policy','{}','draft',?)",
+        "INSERT INTO surface_revisions (id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,design_policy_version,spec_json,status,created_at) VALUES ('atomic-circle-revision','atomic-circle-surface',1,NULL,'user_alice','atomic-policy','1','{}','draft',?)",
       )
       .bind(now)
       .run();
@@ -1054,10 +1068,11 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
   });
 
   await r.surfaces.createPolicy({
-    id: "policy",
-    version: "1",
-    sourceHash: "hash-one",
-    policyJson: "{}",
+    id: DESIGN_POLICY_ID,
+    version: DESIGN_POLICY_VERSION,
+    sourceHash: DESIGN_POLICY_SOURCE_HASH,
+    policyJson: DESIGN_POLICY_SOURCE,
+    activatedAt: at,
     at,
   });
   await expect(
@@ -1085,13 +1100,25 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 1,
     baseRevisionNumber: null,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("profile"),
     createdAt: at,
   });
   await expect(
     r.surfaces.findRevisionForViewer("revision", alice.id),
-  ).resolves.toMatchObject({ revisionNumber: 1 });
+  ).resolves.toMatchObject({ revisionNumber: 1, designPolicyVersion: DESIGN_POLICY_VERSION });
+  const historicalPolicy = SURFACE_POLICY_REGISTRY["2026-07-14.1"];
+  await r.surfaces.createPolicy({ id: historicalPolicy.designPolicyId, version: historicalPolicy.version, sourceHash: historicalPolicy.sourceHash, policyJson: historicalPolicy.policyJson, activatedAt: new Date("2026-07-14T00:00:00Z"), at: new Date("2026-07-14T00:00:00Z") });
+  await r.surfaces.createRevision({ actorId: alice.id, id: "historical-revision", surfaceId: "surface", authorUserId: alice.id, revisionNumber: 201, baseRevisionNumber: null, designPolicyId: historicalPolicy.designPolicyId, designPolicyVersion: historicalPolicy.version, specJson: surfaceSpecJson("profile", { designPolicyVersion: historicalPolicy.version }), createdAt: at });
+  await expect(r.surfaces.findRevisionForViewer("historical-revision", alice.id)).resolves.toMatchObject({ designPolicyVersion: historicalPolicy.version });
+  await r.surfaces.createPolicy({ id: "design_policy_unknown", version: "2099-01-01.1", sourceHash: "unknown-hash", policyJson: "{}", activatedAt: at, at });
+  await expect(r.surfaces.createRevision({ actorId: alice.id, id: "unknown-policy-revision", surfaceId: "surface", authorUserId: alice.id, revisionNumber: 202, baseRevisionNumber: null, designPolicyId: "design_policy_unknown", designPolicyVersion: "2099-01-01.1", specJson: surfaceSpecJson("profile", { designPolicyVersion: "2099-01-01.1" }), createdAt: at })).rejects.toThrow("surface_revision_policy_mismatch");
+  await expect(r.surfaces.createRevision({ actorId: alice.id, id: "invalid-spec-revision", surfaceId: "surface", authorUserId: alice.id, revisionNumber: 98, baseRevisionNumber: null, designPolicyId: DESIGN_POLICY_ID, designPolicyVersion: DESIGN_POLICY_VERSION, specJson: "{}", createdAt: at })).rejects.toThrow("surface_spec_invalid");
+  const deeplyNestedJson = '{"child":'.repeat(3_000) + "null" + "}".repeat(3_000);
+  await expect(r.surfaces.createRevision({ actorId: alice.id, id: "deep-spec-revision", surfaceId: "surface", authorUserId: alice.id, revisionNumber: 97, baseRevisionNumber: null, designPolicyId: DESIGN_POLICY_ID, designPolicyVersion: DESIGN_POLICY_VERSION, specJson: deeplyNestedJson, createdAt: at })).rejects.toThrow("surface_spec_invalid");
+  await expect(r.surfaces.createRevision({ actorId: alice.id, id: "wrong-kind-revision", surfaceId: "surface", authorUserId: alice.id, revisionNumber: 99, baseRevisionNumber: null, designPolicyId: DESIGN_POLICY_ID, designPolicyVersion: DESIGN_POLICY_VERSION, specJson: surfaceSpecJson("room"), createdAt: at })).rejects.toThrow("surface_revision_policy_mismatch");
+  await expect(r.surfaces.createRevision({ actorId: alice.id, id: "wrong-version-revision", surfaceId: "surface", authorUserId: alice.id, revisionNumber: 100, baseRevisionNumber: null, designPolicyId: DESIGN_POLICY_ID, designPolicyVersion: "forged", specJson: surfaceSpecJson("profile"), createdAt: at })).rejects.toThrow("surface_revision_policy_mismatch");
   await expect(
     r.surfaces.findRevisionForViewer("revision", bob.id),
   ).resolves.toBeNull();
@@ -1160,8 +1187,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
       authorUserId: alice.id,
       revisionNumber: 1,
       baseRevisionNumber: null,
-      designPolicyId: "policy",
-      specJson: "{}",
+      designPolicyId: DESIGN_POLICY_ID,
+      designPolicyVersion: DESIGN_POLICY_VERSION,
+      specJson: surfaceSpecJson("profile"),
       createdAt: at,
     }),
   ).rejects.toThrow();
@@ -1276,8 +1304,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 2,
     baseRevisionNumber: 1,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("profile"),
     createdAt: at,
   });
   await expect(
@@ -1659,8 +1688,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 1,
     baseRevisionNumber: null,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("room"),
     createdAt: at,
   });
   await expect(
@@ -1724,8 +1754,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
       authorUserId: alice.id,
       revisionNumber: 2,
       baseRevisionNumber: null,
-      designPolicyId: "policy",
-      specJson: "{}",
+      designPolicyId: DESIGN_POLICY_ID,
+      designPolicyVersion: DESIGN_POLICY_VERSION,
+      specJson: surfaceSpecJson("room"),
       createdAt: at,
     }),
   ).rejects.toThrow();
@@ -1943,8 +1974,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: bob.id,
     revisionNumber: 1,
     baseRevisionNumber: null,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("circle"),
     createdAt: at,
   });
   await expect(
@@ -2010,8 +2042,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 1,
     baseRevisionNumber: null,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("circle"),
     createdAt: at,
   });
   await expect(
@@ -2380,8 +2413,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 2,
     baseRevisionNumber: 1,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("room"),
     createdAt: at,
   });
   for (const actorId of [alice.id, bob.id])
@@ -2431,8 +2465,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 1,
     baseRevisionNumber: null,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("circle"),
     createdAt: at,
   });
 
@@ -2474,8 +2509,9 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     authorUserId: alice.id,
     revisionNumber: 1,
     baseRevisionNumber: null,
-    designPolicyId: "policy",
-    specJson: "{}",
+    designPolicyId: DESIGN_POLICY_ID,
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    specJson: surfaceSpecJson("circle"),
     createdAt: at,
   });
   await r.circles.createProposal({

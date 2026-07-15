@@ -220,6 +220,7 @@ export type SurfaceRevisionRecord = {
   revisionNumber: number;
   baseRevisionNumber: number | null;
   designPolicyId: string;
+  designPolicyVersion: string;
   specJson: string;
   createdAt: Date;
 };
@@ -229,6 +230,7 @@ export interface SurfaceRepository {
     version: string;
     sourceHash: string;
     policyJson: string;
+    activatedAt: Date;
     at: Date;
   }): Promise<void>;
   createSurface(input: {

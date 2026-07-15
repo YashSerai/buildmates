@@ -3,13 +3,21 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./design-policy": "./src/design-policy.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@buildmates/domain": "*",
+    "react": "^19.2.6",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14"
   }
 }

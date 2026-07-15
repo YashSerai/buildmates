@@ -3,6 +3,7 @@ import {
   appAccessModeSchema,
   audienceSchema,
 } from "@buildmates/domain";
+import { isSurfacePolicyCompatible, parseSurfaceSpecJson } from "@buildmates/surfaces/schema";
 import type {
   BuildmatesRepositories,
   Cohort,
@@ -657,13 +658,28 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
     },
     surfaces: {
       async createPolicy(input) {
+        const existing = await first<{ id: string; version: string; sourceHash: string; policyJson: string; activatedAt: number | null }>(
+          DB,
+          "SELECT id,version,source_hash AS sourceHash,policy_json AS policyJson,activated_at AS activatedAt FROM design_policies WHERE id=? OR version=? OR source_hash=? LIMIT 1",
+          input.id,
+          input.version,
+          input.sourceHash,
+        );
+        if (existing) {
+          if (
+            existing.id === input.id && existing.version === input.version && existing.sourceHash === input.sourceHash &&
+            existing.policyJson === input.policyJson && existing.activatedAt === ms(input.activatedAt)
+          ) return;
+          throw new Error("policy_conflict");
+        }
         await run(
           DB,
-          "INSERT INTO design_policies (id, version, source_hash, policy_json, created_at) VALUES (?, ?, ?, ?, ?)",
+          "INSERT INTO design_policies (id, version, source_hash, policy_json, activated_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
           input.id,
           input.version,
           input.sourceHash,
           input.policyJson,
+          ms(input.activatedAt),
           ms(input.at),
         );
       },
@@ -694,18 +710,27 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           !(await surfaceAuthority(value.surfaceId, value.actorId, "member"))
         )
           throw new Error("forbidden");
+        const dependency = await first<{ kind: "profile" | "room" | "circle"; policyId: string; policyVersion: string; policySourceHash: string; policyJson: string; activatedAt: number }>(DB,
+          "SELECT s.kind,p.id AS policyId,p.version AS policyVersion,p.source_hash AS policySourceHash,p.policy_json AS policyJson,p.activated_at AS activatedAt FROM surfaces s JOIN design_policies p ON p.id=? WHERE s.id=?",
+          value.designPolicyId, value.surfaceId,
+        );
+        if (!dependency || dependency.activatedAt > ms(value.createdAt)) throw new Error("surface_dependency_missing");
+        if (!isSurfacePolicyCompatible({ id: dependency.policyId, version: dependency.policyVersion, sourceHash: dependency.policySourceHash, policyJson: dependency.policyJson }, { forRevisionCreation: true })) throw new Error("surface_revision_policy_mismatch");
+        const parsedSpec = parseRevisionSpec(value.specJson, dependency.policyVersion, true);
+        if (parsedSpec.kind !== dependency.kind || parsedSpec.designPolicyVersion !== dependency.policyVersion || value.designPolicyVersion !== dependency.policyVersion) throw new Error("surface_revision_policy_mismatch");
         const current = await currentSurfaceRevisionNumber(value.surfaceId);
         if (value.baseRevisionNumber !== current)
           throw new Error("stale_surface_base");
         await run(
           DB,
-          "INSERT INTO surface_revisions (id, surface_id, revision_number, base_revision_number, author_user_id, design_policy_id, spec_json, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'draft', ?)",
+          "INSERT INTO surface_revisions (id, surface_id, revision_number, base_revision_number, author_user_id, design_policy_id, design_policy_version, spec_json, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)",
           value.id,
           value.surfaceId,
           value.revisionNumber,
           value.baseRevisionNumber,
           value.authorUserId,
           value.designPolicyId,
+          value.designPolicyVersion,
           value.specJson,
           ms(value.createdAt),
         );
@@ -718,6 +743,7 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           revisionNumber: number;
           baseRevisionNumber: number | null;
           designPolicyId: string;
+          designPolicyVersion: string;
           specJson: string;
           createdAt: number;
           ownerUserId: string;
@@ -725,12 +751,20 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           subjectId: string;
           status: string;
           publishedRevisionId: string | null;
+          policyVersion: string;
+          policySourceHash: string;
+          policyJson: string;
         }>(
           DB,
-          "SELECT r.id,r.surface_id AS surfaceId,r.author_user_id AS authorUserId,r.revision_number AS revisionNumber,r.base_revision_number AS baseRevisionNumber,r.design_policy_id AS designPolicyId,r.spec_json AS specJson,r.created_at AS createdAt,r.status,s.owner_user_id AS ownerUserId,s.kind,s.subject_id AS subjectId,s.published_revision_id AS publishedRevisionId FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id WHERE r.id=?",
+          "SELECT r.id,r.surface_id AS surfaceId,r.author_user_id AS authorUserId,r.revision_number AS revisionNumber,r.base_revision_number AS baseRevisionNumber,r.design_policy_id AS designPolicyId,r.design_policy_version AS designPolicyVersion,r.spec_json AS specJson,r.created_at AS createdAt,r.status,s.owner_user_id AS ownerUserId,s.kind,s.subject_id AS subjectId,s.published_revision_id AS publishedRevisionId,p.version AS policyVersion,p.source_hash AS policySourceHash,p.policy_json AS policyJson FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id JOIN design_policies p ON p.id=r.design_policy_id WHERE r.id=?",
           id,
         );
         if (!row) return null;
+        try {
+          if (!isSurfacePolicyCompatible({ id: row.designPolicyId, version: row.policyVersion, sourceHash: row.policySourceHash, policyJson: row.policyJson })) return null;
+          const parsed = parseRevisionSpec(row.specJson, row.policyVersion);
+          if (row.designPolicyVersion !== row.policyVersion || parsed.kind !== row.kind) return null;
+        } catch { return null; }
         if (
           viewerUserId &&
           (row.ownerUserId === viewerUserId ||
@@ -2108,6 +2142,7 @@ function surfaceRevision(row: {
   revisionNumber: number;
   baseRevisionNumber: number | null;
   designPolicyId: string;
+  designPolicyVersion: string;
   specJson: string;
   createdAt: number;
 }): SurfaceRevisionRecord {
@@ -2118,9 +2153,14 @@ function surfaceRevision(row: {
     revisionNumber: row.revisionNumber,
     baseRevisionNumber: row.baseRevisionNumber,
     designPolicyId: row.designPolicyId,
+    designPolicyVersion: row.designPolicyVersion,
     specJson: row.specJson,
     createdAt: new Date(row.createdAt),
   };
+}
+
+function parseRevisionSpec(specJson: string, expectedVersion?: string, forRevisionCreation = false) {
+  return parseSurfaceSpecJson(specJson, expectedVersion, { forRevisionCreation });
 }
 function message(row: {
   id: string;

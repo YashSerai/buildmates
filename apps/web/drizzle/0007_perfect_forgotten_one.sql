@@ -1,0 +1,1 @@
+CREATE INDEX `surface_owner_published_idx` ON `surfaces` (`owner_user_id`,`published_revision_id`,`updated_at`);

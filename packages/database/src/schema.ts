@@ -661,7 +661,10 @@ export const surfaces = sqliteTable(
     createdAt: created(),
     updatedAt: updated(),
   },
-  (t) => [uniqueIndex("surface_subject_unique").on(t.kind, t.subjectId)],
+  (t) => [
+    uniqueIndex("surface_subject_unique").on(t.kind, t.subjectId),
+    index("surface_owner_published_idx").on(t.ownerUserId, t.publishedRevisionId, t.updatedAt),
+  ],
 );
 export const surfaceRevisions = sqliteTable(
   "surface_revisions",
@@ -676,6 +679,10 @@ export const surfaceRevisions = sqliteTable(
     designPolicyId: text("design_policy_id")
       .notNull()
       .references(() => designPolicies.id),
+    // Historical fixed default exists only to backfill pre-0006 rows. Runtime
+    // repositories always supply the selected policy version explicitly; this
+    // literal must not track a future deployment's active policy constant.
+    designPolicyVersion: text("design_policy_version").notNull().default("2026-07-14.1"),
     specJson: text("spec_json").notNull(),
     status: text("status", {
       enum: ["draft", "proposed", "published", "rejected", "rolled_back"],

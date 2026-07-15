@@ -31,6 +31,7 @@ import {
   type UserId,
   type WorkSignalRecord,
 } from "@buildmates/domain";
+import { isSurfacePolicyCompatible, parseSurfaceSpecJson } from "@buildmates/surfaces/schema";
 
 type CohortValue = Cohort & {
   name: string;
@@ -77,6 +78,7 @@ export function createMemoryRepositories(): BuildmatesRepositories {
       version: string;
       sourceHash: string;
       policyJson: string;
+      activatedAt: Date;
       at: Date;
     }
   >();
@@ -618,15 +620,14 @@ export function createMemoryRepositories(): BuildmatesRepositories {
     },
     surfaces: {
       async createPolicy(input) {
-        if (
-          policies.has(input.id) ||
-          [...policies.values()].some(
-            (value) =>
-              value.version === input.version ||
-              value.sourceHash === input.sourceHash,
-          )
-        )
+        const existing = policies.get(input.id) ?? [...policies.values()].find((value) => value.version === input.version || value.sourceHash === input.sourceHash);
+        if (existing) {
+          if (
+            existing.id === input.id && existing.version === input.version && existing.sourceHash === input.sourceHash &&
+            existing.policyJson === input.policyJson && existing.activatedAt.getTime() === input.activatedAt.getTime()
+          ) return;
           throw new Error("policy_conflict");
+        }
         policies.set(input.id, clone(input));
       },
       async createSurface(input) {
@@ -661,6 +662,11 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         )
           throw new Error("surface_dependency_missing");
         const surface = surfaces.get(value.surfaceId)!;
+        const policy = policies.get(value.designPolicyId);
+        if (!policy || policy.activatedAt.getTime() > value.createdAt.getTime()) throw new Error("surface_dependency_missing");
+        if (!isSurfacePolicyCompatible(policy, { forRevisionCreation: true })) throw new Error("surface_revision_policy_mismatch");
+        const parsedSpec = parseRevisionSpec(value.specJson, policy.version, true);
+        if (parsedSpec.kind !== surface.kind || parsedSpec.designPolicyVersion !== policy.version || value.designPolicyVersion !== policy.version) throw new Error("surface_revision_policy_mismatch");
         const current = surface.publishedRevisionId
           ? (revisions.get(surface.publishedRevisionId)?.revisionNumber ?? null)
           : null;
@@ -680,6 +686,12 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         if (!revision) return null;
         const surface = surfaces.get(revision.surfaceId);
         if (!surface) return null;
+        const policy = policies.get(revision.designPolicyId);
+        try {
+          if (!policy || !isSurfacePolicyCompatible(policy)) return null;
+          const parsed = parseRevisionSpec(revision.specJson, policy?.version);
+          if (!policy || revision.designPolicyVersion !== policy.version || parsed.kind !== surface.kind) return null;
+        } catch { return null; }
         if (
           viewerUserId &&
           (surface.ownerUserId === viewerUserId ||
@@ -1511,6 +1523,10 @@ export function createMemoryRepositories(): BuildmatesRepositories {
       return signals.get(report.targetId)?.userId === actorId;
     return false;
   }
+}
+
+function parseRevisionSpec(specJson: string, expectedVersion?: string, forRevisionCreation = false) {
+  return parseSurfaceSpecJson(specJson, expectedVersion, { forRevisionCreation });
 }
 
 function createMemoryIdempotency(

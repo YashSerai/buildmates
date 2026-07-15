@@ -214,12 +214,12 @@ npm run typecheck
 
 1. Establish a clean neutral functional component system with correct hierarchy, responsive layout, accessibility, focus, loading/empty/error/stale/permission states, and no fake or placeholder controls. Defer final brand, art direction, animation, and decorative polish until after Task 14.
 2. Translate the functional and security portions of the canonical anti-slop law into a concise, product-specific, machine-readable policy; final aesthetic policy additions belong to the later UI design phase.
-3. Seed it into D1 as immutable version `2026-07-14.1`; store source hash and activation time.
+3. Seed it into D1 as immutable version `2026-07-15.2`; store source hash and activation time. Migration 0006's fixed `2026-07-14.1` default exists only to backfill older rows; repositories always write the selected version explicitly.
 4. Define a strict SurfaceSpec whose primary structure is theme tokens, trusted component tree, content/media bindings, responsive rules, and accessibility metadata; allow optional decorative/editorial HTML/CSS regions only.
 5. Reject scripts, forms, event handlers, unsafe URLs, popups, top navigation, `@import`, arbitrary `url()`, dangerous CSS, global selectors, fixed overlays, and unapproved network references.
-6. Render decorative/editorial HTML/CSS in a sandboxed iframe without scripts, forms, same-origin privilege, popups, or top navigation. The R2 upload/serve path allowlists passive raster/font types, forbids HTML, rejects or sanitizes SVG, forces trusted content types with `X-Content-Type-Options: nosniff`, and uses a non-executable asset origin/policy. Keep follow/connect/report/privacy/navigation/data controls outside the iframe.
+6. Render decorative/editorial HTML/CSS in a sandboxed iframe without scripts, forms, same-origin privilege, popups, or top navigation. The R2 upload/serve path allowlists passive raster image types, forbids HTML and SVG, forces trusted content types with `X-Content-Type-Options: nosniff`, and keeps every authorization-dependent response non-cacheable. Keep follow/connect/report/privacy/navigation/data controls outside the iframe.
 7. Create a protected surface lab with realistic long/short content, phone/desktop previews, dark/light contrast checks, and malformed-spec error states.
-8. Store policy version on every generated revision.
+8. Store policy version on every generated revision. Dispatch reads through a versioned parser/policy registry so registered historical revisions remain renderable and asset-authorizable; bind each parser to the exact policy id, canonical source and source hash, and fail closed for unknown or retired entries. New authoring defaults to the active policy while revision creation must explicitly select a registered, activated, creation-allowed policy.
 9. Test CSS scoping, sandbox escape attempts, XSS payloads, keyboard navigation, reduced motion, overflow, and fallback rendering.
 
 **Verify:**
