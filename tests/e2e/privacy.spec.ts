@@ -4,7 +4,7 @@ import { signInTestUser } from "./helpers/auth";
 test("privacy center audits source revocation, matching pause, export, and deletion confirmation", async ({ page }, testInfo) => {
   await useIdentity(page, `privacy-${testInfo.project.name}-${Date.now()}`);
   const projectSlug=`privacy-${testInfo.project.name.replaceAll("_","-")}-${Date.now()}`;
-  await page.goto("/onboarding");
+  await page.goto("/onboarding/manual");
   await expect(page.locator("[data-hydrated=true]")).toBeVisible();
   await page.evaluate(async (slug) => {
     const send = async (url: string, body: unknown, method = "POST") => {const response=await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });if(!response.ok)throw new Error(`${url}:${response.status}:${await response.text()}`);};
@@ -25,6 +25,11 @@ test("privacy center audits source revocation, matching pause, export, and delet
   await expect(page.getByRole("status")).toContainText("Privacy setting updated");
   await page.getByRole("button", { name: "Request data export" }).click();
   await expect(page.getByText(/export · queued/i)).toBeVisible();
+  const exportResult=await page.evaluate(async()=>{const response=await fetch("/api/privacy/export");return{status:response.status,payload:await response.json() as {schema?:string;projects?:unknown[];sourcePolicies?:unknown[]}}});
+  expect(exportResult.status).toBe(200);
+  expect(exportResult.payload.schema).toBe("buildmates-account-export/v1");
+  expect(exportResult.payload.projects).toHaveLength(1);
+  expect(exportResult.payload.sourcePolicies).toHaveLength(1);
   const deletion = page.getByRole("button", { name: "Delete account" });
   await expect(deletion).toBeDisabled();
   await page.getByLabel("Type DELETE BUILDMATES").fill("DELETE BUILDMATES");

@@ -7,6 +7,7 @@ import {
   publishProfile,
   saveProfile,
 } from "../profile-projects/service";
+import { beginAccountDeletion } from "../privacy/account-deletion";
 
 export type SourcePolicy =
   "never" | "ask_each_time" | "allow_approved_work_signals" | "actions_only";
@@ -733,7 +734,7 @@ export async function runPrivacyCommand(
   userId: string,
   body: Record<string, unknown>,
   assets?: R2Like,
-): Promise<{ jobId?: string }> {
+): Promise<{ jobId?: string; status?: "deleting" | "complete" }> {
   const command = String(body.command ?? "");
   const now = Date.now();
   if (command === "disconnect_all") {
@@ -803,65 +804,13 @@ export async function runPrivacyCommand(
   if (command === "request_deletion") {
     if (body.confirmation !== "DELETE BUILDMATES")
       throw new InputError("Type DELETE BUILDMATES to confirm.");
-    const ownedAssets = await DB.prepare("SELECT object_key AS objectKey FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL")
-      .bind(userId).all<{ objectKey: string }>();
-    const objectKeys = ownedAssets.results.map((row) => row.objectKey);
-    if (objectKeys.length && !assets) throw new ConflictError("Account assets could not be reached. Try deletion again.");
-    for (let offset = 0; offset < objectKeys.length; offset += 20) {
-      await Promise.all(objectKeys.slice(offset, offset + 20).map((key) => assets!.delete(key)));
+    try {
+      return await beginAccountDeletion(DB, userId, assets);
+    } catch (error) {
+      if (error instanceof Error && error.message === "account_assets_unavailable") throw new ConflictError("Account assets could not be reached. Try deletion again.");
+      if (error instanceof Error && error.message === "account_deletion_conflict") throw new ConflictError("Account deletion could not be started.");
+      throw error;
     }
-    const id = `deletion_${crypto.randomUUID()}`;
-    const results = await DB.batch([
-      DB.prepare("INSERT INTO deletion_jobs (id,user_id,status,requested_at,updated_at) SELECT ?,?,'deleting',?,? WHERE EXISTS (SELECT 1 FROM users WHERE id=? AND status='active')").bind(id,userId,now,now,userId),
-      DB.prepare("UPDATE connected_app_preferences SET access_mode='never',revoked_at=COALESCE(revoked_at,?),last_reviewed_at=? WHERE user_id=?").bind(now,now,userId),
-      DB.prepare("UPDATE work_signals SET free_text_summary='',allow_matching=0,audience='private',revoked_at=COALESCE(revoked_at,?),updated_at=? WHERE user_id=?").bind(now,now,userId),
-      DB.prepare("DELETE FROM source_use_approvals WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM builder_match_index WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM candidate_batches WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM pair_scores WHERE user_a_id=? OR user_b_id=?").bind(userId,userId),
-      DB.prepare("UPDATE match_proposals SET state='invalidated',terminal_at=? WHERE state='pending' AND match_pair_id IN (SELECT id FROM match_pairs WHERE user_a_id=? OR user_b_id=?)").bind(now,userId,userId),
-      DB.prepare("UPDATE connections SET state='ended',ended_by_user_id=?,ended_at=?,updated_at=? WHERE state='active' AND match_pair_id IN (SELECT id FROM match_pairs WHERE user_a_id=? OR user_b_id=?)").bind(userId,now,now,userId,userId),
-      DB.prepare("UPDATE rooms SET status='ended',updated_at=? WHERE status='active' AND match_pair_id IN (SELECT id FROM match_pairs WHERE user_a_id=? OR user_b_id=?)").bind(now,userId,userId),
-      DB.prepare("UPDATE room_memberships SET left_at=COALESCE(left_at,?) WHERE user_id=?").bind(now,userId),
-      DB.prepare("UPDATE messages SET body='[deleted by author]',deleted_at=COALESCE(deleted_at,?) WHERE sender_user_id=?").bind(now,userId),
-      DB.prepare("UPDATE circle_messages SET body='[deleted by author]',deleted_at=COALESCE(deleted_at,?) WHERE sender_user_id=?").bind(now,userId),
-      DB.prepare("DELETE FROM connection_private_notes WHERE owner_user_id=?").bind(userId),
-      DB.prepare("DELETE FROM connection_reminders WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM connection_update_subscriptions WHERE subscriber_user_id=? OR subject_user_id=?").bind(userId,userId),
-      DB.prepare("DELETE FROM introduction_feedback WHERE user_id=?").bind(userId),
-      DB.prepare("UPDATE projects SET title='Deleted project',summary='',audience='private',allow_matching=0,indexable=0,status='deleted',published_at=NULL,deleted_at=COALESCE(deleted_at,?),updated_at=? WHERE owner_user_id=?").bind(now,now,userId),
-      DB.prepare("UPDATE project_updates SET body='[deleted by author]',edited_at=? WHERE author_user_id=?").bind(now,userId),
-      DB.prepare("DELETE FROM project_collaborators WHERE user_id=?").bind(userId),
-      DB.prepare("UPDATE profiles SET display_name='Deleted builder',summary='',project_or_interest='',portfolio_links_json='[]',audience='private',allow_matching=0,acceptance_mode='manual',indexable=0,coarse_location=NULL,location_map_opt_in=0,timezone=NULL,published_at=NULL,updated_at=? WHERE user_id=?").bind(now,userId),
-      DB.prepare("DELETE FROM profile_fields WHERE profile_id IN (SELECT id FROM profiles WHERE user_id=?)").bind(userId),
-      DB.prepare("DELETE FROM profile_statistics WHERE profile_id IN (SELECT id FROM profiles WHERE user_id=?)").bind(userId),
-      DB.prepare("DELETE FROM handles WHERE user_id=?").bind(userId),
-      DB.prepare("UPDATE invite_links SET revoked_at=COALESCE(revoked_at,?) WHERE creator_user_id=? OR recipient_user_id=?").bind(now,userId,userId),
-      DB.prepare("UPDATE cohort_memberships SET status='left' WHERE user_id=? AND status IN ('requested','invited','active')").bind(userId),
-      DB.prepare("UPDATE cohorts SET status='archived',updated_at=? WHERE id IN (SELECT cohort_id FROM cohort_memberships WHERE user_id=? AND role='owner') AND status='active'").bind(now,userId),
-      DB.prepare("UPDATE circle_memberships SET status='left' WHERE user_id=? AND status IN ('invited','accepted','active')").bind(userId),
-      DB.prepare("UPDATE circles SET status='archived',updated_at=? WHERE id IN (SELECT circle_id FROM circle_memberships WHERE user_id=? AND role='owner') AND status IN ('active','proposed')").bind(now,userId),
-      DB.prepare("DELETE FROM follows WHERE follower_user_id=?").bind(userId),
-      DB.prepare("DELETE FROM watches WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM networking_pulses WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM introduction_budgets WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM quiet_hours WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM matching_snoozes WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM matching_exclusions WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM notifications WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM automation_checkpoints WHERE user_id=?").bind(userId),
-      DB.prepare("DELETE FROM setup_states WHERE user_id=?").bind(userId),
-      DB.prepare("UPDATE web_sessions SET revoked_at=COALESCE(revoked_at,?) WHERE user_id=?").bind(now,userId),
-      DB.prepare("UPDATE identity_links SET revoked_at=COALESCE(revoked_at,?) WHERE user_id=?").bind(now,userId),
-      DB.prepare("UPDATE identity_principals SET revoked_at=COALESCE(revoked_at,?) WHERE id IN (SELECT principal_id FROM identity_links WHERE user_id=?)").bind(now,userId),
-      DB.prepare("UPDATE reports SET details=NULL,updated_at=? WHERE reporter_user_id=?").bind(now,userId),
-      DB.prepare("UPDATE surface_assets SET deleted_at=COALESCE(deleted_at,?) WHERE owner_user_id=?").bind(now,userId),
-      DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,object_kind,object_id,metadata_json,created_at) VALUES (?,?,'deletion.completed','deletion_job',?,'{}',?)").bind(`audit_${crypto.randomUUID()}`,userId,id,now),
-      DB.prepare("UPDATE users SET status='deleted',operator_role='none',deleted_at=?,updated_at=? WHERE id=? AND status='active'").bind(now,now,userId),
-      DB.prepare("UPDATE deletion_jobs SET status='complete',completed_at=?,updated_at=? WHERE id=? AND user_id=?").bind(now,now,id,userId),
-    ]);
-    if (Number(results[0]?.meta.changes ?? 0) !== 1 || results.some((result) => !result.success)) throw new ConflictError("Account deletion could not be completed.");
-    return { jobId: id };
   }
   if (command === "delete_project") {
     const slug = text(body.slug,1,72,"project slug");

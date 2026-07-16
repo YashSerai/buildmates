@@ -29,6 +29,7 @@ describe("real local D1 platform boundaries", () => {
 
   it("allows exactly one concurrent identity-link consumer and persists convergence", async () => {
     const code = "D".repeat(32);
+    await DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES ('web-alice','active','none',?,?)").bind(Date.now(),Date.now()).run();
     await DB.prepare("INSERT INTO identity_link_codes (id, user_id, code_hash, workspace_scope, expires_at, attempt_count, max_attempts, consumed_at, consumed_by_principal_id, created_at) VALUES (?, ?, ?, 'global', ?, 0, 5, NULL, NULL, ?)")
       .bind("code-one", "web-alice", await sha256(code), Date.now() + 60_000, Date.now()).run();
     const store = createD1IdentityLinkStore(DB);
@@ -39,6 +40,17 @@ describe("real local D1 platform boundaries", () => {
     expect(results.filter((result) => result.linked)).toHaveLength(1);
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM identity_links WHERE user_id = 'web-alice'").first<{ count: number }>()).toEqual({ count: 1 });
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM identity_principals").first<{ count: number }>()).toEqual({ count: 1 });
+  });
+
+  it("cannot link a deleted account with an unconsumed code", async () => {
+    const now=Date.now(),code="E".repeat(32);
+    await DB.batch([
+      DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at,deleted_at) VALUES ('deleted-web','deleted','none',?,?,?)").bind(now,now,now),
+      DB.prepare("INSERT INTO identity_link_codes(id,user_id,code_hash,workspace_scope,expires_at,attempt_count,max_attempts,created_at) VALUES ('deleted-code','deleted-web',?,'global',?,0,5,?)").bind(await sha256(code),now+60_000,now),
+    ]);
+    await expect(completeIdentityLink(createD1IdentityLinkStore(DB),{code,workspaceScope:"global",mcpSubject:"mcp_deleted_subject"})).resolves.toEqual({linked:false,reason:"invalid_or_expired"});
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM identity_links WHERE user_id='deleted-web'").first()).toEqual({count:0});
+    expect(await DB.prepare("SELECT status FROM users WHERE id='deleted-web'").first()).toEqual({status:"deleted"});
   });
 
   it("reports and revokes only the authenticated user's MCP connection", async () => {

@@ -109,7 +109,7 @@ The first Buildmates plugin run is a resumable state machine with a visible fini
 
 Sparse context never blocks onboarding. Codex may ask adaptive questions, accept manual fields, let the user select one repository/project, accept a short pasted description, or inspect user-provided portfolio, GitHub, LinkedIn, and project links under permission. Required completion data is only identity/handle, short builder description, one project or active interest, privacy review, Networking Pulse, acceptance mode, and automation choice.
 
-The state machine is owned by `packages/domain`; MCP exposes `get_setup_state` and idempotent `complete_setup_step`. Web and Codex show the same completion state.
+The state machine is owned by `packages/domain`; MCP exposes `get_setup_state` and idempotent `complete_setup_step`. Codex is the canonical first-run controller. The website reads the same D1-backed completion state and provides status, identity linking, preview/publishing, and an explicitly secondary manual fallback at `/onboarding/manual`; it never maintains a parallel onboarding record.
 
 ## 7. Connected-source boundary
 

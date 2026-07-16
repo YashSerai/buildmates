@@ -24,6 +24,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 ## Non-negotiable product rules
 
 - Buildmates is the only required plugin. Other connected apps remain optional sources governed by host permissions plus individual Buildmates source-use policies; generic installed-app enumeration is not assumed.
+- Codex is the canonical first-run controller: installation immediately resumes the mandatory setup state machine and directs the user through one concrete next step at a time. The website shares that D1-backed progress, owns identity linking/profile publishing/chat surfaces, and keeps full manual onboarding as an explicit fallback.
 - First run has a mandatory resumable outcome and supports sparse context through adaptive questions, manual input, one selected project/repository, pasted description, and portfolio links.
 - Buildmates never receives third-party connector credentials or raw conversation history.
 - GitHub OAuth is the website login for the launch release. A verified GitHub numeric account ID is mapped server-side to a random Buildmates UUID; that UUID, never login, email, display name, or a deterministic provider hash, owns product data. ChatGPT/Codex connects separately through MCP OAuth and the existing single-use identity-link flow.

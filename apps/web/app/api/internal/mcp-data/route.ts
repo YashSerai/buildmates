@@ -59,7 +59,7 @@ export async function POST(request: Request) {
           completeIdentityLink: async () => ({ linked: false, reason: "invalid_or_expired" }),
           allowAttempt: async () => false,
           resolveLinkedUser: async ({ mcpSubject, workspaceScope }) => {
-            const link = await DB.prepare("SELECT user_id AS userId FROM identity_links WHERE provider_channel = 'mcp' AND provider_issuer = 'buildmates_mcp' AND provider_subject = ? AND workspace_scope = ? AND revoked_at IS NULL LIMIT 1").bind(mcpSubject, workspaceScope).first<{ userId: string }>();
+            const link = await DB.prepare("SELECT l.user_id AS userId FROM identity_links l JOIN users u ON u.id=l.user_id AND u.status='active' WHERE l.provider_channel = 'mcp' AND l.provider_issuer = 'buildmates_mcp' AND l.provider_subject = ? AND l.workspace_scope = ? AND l.revoked_at IS NULL LIMIT 1").bind(mcpSubject, workspaceScope).first<{ userId: string }>();
             return link ?? null;
           },
           validateTaxonomy: (input) => validateTaxonomy(DB, input),
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
       }
     }
     const link = await DB.prepare(
-      "SELECT id FROM identity_links WHERE provider_channel = 'mcp' AND provider_issuer = 'buildmates_mcp' AND provider_subject = ? AND workspace_scope = 'global' AND revoked_at IS NULL LIMIT 1",
+      "SELECT l.id FROM identity_links l JOIN users u ON u.id=l.user_id AND u.status='active' WHERE l.provider_channel = 'mcp' AND l.provider_issuer = 'buildmates_mcp' AND l.provider_subject = ? AND l.workspace_scope = 'global' AND l.revoked_at IS NULL LIMIT 1",
     ).bind(claims.sub).first<{ id: string }>();
     if (!link) return Response.json({ error: "identity_link_required" }, { status: 403 });
     return Response.json({ linked: true, action: claims.action }, { headers: { "cache-control": "no-store" } });

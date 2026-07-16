@@ -5,6 +5,8 @@ import type { R2Like } from "./r2";
 
 const EXTENSION: Record<string, string> = { "image/avif": "avif", "image/gif": "gif", "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 export const MAX_SURFACE_ASSET_BYTES = 12_000_000;
+export const MAX_SURFACE_ASSET_OBJECTS = 100;
+export const MAX_SURFACE_ASSET_TOTAL_BYTES = 200_000_000;
 const MAX_PUBLISHED_ASSET_CANDIDATES = 64;
 
 export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Like; actorId: string; bytes: ArrayBuffer; claimedContentType: string; at?: Date }) {
@@ -19,12 +21,23 @@ export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Li
   const id = `asset_${ownerDigest.slice(0, 32)}`;
   const objectKey = `surface-assets/${input.actorId}/${sha256}.${EXTENSION[contentType]}`;
   validateSurfaceAsset({ objectKey, contentType, byteSize: bytes.byteLength });
+  const existing = await input.DB.prepare("SELECT id FROM surface_assets WHERE id=? AND owner_user_id=? AND object_key=? AND content_type=? AND byte_size=? AND sha256=? AND deleted_at IS NULL")
+    .bind(id,input.actorId,objectKey,contentType,bytes.byteLength,sha256).first();
+  if(existing)return { id, src: `/api/surface-assets/${input.actorId}/${sha256}.${EXTENSION[contentType]}`, contentType, byteSize: bytes.byteLength, sha256 };
+  const usage=await input.DB.prepare("SELECT COUNT(*) AS objectCount,COALESCE(SUM(byte_size),0) AS totalBytes FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL")
+    .bind(input.actorId).first<{objectCount:number;totalBytes:number}>();
+  if(Number(usage?.objectCount??0)>=MAX_SURFACE_ASSET_OBJECTS||Number(usage?.totalBytes??0)+bytes.byteLength>MAX_SURFACE_ASSET_TOTAL_BYTES)throw new Error("surface_asset_quota_exceeded");
   await input.bucket.put(objectKey, input.bytes, { httpMetadata: { contentType } });
-  await input.DB.prepare("INSERT INTO surface_assets (id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING")
-    .bind(id, input.actorId, objectKey, contentType, bytes.byteLength, sha256, (input.at ?? new Date()).getTime()).run();
+  try {
+    await input.DB.prepare("INSERT INTO surface_assets (id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)<? AND (SELECT COALESCE(SUM(byte_size),0) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)+?<=? ON CONFLICT(id) DO NOTHING")
+      .bind(id,input.actorId,objectKey,contentType,bytes.byteLength,sha256,(input.at??new Date()).getTime(),input.actorId,MAX_SURFACE_ASSET_OBJECTS,input.actorId,bytes.byteLength,MAX_SURFACE_ASSET_TOTAL_BYTES).run();
+  } catch(error) {
+    await input.bucket.delete(objectKey).catch(()=>undefined);
+    throw error;
+  }
   const stored = await input.DB.prepare("SELECT id FROM surface_assets WHERE id=? AND owner_user_id=? AND object_key=? AND content_type=? AND byte_size=? AND sha256=? AND deleted_at IS NULL")
     .bind(id, input.actorId, objectKey, contentType, bytes.byteLength, sha256).first();
-  if (!stored) throw new Error("surface_asset_conflict");
+  if (!stored) {await input.bucket.delete(objectKey).catch(()=>undefined);throw new Error("surface_asset_quota_exceeded");}
   return { id, src: `/api/surface-assets/${input.actorId}/${sha256}.${EXTENSION[contentType]}`, contentType, byteSize: bytes.byteLength, sha256 };
 }
 

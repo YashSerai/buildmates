@@ -1,16 +1,25 @@
 # Buildmates Launch Checkpoint
 
-Updated: 2026-07-16, Task 10 source implementation complete
+Updated: 2026-07-16, production website-to-plugin identity bridge complete
 Status: active
 
 ## TodoCheckpointDraft
 
-- Current todo: run one consolidated product milestone verification, then complete the Folk-inspired final visual system and production release.
+- Current todo: perform focused authenticated product QA, then run the security, copy/material, and final Folk-inspired UI/UX audits.
 - Active slice: Task 5 final quality findings repaired and locally verified: fail-closed subject-backed Surface briefs, Sites-native authenticated administrator recovery, same-origin link mutations, global-only public MCP scope, the link-code rate-limit index, bounded direct pagination and taxonomy queries, indexed expiry cleanup, authenticated connection setup, follow/watch adapter parity, and shared canonical hashing; independent rereview pending.
 - Completed todos: Tasks 1-3; Task 4 candidate and all review repairs, including themed state shells, guaranteed two-tone focus, populated-safe historical policy backfill, a versioned parser/policy registry that preserves `.1` reads under active `.2`, srcdoc breakout defenses, iterative deep-input preflight, streaming upload caps, non-destructive object handling, no-store asset revocation, bounded indexed asset lookup, and removal of current font upload support.
 - Evidence refs: `GOAL.md`, canonical specs and plan, GitHub remote, `docs/evidence/sites-capability-gate.md`, migrations 0000-0013, 30 focused final-finding tests, 60 unit tests, 29 integration tests, 26 MCP contract tests, 10 desktop/phone E2E tests, fresh/populated D1 migration output, and local lint/typecheck/build.
-- Blocked on: only the account-side ChatGPT app creation needed to obtain a real app ID; source intentionally contains no invented ID. No local implementation blocker is open.
-- Next step: finish Task 10 browser-facing lifecycle controls and concurrency coverage, reconcile Tasks 6-8 and 12, then run one milestone verification pass.
+- Blocked on: no single-account implementation blocker. A second independent identity remains necessary only for irreducible two-user production acceptance and authorization proof.
+- Next step: perform focused authenticated browser QA without repeating broad local suites, then close the launch audits in their recorded order.
+
+## Production identity and hostname migration — 2026-07-16
+
+- Public web production moved to `https://buildmates.yashns.chatgpt.site` in Sites project `appgprj_6a593e7af2388191af07670cf0b503b4`, version 1, from exact pushed commit `827527d03c9730ca900326b9890fa9eb3429bd4d`.
+- GitHub OAuth completed in Chrome against the exact production callback. The server verified GitHub's numeric account subject, created a random internal Buildmates UUID, issued the revocable `__Host-` session, and rendered authenticated account, capability, and Codex-connection settings pages.
+- A direct request with forged `oai-authenticated-*` headers remained signed out and was redirected to GitHub OAuth. These headers are no longer an application authorization input.
+- The authenticated Site created a D1-backed ten-minute, hashed, single-use MCP link code. The connected Buildmates plugin consumed it once, resolved the same account, and read the canonical setup state: 1 of 11 steps complete, with storage acknowledgment next.
+- The retired `buildmates-network` Site inventory contained zero users, sessions, identity links/codes, profiles, projects, Work Signals, matches, Connections, rooms, messages, Circles, or R2 objects. Only migration metadata and the seeded design policy existed, so no user-created data required transfer.
+- The old Sites project was permanently deleted after inventory and replacement verification. The old URL returns 404; the replacement returns 200 and remains public.
 
 ## Task 10 relationship and room integration checkpoint — 2026-07-16
 
@@ -53,6 +62,21 @@ Status: active
 - Account export has an immediate authenticated no-store JSON download. Confirmed account deletion atomically de-publishes and redacts profile/project/signal data, revokes identity and connector access, ends relationship access, removes private owner state, tombstones assets, and completes its tracked deletion job.
 - Shared connection context can be redacted without changing another member's messages or private notes. The rendered room Surface reads the redacted server binding immediately.
 - Focused proof only: the web workspace typechecks and the destructive account-deletion path passes against fresh D1 migrations. Aggregate verification remains deliberately batched for the product milestone.
+
+## Codex-first onboarding contract - 2026-07-16
+
+- Codex is now the canonical first-run controller in the product spec, architecture, plugin manifest, and onboarding skill. Install, setup, start, or resume requests begin with `get_setup_state` and advance one ordered step at a time rather than presenting an ambiguous product menu.
+- The website `/onboarding` route reads the same D1 setup state and directs the user back to the registered Buildmates app with an exact prompt. It explains the GitHub website-identity boundary and approved-summary storage boundary without implying repository or connector access.
+- The existing complete 11-step website flow moved to `/onboarding/manual` as an explicit fallback. Profile publishing, discovery, chats, rooms, privacy, and settings remain website responsibilities.
+- Plugin version `0.3.0+codex.20260716211905` validates, the web workspace typechecks, and `git diff --check` passes. Rendered browser proof is intentionally deferred to the batched UI/UX gate.
+
+## Security pass repair checkpoint - 2026-07-16
+
+- Browser mutations now require exact same-origin requests across project creation, Surface uploads, and capability diagnostics. Viewer-dependent profile and project reads use private no-store caching, deleted identities cannot be relinked, synthetic sessions require a local-only Cloudflare runtime binding, and the temporary migration manifest is removed.
+- Account deletion is a two-phase, idempotent operation. Access is revoked and personal data is scrubbed transactionally before R2 deletion; an administrator-only same-origin recovery endpoint can resume a stale deleting job after transient asset-storage failure. Repeated and concurrent recovery produces one completion audit event.
+- Deletion now removes owned project links/media/taxonomy, generated Surfaces and revisions, relationship snapshots/context, scheduling records, and authored room/Circle payloads. Moderation decisions and content-free integrity records may remain; report details and appeal statements are redacted under the documented retention rule.
+- The account export now includes identity-link metadata without secrets, sessions without token hashes, networking controls, growth records, generated Surfaces/assets, match decisions, relationship reminders, room/Circle participation, scheduling, notifications, automation, safety records, and lifecycle state in addition to the original profile/project/signal data.
+- Focused proof: account-deletion integration passes 2/2 including R2 failure/recovery/concurrency and sentinel removal; privacy export runs successfully through the real authenticated route in Chromium; web typecheck and production build pass. Central API error allowlisting and nonce CSP remain post-launch hardening because user responses already suppress 500-level internals and the current Sites/Vinext runtime requires inline framework bootstrap.
 
 ## ResumeStateHint
 

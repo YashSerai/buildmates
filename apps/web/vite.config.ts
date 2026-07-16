@@ -31,6 +31,7 @@ const localBindingConfig = {
         },
       ]
     : [],
+  vars: { BUILDMATES_E2E: process.env.BUILDMATES_E2E ?? "0" },
 };
 
 export default defineConfig(async () => {

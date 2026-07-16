@@ -39,14 +39,14 @@ This file separates local contract evidence from deployment and production-runti
 
 - [x] Exact commit `88c6650a0f487b1f2f3608ccd405b7bbbc07d1d1` pushed to the Sites source repository, packaged, saved as version 1, and deployed owner-only at `https://buildmates-network.yashns.chatgpt.site`.
 - [x] Owner bypass reaches the deployed vinext application with HTTP 200 and `/api/mcp` returns the intentional external-topology 501 response.
-- [ ] Public non-owner reachability for the deployed nested Site.
-- [ ] Stable server-verifiable subject from a real non-owner Sign in with ChatGPT session.
+- [x] Public non-owner reachability for the deployed nested Site.
+- [x] Stable server-verifiable website subject through app-owned GitHub OAuth after the built-in SIWC gate failed.
 - [ ] Two-user object isolation using separate real identities.
-- [ ] Provisioned D1 migration plus authenticated insert/read/delete in production.
+- [x] Provisioned D1 migration plus authenticated session/user/link-code write and read in production.
 - [ ] Provisioned R2 authenticated put/read/delete in production.
 - [x] Sites packaging resolution of `@buildmates/*` workspace imports.
 - [ ] Independent MCP OAuth discovery, redirect registration, PKCE exchange, refresh rotation, revocation, Streamable HTTP initialize, timeout, and reconnect.
-- [ ] End-to-end single-use identity link from web subject to opaque MCP subject.
+- [x] End-to-end single-use identity link from web subject to opaque MCP subject, followed by a linked setup-state read.
 
 Until those boxes are backed by deployment/browser/runtime artifacts, the selected topology is not production-proven. If Sites cannot meet the web gate, use the prepared Cloudflare/Vercel web adapter. If only MCP fails, keep the web deployment and use `apps/mcp` independently.
 
@@ -86,10 +86,18 @@ Until those boxes are backed by deployment/browser/runtime artifacts, the select
 - After callback, `/account` still renders the signed-out state and `/capability-check` reports that stable authenticated identity is absent. Repeating the check in two browser surfaces rules out the prior custom access policy and a Chrome-only session defect.
 - The SIWC capability gate therefore fails for this deployment. The architecture's external web identity/hosting fallback is active; email-derived account joining remains prohibited.
 
-### 2026-07-16 ChatGPT-only identity decision and header-security probe
+### 2026-07-16 header-security probe and identity fallback
 
 - A direct request carrying caller-supplied `oai-authenticated-*` headers reached the public application identity path. The current deterministic subject hash therefore cannot be treated as proof of an authenticated person or as a launch-ready authorization boundary.
-- GitHub OAuth was considered as an external fallback and explicitly rejected. ChatGPT remains the only website login.
-- The application repair is a server-owned mapping from a verified ChatGPT principal to a random Buildmates UUID. All product data and MCP links resolve through that UUID; email and display name are not internal keys and do not join identities.
-- The repair must centralize protected resolution, reject revoked and deleted principals, prevent silent account reactivation, and pass focused repeat-login, impersonation, deletion, and web-to-MCP convergence checks.
-- This application repair does not by itself prove that the Sites gateway authenticates or sanitizes forwarded headers. Public authenticated launch remains blocked until the live gateway supplies a trustworthy ChatGPT principal and direct forged requests cannot select another user's UUID.
+- Built-in SIWC could not supply a trustworthy application principal, so the prepared `IdentityProvider` fallback selected app-owned GitHub OAuth for website sessions. ChatGPT/Codex remains the separate MCP OAuth identity channel.
+- GitHub's verified numeric account ID maps server-side to a random Buildmates UUID. Email, login, display name, deterministic hashes, client state, and forwarded identity headers never own product data or join accounts.
+- Protected resolution rejects revoked/deleted principals and hashed sessions. Website and MCP identities converge only through the short-lived, hashed, single-use linking code.
+
+### 2026-07-16 replacement Site and GitHub OAuth production result
+
+- Replacement project `appgprj_6a593e7af2388191af07670cf0b503b4` is public at `https://buildmates.yashns.chatgpt.site`. Exact pushed commit `827527d03c9730ca900326b9890fa9eb3429bd4d` is live as version 1; the root returns 200.
+- GitHub OAuth completed through the exact production callback. `/account`, `/capability-check`, and `/settings/connections` resolved the same authenticated internal user. The capability page reports server-verified issuer `github.com` and global workspace scope.
+- Caller-supplied `oai-authenticated-*` headers do not select an identity: a forged direct request to the protected identity-link route returned the GitHub sign-in redirect.
+- Authenticated approval created a D1-backed one-time MCP link code with the intended ten-minute expiry. The connected Buildmates app consumed that code, resolved the linked account, and returned the canonical setup state at 1 of 11 steps with storage acknowledgment next.
+- The Site independently changed from `Codex is not connected` to `Connected to Codex`, confirming the same D1 link outside the ChatGPT response. The code is no longer displayed or reusable.
+- An authenticated-data inventory of the old Site found zero user-created rows across identity, profile, project, signal, matching, relationship, room, message, Circle, and related tables, and zero R2 objects. The old Site was then permanently deleted. Its connector project lookup is `NOT_FOUND` and `https://buildmates-network.yashns.chatgpt.site` returns 404.

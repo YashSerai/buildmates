@@ -1,8 +1,11 @@
 import { internalUserKey, requireApiIdentity } from "@/src/platform/identity";
 import { runD1Diagnostic } from "@/src/platform/d1";
 import { getPlatformBindings } from "@/src/platform/bindings";
+import { requireSameOriginMutation } from "@/src/platform/same-origin";
 
-export async function POST() {
+export async function POST(request: Request) {
+  const originFailure = requireSameOriginMutation(request);
+  if (originFailure) return originFailure;
   const identity = await requireApiIdentity();
   if (identity instanceof Response) return identity;
   try {

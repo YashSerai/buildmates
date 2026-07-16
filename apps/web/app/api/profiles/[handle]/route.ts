@@ -5,8 +5,8 @@ import { requireSameOriginMutation } from "../../../../src/platform/same-origin"
 
 export async function GET(_: Request, context: { params: Promise<{ handle: string }> }) {
   const [{ handle }, viewer, { DB }] = await Promise.all([context.params, getCurrentUser(), getPlatformBindings()]);
-  try { const profile = await getProfileByHandle(DB, handle, viewer?.id ?? null); return profile ? Response.json(profile) : Response.json({ error: "not_found" }, { status: 404 }); }
-  catch { return Response.json({ error: "not_found" }, { status: 404 }); }
+  try { const profile = await getProfileByHandle(DB, handle, viewer?.id ?? null); return profile ? Response.json(profile,{headers:viewerHeaders()}) : Response.json({ error: "not_found" }, { status: 404,headers:viewerHeaders() }); }
+  catch { return Response.json({ error: "not_found" }, { status: 404,headers:viewerHeaders() }); }
 }
 
 export async function PUT(request: Request) {
@@ -15,3 +15,5 @@ export async function PUT(request: Request) {
   try { return Response.json(await saveProfile(DB, user.id, await request.json() as ProfileInput), { status: 201 }); }
   catch (error) { const message=error instanceof Error?error.message:"invalid_profile"; return Response.json({ error: message }, { status: message.includes("UNIQUE") ? 409 : 400 }); }
 }
+
+function viewerHeaders():HeadersInit{return{"cache-control":"private, no-store",vary:"Cookie"}}

@@ -1,14 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { signInTestUser } from "./helpers/auth";
 
-test("website preparation does not impersonate a Codex identity link",async({page},testInfo)=>{await signInTestUser(page,`website-only-${testInfo.project.name}-${Date.now()}`);await page.goto("/onboarding");await expect(page.getByText("Website preparation saved")).toBeVisible();await expect(page.getByRole("heading",{name:"Connect Buildmates in Codex"})).toBeVisible();await expect(page.getByText("0 of 11")).toBeVisible();});
+test("website directs first run to Codex without impersonating an identity link",async({page},testInfo)=>{await signInTestUser(page,`website-only-${testInfo.project.name}-${Date.now()}`);await page.goto("/onboarding");await expect(page.getByRole("heading",{name:"Build your profile with Codex"})).toBeVisible();await expect(page.getByText("Account link required")).toBeVisible();await expect(page.getByRole("link",{name:"Continue setup in Codex"})).toBeVisible();await expect(page.getByText("0 of 11")).toBeVisible();await expect(page.getByRole("link",{name:"Set up manually instead"})).toHaveAttribute("href","/onboarding/manual");});
 
 test("sparse-context builder completes the mandatory first run and resumes", async ({ page }, testInfo) => {
   await useIdentity(page, `onboarding-${testInfo.project.name}-${Date.now()}`);
-  await page.goto("/onboarding");
+  await page.goto("/onboarding/manual");
   await expect(page.locator("[data-hydrated=true]")).toBeVisible({timeout:15_000});
   await expect(page).toHaveTitle(/Set up Buildmates/);
-  await expect(page.getByRole("heading", { name: "A clear finish line for meeting through your work" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up Buildmates on the website" })).toBeVisible();
 
   await page.getByRole("button", { name: "I understand the boundary" }).click();
   await page.getByRole("button", { name: "Continue without connected sources" }).click();
@@ -42,7 +42,7 @@ test("sparse-context builder completes the mandatory first run and resumes", asy
 
 test("source policy language is individual, non-exhaustive, and keyboard operable", async ({ page }, testInfo) => {
   await useIdentity(page, `source-policy-${testInfo.project.name}-${Date.now()}`);
-  await page.goto("/onboarding");
+  await page.goto("/onboarding/manual");
   await expect(page.locator("[data-hydrated=true]")).toBeVisible();
   await page.getByRole("button", { name: "I understand the boundary" }).click();
   await expect(page.getByText(/not a list of every app installed/i)).toBeVisible();

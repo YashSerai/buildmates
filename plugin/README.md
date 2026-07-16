@@ -4,7 +4,7 @@ This package is the single Codex entry point for Buildmates. It references one r
 
 ## Registration boundary
 
-`plugin/.app.json` intentionally contains an empty `apps` object until ChatGPT returns the real app ID. No ID is inferred from a name, URL, or local environment. After creating the app against the deployed OAuth-enabled MCP endpoint, bind the returned ID:
+`plugin/.app.json` contains the registered Buildmates ChatGPT app ID. The plugin references that single remote app and does not register the MCP endpoint a second time. If the app is replaced, bind only the new ID returned by ChatGPT:
 
 ```powershell
 $env:BUILDMATES_APP_ID='asdk_app_<value returned by ChatGPT>'
@@ -15,6 +15,8 @@ python C:\Users\yashs\.codex\skills\.system\plugin-creator\scripts\validate_plug
 The binder rejects missing or malformed IDs and verifies that `.app.json` remains the only app registration. Do not add `.mcp.json` or direct `mcpServers` metadata.
 
 ## First run
+
+Codex is the canonical onboarding surface. An install/setup request begins by calling `get_setup_state`, explains the visible finish line, and advances one ordered step at a time. The website uses the same state for identity linking, profile preview/publishing, chat, discovery, and an explicit manual fallback.
 
 1. OAuth creates an opaque MCP principal.
 2. `get_link_url` opens the HTTPS Buildmates web sign-in flow.
