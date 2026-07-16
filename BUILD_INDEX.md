@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: release candidate publishing in progress
+Status: private production release candidate live
 Last updated: 2026-07-16
 Product line: Meet people through what you build.
 
@@ -72,7 +72,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Privacy and safety | Canonical visibility, source ledger, block/shared-context redaction, immediate export, physical R2 deletion, rate limits and audit trail | Organization policy tooling | Implemented; production smoke pending |
 | Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
 | Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
-| Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | In progress |
+| Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | Source and production smoke complete; separate-account proof pending |
 
 ## Continuous launch validation
 
@@ -128,4 +128,4 @@ Buildmates is not complete when screens merely render. Completion requires:
 
 ## Current next action
 
-Commit and push the release candidate, publish the existing private ChatGPT Site, then run production health, storage, auth-boundary, metadata, and MCP smoke checks. Browser-local responsive inspection is blocked by the in-app browser's localhost policy; use production inspection after deployment. A separate-account SIWC and two-user acceptance run remain the only expected human-account boundary.
+Use a second permitted account to prove SIWC subject stability, website-to-MCP identity linking, and the two-user match-to-room flow. The current Site remains owner-only, so making it public is a deliberate launch-policy decision rather than an unfinished code path. Source commit `2fffa10`, private Sites version 3, and the independently redeployed MCP Worker are live and smoke-tested.

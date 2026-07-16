@@ -44,7 +44,7 @@ This file separates local contract evidence from deployment and production-runti
 - [ ] Two-user object isolation using separate real identities.
 - [ ] Provisioned D1 migration plus authenticated insert/read/delete in production.
 - [ ] Provisioned R2 authenticated put/read/delete in production.
-- [ ] Sites packaging resolution of `@buildmates/*` workspace imports.
+- [x] Sites packaging resolution of `@buildmates/*` workspace imports.
 - [ ] Independent MCP OAuth discovery, redirect registration, PKCE exchange, refresh rotation, revocation, Streamable HTTP initialize, timeout, and reconnect.
 - [ ] End-to-end single-use identity link from web subject to opaque MCP subject.
 
@@ -64,3 +64,10 @@ Until those boxes are backed by deployment/browser/runtime artifacts, the select
 - ChatGPT developer mode created the real development app `asdk_app_6a57d2ff080481918659b3355a3d9c0e` (version `asdk_app_v_6a57d30111e4819199c0876873b98267`). `plugin/.app.json` is bound to that returned ID; no synthetic identifier was used.
 - Sites version 2 packages exact pushed commit `5ecb19200813a99e8670d7a4fd1724e8a127b269` and deployed privately as `appgdep_6a57d4813ff88191ab27b0c3e7360946` with environment revision 1. The deployment contains `/api/identity/mcp-authorization`, `/api/internal/mcp-data`, `/settings/connections`, and the operator recovery surface.
 - A real ChatGPT connection started the OAuth flow and reached the signed Site authorization handoff. The available Chrome account still receives the Site access-policy `Site not found` response because the Site is owner-only under a different accessible identity boundary. The Site was deliberately not made public. End-to-end authorization-code exchange and connected tool discovery therefore remain isolated to the private-Site account-access check rather than being claimed as complete.
+
+### 2026-07-16 release-candidate deployment
+
+- GitHub branch `launch/buildmates` contains release commit `2fffa10000d19ae06da433bc2f359b4c0282d369`. That exact commit was also pushed to the private Sites source branch, packaged with migrations 0000-0018, saved as Sites version 3, and deployed successfully as `appgdep_6a58d436b8a881919c216acf097a33c4` at the existing private URL.
+- Owner-authorized production smoke returns 200 for the finished landing page, `{"status":"ok"}` from D1-backed `/api/ready`, 200 for robots and the web manifest, and a 307 sign-in redirect for `/home`. CSP includes object and framing denial, `nosniff` is present, and responses carry request IDs. Anonymous access returns 401 at the Sites access-policy boundary because the release remains owner-only.
+- The provider-generated production capture was visually inspected. The final editorial field-guide system, work-trail signature, headline, navigation, and CTAs render without desktop clipping or hierarchy defects. The available in-app account still sees `Site not found`, so interactive phone production inspection remains part of the separate-account boundary rather than being claimed.
+- The external Worker was redeployed after the shared tool-contract changes as Cloudflare version `0c3f90e3-66ca-486a-a7f4-7d4da6f0becf`. Authorization-server and protected-resource discovery return 200; unauthenticated `/mcp` initialization returns 401 as required. Full PKCE exchange, identity linking, and a linked tool call still require the permitted second account.
