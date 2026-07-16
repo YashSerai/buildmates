@@ -1,3 +1,5 @@
+import { consumeWebRateLimit } from "../security/rate-limit";
+
 export type BlockedBuilder = { userId: string; displayName: string; createdAt: number };
 
 export async function listBlockedBuilders(DB: D1Database, actorId: string): Promise<BlockedBuilder[]> {
@@ -8,6 +10,7 @@ export async function listBlockedBuilders(DB: D1Database, actorId: string): Prom
 }
 
 export async function blockBuilder(DB: D1Database, input: { actorId: string; targetUserId: string; now: number }) {
+  await consumeWebRateLimit(DB, "block", input.actorId, 30, 60 * 60 * 1000, input.now);
   if (input.actorId === input.targetUserId) throw new Error("block_invalid");
   const target = await DB.prepare("SELECT 1 AS ok FROM users WHERE id=? AND status='active'").bind(input.targetUserId).first();
   if (!target) throw new Error("target_not_found");
@@ -29,6 +32,7 @@ export async function unblockBuilder(DB: D1Database, input: { actorId: string; t
 }
 
 export async function reportTarget(DB: D1Database, input: { actorId: string; targetKind: "user"|"profile"|"project"|"room"|"circle"|"message"; targetId: string; reasonCode: "spam"|"harassment"|"impersonation"|"unsafe_content"|"privacy"|"other"; details?: string; now: number }) {
+  await consumeWebRateLimit(DB, "report", input.actorId, 10, 60 * 60 * 1000, input.now);
   if (!await mayReport(DB,input.actorId,input.targetKind,input.targetId)) throw new Error("target_not_found");
   const reportId=crypto.randomUUID(); const caseId=crypto.randomUUID();
   await DB.batch([

@@ -10,11 +10,12 @@ export function createD1IdentityLinkStore(DB: D1BatchDatabase): IdentityLinkStor
   return {
     async consume({ codeHash, workspaceScope, mcpSubject, now }) {
       const candidate = await DB.prepare(
-        "SELECT id, user_id AS userId FROM identity_link_codes WHERE code_hash = ? AND workspace_scope = ? AND consumed_at IS NULL AND expires_at > ? AND attempt_count < max_attempts LIMIT 1",
-      ).bind(codeHash, workspaceScope, now).first<{ id: string; userId: string }>();
+        "SELECT c.id, c.user_id AS userId, (SELECT completed_steps_json FROM setup_states WHERE user_id=c.user_id) AS completedStepsJson FROM identity_link_codes c WHERE c.code_hash = ? AND c.workspace_scope = ? AND c.consumed_at IS NULL AND c.expires_at > ? AND c.attempt_count < c.max_attempts LIMIT 1",
+      ).bind(codeHash, workspaceScope, now).first<{ id: string; userId: string; completedStepsJson:string|null }>();
       if (!candidate) return { linked: false, reason: "invalid_or_expired" };
 
       const principalId = crypto.randomUUID();
+      const completedSteps = orderedSetupSteps(candidate.completedStepsJson);
       try {
         const results = await DB.batch([
           DB.prepare(
@@ -26,6 +27,8 @@ export function createD1IdentityLinkStore(DB: D1BatchDatabase): IdentityLinkStor
           DB.prepare(
             "INSERT INTO identity_links (id, user_id, principal_id, provider_channel, provider_issuer, provider_subject, workspace_scope, linked_at, revoked_at) SELECT ?, user_id, ?, 'mcp', 'buildmates_mcp', ?, workspace_scope, ?, NULL FROM identity_link_codes WHERE id = ? AND consumed_by_principal_id = ?",
           ).bind(crypto.randomUUID(), principalId, mcpSubject, now, candidate.id, principalId),
+          DB.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) SELECT user_id,'active','none',?,? FROM identity_link_codes WHERE id=? AND consumed_by_principal_id=?").bind(now,now,candidate.id,principalId),
+          DB.prepare("INSERT INTO setup_states (user_id,completed_steps_json,updated_at) SELECT user_id,?,? FROM identity_link_codes WHERE id=? AND consumed_by_principal_id=? ON CONFLICT(user_id) DO UPDATE SET completed_steps_json=excluded.completed_steps_json,updated_at=excluded.updated_at").bind(JSON.stringify(completedSteps),now,candidate.id,principalId),
         ]);
         const changed = Number((results[0].meta as { changes?: number } | undefined)?.changes ?? 0);
         return changed === 1 ? { linked: true, userId: candidate.userId } : { linked: false, reason: "conflict" };
@@ -36,6 +39,9 @@ export function createD1IdentityLinkStore(DB: D1BatchDatabase): IdentityLinkStor
     },
   };
 }
+
+const SETUP_ORDER=["identity_link","storage_explanation","source_selection","context_collection","signal_privacy_review","basic_profile","page_preview","networking_pulse","acceptance_mode","automation","first_useful_outcome"] as const;
+function orderedSetupSteps(value:string|null):string[]{let stored:string[]=[];try{const parsed:unknown=JSON.parse(value??"[]");if(Array.isArray(parsed))stored=parsed.filter((item):item is string=>typeof item==="string")}catch{}return SETUP_ORDER.filter((step)=>step==="identity_link"||stored.includes(step))}
 
 export async function completeIdentityLink(
   store: IdentityLinkStore,

@@ -152,10 +152,15 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
       if (input.kind === "profile_model") {
         const profileId = canonicalId("profile", actor, "primary");
         const publishedAt = value.audience === "public" ? at : null;
-        await DB.batch([
+        const statements = [
           DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,project_or_interest=excluded.project_or_interest,portfolio_links_json=excluded.portfolio_links_json,audience=excluded.audience,allow_matching=excluded.allow_matching,acceptance_mode=excluded.acceptance_mode,indexable=excluded.indexable,published_at=excluded.published_at,updated_at=excluded.updated_at").bind(profileId, actor, value.displayName, value.builderSummary, value.projectOrInterest, JSON.stringify(value.portfolioLinks ?? []), value.audience, value.allowMatching ? 1 : 0, value.acceptanceMode, value.audience === "public" ? 1 : 0, publishedAt, at, at),
           DB.prepare("INSERT INTO handles (user_id,handle,normalized_handle,created_at) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET handle=excluded.handle,normalized_handle=excluded.normalized_handle").bind(actor, value.handle, String(value.handle).toLowerCase(), at),
-        ]);
+        ];
+        if (Array.isArray(value.statistics)) {
+          statements.push(DB.prepare("DELETE FROM profile_statistics WHERE profile_id=?").bind(profileId));
+          for (const statistic of value.statistics as Row[]) statements.push(DB.prepare("INSERT INTO profile_statistics (profile_id,stat_key,label,value,provenance,audience,updated_at) VALUES (?,?,?,?,?,?,?)").bind(profileId, statistic.key, statistic.label, statistic.value, statistic.provenance, statistic.audience, at));
+        }
+        await DB.batch(statements);
         return (await readCanonical<T>(input.kind, profileId, actor))!;
       }
       if (input.kind === "invite") {
@@ -296,7 +301,12 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
       }
       if (input.kind === "calendar_receipt") {
         await assertRoomMember(DB, String(value.roomId), actor);
-        await run(DB, "INSERT INTO calendar_event_receipts (id,room_id,attached_by_user_id,provider,provider_event_id,starts_at,ends_at,participant_labels_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)", id, value.roomId, actor, value.provider, value.providerEventId, Date.parse(String(value.startsAt)), Date.parse(String(value.endsAt)), JSON.stringify(value.participantLabels ?? []), value.status, at);
+        const startsAt=Date.parse(String(value.startsAt)),endsAt=Date.parse(String(value.endsAt));
+        const accepted=await first(DB,"SELECT 1 AS accepted FROM meeting_proposals WHERE id=? AND room_id=? AND status='accepted' AND starts_at=? AND ends_at=?",value.meetingProposalId,value.roomId,startsAt,endsAt);
+        if(value.trustedProviderConfirmation!==true||!accepted)throw new Error("calendar_receipt_untrusted");
+        const conflict=await first(DB,"SELECT room_id,meeting_proposal_id FROM calendar_event_receipts WHERE provider=? AND provider_event_id=?",value.provider,value.providerEventId);
+        if(conflict&&(conflict.room_id!==value.roomId||conflict.meeting_proposal_id!==value.meetingProposalId))throw new Error("calendar_receipt_conflict");
+        await run(DB, "INSERT INTO calendar_event_receipts (id,room_id,meeting_proposal_id,attached_by_user_id,provider,provider_event_id,starts_at,ends_at,participant_labels_json,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(provider,provider_event_id) DO UPDATE SET starts_at=excluded.starts_at,ends_at=excluded.ends_at,participant_labels_json=excluded.participant_labels_json,status=excluded.status WHERE calendar_event_receipts.room_id=excluded.room_id AND calendar_event_receipts.meeting_proposal_id=excluded.meeting_proposal_id", id, value.roomId,value.meetingProposalId, actor, value.provider, value.providerEventId, startsAt, endsAt, JSON.stringify(value.participantLabels ?? []), value.status, at);
         return (await readCanonical<T>(input.kind, input.id, actor))!;
       }
       if (input.kind === "automation_checkpoint") {
@@ -545,5 +555,5 @@ function connectionNoteValue(row: Row) { return { connectionId: row.connection_i
 function connectionReminderValue(row: Row) { return { connectionId: row.connection_id, remindAt: new Date(Number(row.remind_at)).toISOString(), status: row.status }; }
 function roomValue(row: Row) { return { roomId: row.id, status: row.status, themeTopicId: row.theme_topic_id ?? null }; }
 function circleValue(row: Row) { return { circleId: row.id, name: row.name, purpose: row.purpose, status: row.status, governanceMode: row.governance_mode, governanceVersion: row.governance_version }; }
-function calendarValue(row: Row) { return { roomId: row.room_id, provider: row.provider, providerEventId: row.provider_event_id, startsAt: new Date(Number(row.starts_at)).toISOString(), endsAt: new Date(Number(row.ends_at)).toISOString(), participantLabels: JSON.parse(String(row.participant_labels_json)), status: row.status }; }
+function calendarValue(row: Row) { return { roomId: row.room_id, meetingProposalId: row.meeting_proposal_id, provider: row.provider, providerEventId: row.provider_event_id, startsAt: new Date(Number(row.starts_at)).toISOString(), endsAt: new Date(Number(row.ends_at)).toISOString(), participantLabels: JSON.parse(String(row.participant_labels_json)), status: row.status }; }
 function automationValue(row: Row) { const state = JSON.parse(String(row.state_json)); return { kind: row.kind, cursor: row.cursor, state: state.state, lastOutcome: state.lastOutcome, enabled: state.enabled ?? state.state !== "disabled", cadence: state.cadence ?? null, nextRunAt: row.next_run_at ? new Date(Number(row.next_run_at)).toISOString() : null }; }

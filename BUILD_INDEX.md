@@ -1,7 +1,7 @@
 # Buildmates Build Index
 
-Status: one-shot launch execution in progress  
-Last updated: 2026-07-15  
+Status: release candidate publishing in progress
+Last updated: 2026-07-16
 Product line: Meet people through what you build.
 
 ## Read order
@@ -51,28 +51,28 @@ Buildmates is a Codex-native builder network that introduces people through curr
 
 | Area | Day-one behavior | Later expansion | Status |
 |---|---|---|---|
-| Landing and identity | Public explanation, Sign in with ChatGPT, mobile web access | Custom domains and organization identity | Planned |
-| Agentic first run | Visible setup progress, rich/sparse context branches, privacy/profile preview, preferences, automation, first useful outcome | Smarter adaptive questioning | Planned |
-| Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Planned |
-| Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Planned |
-| Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Planned |
-| Profiles | Profile review, field-level visibility, projects, generative responsive surface, optional connection/build stats | Broader module library and isolated custom code | Planned |
-| Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Planned |
-| Cold start and growth | Shareable profiles/projects/cards, personal and cohort invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Planned |
-| Discovery | Search, cohort pages, project/topic follows, build graph, geographic globe | Richer filters and graph exploration | Planned |
-| Matching | Deterministic shortlist, independent Codex evaluations, reciprocal handshake | Optional embeddings only after measured need | Planned |
-| Acceptance | Manual or Full Autopilot modes | Per-context acceptance rules | Planned |
-| Rooms | Mutual-interest lightweight chat themed around the connection reason | Consent-based room upgrade modules | Planned |
-| Connections | Persistent mutual relationship, why/when met, private notes, reminders, updates, mute/end | Longitudinal relationship intelligence | Planned |
-| Intro memory | Private structured feedback and match-preference learning | Longitudinal relationship health | Planned |
-| Scheduling | Calendar-aware suggestions through permitted apps and ICS fallback | More scheduling connectors | Planned |
-| Cohorts | Public/request/invite/private membership, owner/admin roles, invites, join approval, transfer, archive/delete | Organization tooling | Planned |
-| Circles | Triadic-closure suggestion, group chat, creator-admin governance | Voting, trackers, custom leaderboards, shipping rooms | Planned |
-| Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Planned |
-| Privacy and safety | Canonical visibility, source ledger, block/redaction, export/delete, audit trail | Organization policy tooling | Planned |
-| Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Planned |
-| Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Planned |
-| Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | Planned |
+| Landing and identity | Public explanation, Sign in with ChatGPT, mobile web access | Custom domains and organization identity | Implemented in source; public-user verification pending |
+| Agentic first run | Visible setup progress, rich/sparse context branches, privacy/profile preview, preferences, automation, first useful outcome | Smarter adaptive questioning | Implemented; integration review pending |
+| Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Implemented; live connector proof pending |
+| Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Implemented; unattended production proof pending |
+| Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Implemented; integration review pending |
+| Profiles | Profile review, field-level visibility, projects, generative responsive surface, optional connection/build stats | Broader module library and isolated custom code | Implemented; integration review pending |
+| Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Implemented in source; integrated review pending |
+| Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal and cohort invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
+| Discovery | Search, cohort pages, project/topic follows, build graph, privacy-thresholded coarse geographic map | Richer filters and graph exploration | Implemented with shared visual system; production smoke pending |
+| Matching | Deterministic shortlist, independent Codex evaluations, reciprocal handshake | Optional embeddings only after measured need | Implemented; final integrated review pending |
+| Acceptance | Manual or Full Autopilot modes | Per-context acceptance rules | Implemented; live unattended capability proof pending |
+| Rooms | Mutual-interest lightweight chat themed around the connection reason | Consent-based room upgrade modules | Implemented in source; integrated review pending |
+| Connections | Persistent mutual relationship, why/when met, private notes, reminders, updates, mute/end | Longitudinal relationship intelligence | Implemented with shared visual system; production smoke pending |
+| Intro memory | Private structured feedback and match-preference learning | Longitudinal relationship health | Implemented; integrated review pending |
+| Scheduling | Calendar-aware suggestions through permitted apps and ICS fallback | More scheduling connectors | Implemented in source; live Calendar/deep-link proof pending |
+| Cohorts | Public/request/invite/private membership, owner/admin roles, invites, join approval, transfer, archive/delete | Organization tooling | Implemented in source; integrated review pending |
+| Circles | Consent-gated triadic suggestions, group chat, creator-admin governance, roles, voting, Codex-generated shared surfaces, approved modules and member entries | Richer tracker templates and shipping-room analytics | Implemented in source; integrated review pending |
+| Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Implemented; room creation integration added |
+| Privacy and safety | Canonical visibility, source ledger, block/shared-context redaction, immediate export, physical R2 deletion, rate limits and audit trail | Organization policy tooling | Implemented; production smoke pending |
+| Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
+| Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
+| Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | In progress |
 
 ## Continuous launch validation
 
@@ -128,4 +128,4 @@ Buildmates is not complete when screens merely render. Completion requires:
 
 ## Current next action
 
-Execute Task 1, establish the isolated implementation branch and long-task checkpoint, then continue through Tasks 2–14 without returning at internal milestones.
+Commit and push the release candidate, publish the existing private ChatGPT Site, then run production health, storage, auth-boundary, metadata, and MCP smoke checks. Browser-local responsive inspection is blocked by the in-app browser's localhost policy; use production inspection after deployment. A separate-account SIWC and two-user acceptance run remain the only expected human-account boundary.

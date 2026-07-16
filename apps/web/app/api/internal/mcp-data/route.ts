@@ -2,6 +2,8 @@ import { verifyDelegatedRequest } from "@/src/platform/delegated-request";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { completeIdentityLink, createD1IdentityLinkStore } from "@/src/platform/identity-link-store";
 import { BUILD_MATES_MCP_TOOLS, canonicalToolInputHash, createD1McpProductRepository, executeBuildmatesTool, pruneExpiredAssertionReplays } from "@buildmates/mcp-core";
+import { recordTrustedAutomationCapability } from "@/src/platform/onboarding-data";
+import { AUTOMATION_CAPABILITY_TTL_MS } from "@buildmates/domain";
 
 const ALLOWED_ACTIONS = {
   "identity.link-status.read": "identity:link-status:read",
@@ -61,6 +63,15 @@ export async function POST(request: Request) {
             return link ?? null;
           },
           validateTaxonomy: (input) => validateTaxonomy(DB, input),
+          recordAutomationCapabilityProof: async ({ userId, now }) => {
+            const checkedAt = Date.parse(now);
+            await recordTrustedAutomationCapability(DB, userId, "available", checkedAt);
+            return {
+              capability: "available" as const,
+              checkedAt: new Date(checkedAt).toISOString(),
+              expiresAt: new Date(checkedAt + AUTOMATION_CAPABILITY_TTL_MS).toISOString(),
+            };
+          },
         });
         return Response.json({ value }, { headers: { "cache-control": "no-store" } });
       } catch (error) {

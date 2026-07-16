@@ -1,293 +1,87 @@
 import { createHash, randomBytes } from "node:crypto";
 
-export type DiscoveryBuilder = {
-  userId: string;
-  handle: string;
-  displayName: string;
-  summary: string;
-  coarseLocation: string | null;
-  currentWork: string | null;
-  projectCount: number;
-};
+export type DiscoveryBuilder = { userId:string;handle:string;displayName:string;summary:string;coarseLocation:string|null;currentWork:string|null;projectCount:number };
+export type DiscoveryProject = { id:string;slug:string;title:string;summary:string;stage:string;ownerHandle:string;ownerName:string;topics:string[] };
+export type CohortSummary = { id:string;slug:string;name:string;description:string;visibility:"public"|"request"|"invite"|"private";memberCount:number;viewerRole:string|null;viewerStatus:string|null };
+export type DiscoveryOptions = { query?:string;location?:string;timezone?:string;stage?:string;topic?:string;tool?:string;problem?:string;offer?:string;need?:string;cohort?:string;collaboration?:string;limit?:number };
+type Access = { sql:string; bindings:string[] };
 
-export type DiscoveryProject = {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string;
-  stage: string;
-  ownerHandle: string;
-  ownerName: string;
-  topics: string[];
-};
+function bounded(value:string|undefined,max:number){return value?.trim().slice(0,max)??""}
+function pattern(value:string){return `%${value.toLowerCase().replaceAll("%","\\%").replaceAll("_","\\_")}%`}
+function access(viewerId:string|null,alias:string,ownerExpression:string,allowOwner=true):Access{
+  if(!viewerId)return{sql:`(${alias}.audience='public' AND ${alias}.cohort_scope_id IS NULL)`,bindings:[]};
+  const owner=allowOwner?`${ownerExpression}=? OR `:"";
+  return{sql:`(${owner}((${alias}.audience='public' OR ${alias}.audience='signed_in') AND (${alias}.cohort_scope_id IS NULL OR EXISTS (SELECT 1 FROM cohort_memberships av JOIN cohort_memberships ao ON ao.cohort_id=av.cohort_id WHERE av.cohort_id=${alias}.cohort_scope_id AND av.user_id=? AND av.status='active' AND ao.user_id=${ownerExpression} AND ao.status='active'))))`,bindings:allowOwner?[viewerId,viewerId]:[viewerId]};
+}
+function block(viewerId:string|null,ownerExpression:string):Access{
+  if(!viewerId)return{sql:"1=1",bindings:[]};
+  return{sql:`NOT EXISTS (SELECT 1 FROM blocks b WHERE b.revoked_at IS NULL AND ((b.blocker_user_id=${ownerExpression} AND b.blocked_user_id=?) OR (b.blocked_user_id=${ownerExpression} AND b.blocker_user_id=?)))`,bindings:[viewerId,viewerId]};
+}
+async function assertActiveUser(db:D1Database,userId:string){const row=await db.prepare("SELECT status FROM users WHERE id=?").bind(userId).first<{status:string}>();if(row&&row.status!=="active")throw new Error("account_not_active")}
+async function consumeRate(db:D1Database,key:string,limit:number,now=Date.now()){const window=Math.floor(now/3_600_000);const full=`${key}:${window}`;await db.prepare("INSERT INTO mcp_rate_limits(key,attempt_count,window_expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET attempt_count=attempt_count+1").bind(full,(window+1)*3_600_000).run();const row=await db.prepare("SELECT attempt_count AS attempts FROM mcp_rate_limits WHERE key=?").bind(full).first<{attempts:number}>();if((row?.attempts??limit+1)>limit)throw new Error("rate_limited")}
 
-export type CohortSummary = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  visibility: "public" | "request" | "invite" | "private";
-  memberCount: number;
-  viewerRole: string | null;
-  viewerStatus: string | null;
-};
+export async function listDiscovery(db:D1Database,viewerId:string|null,options:DiscoveryOptions={}){
+  const q=bounded(options.query,100),location=bounded(options.location,100),timezone=bounded(options.timezone,100),stage=bounded(options.stage,60),topic=bounded(options.topic,80),tool=bounded(options.tool,80),problem=bounded(options.problem,100),offer=bounded(options.offer,100),need=bounded(options.need,100),cohort=bounded(options.cohort,72),collaboration=bounded(options.collaboration,100),limit=Math.max(1,Math.min(options.limit??30,50));
+  const profileAccess=access(viewerId,"p","p.user_id"),profileBlock=block(viewerId,"p.user_id"),fieldAccess=access(viewerId,"sf","p.user_id"),projectAccess=access(viewerId,"px","p.user_id"),projectBlock=block(viewerId,"p.user_id");
+  const builderSql:string[]=["u.status='active'","p.published_at IS NOT NULL",profileAccess.sql,profileBlock.sql];
+  const builderBindings:unknown[]=[...profileAccess.bindings,...profileBlock.bindings];
+  if(q){builderSql.push(`(lower(p.display_name) LIKE ? ESCAPE '\\' OR lower(p.summary) LIKE ? ESCAPE '\\' OR lower(h.handle) LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM profile_fields sf WHERE sf.profile_id=p.id AND ${fieldAccess.sql} AND lower(sf.value_json) LIKE ? ESCAPE '\\'))`);builderBindings.push(pattern(q),pattern(q),pattern(q),...fieldAccess.bindings,pattern(q))}
+  if(location){builderSql.push("lower(COALESCE(p.coarse_location,''))=lower(?)");builderBindings.push(location)}
+  if(timezone){builderSql.push("lower(COALESCE(p.timezone,''))=lower(?)");builderBindings.push(timezone)}
+  if(cohort){builderSql.push("EXISTS (SELECT 1 FROM cohort_memberships cm JOIN cohorts c ON c.id=cm.cohort_id WHERE cm.user_id=p.user_id AND cm.status='active' AND c.status='active' AND c.slug=?)");builderBindings.push(cohort.toLowerCase())}
+  for(const [key,value] of [["problem",problem],["offers",offer],["needs",need],["networking_intent",collaboration]] as const){if(value){const a=access(viewerId,"sf","p.user_id");builderSql.push(`EXISTS (SELECT 1 FROM profile_fields sf WHERE sf.profile_id=p.id AND sf.field_key=? AND ${a.sql} AND lower(sf.value_json) LIKE ? ESCAPE '\\')`);builderBindings.push(key,...a.bindings,pattern(value))}}
+  if(stage||topic||tool){const clauses=["px.owner_user_id=p.user_id","px.status='active'","px.published_at IS NOT NULL",projectAccess.sql,projectBlock.sql];const binds:unknown[]=[...projectAccess.bindings,...projectBlock.bindings];if(stage){clauses.push("lower(px.stage)=lower(?)");binds.push(stage)}for(const[k,v]of[["topic",topic],["tool",tool]]as const)if(v){clauses.push("EXISTS (SELECT 1 FROM project_taxonomy_items pti WHERE pti.project_id=px.id AND pti.kind=? AND lower(pti.taxonomy_item_id)=lower(?))");binds.push(k,v)}builderSql.push(`EXISTS (SELECT 1 FROM projects px WHERE ${clauses.join(" AND ")})`);builderBindings.push(...binds)}
+  const builderRows=await db.prepare(`SELECT p.user_id AS userId,h.handle,p.display_name AS displayName,p.summary,p.coarse_location AS coarseLocation FROM profiles p JOIN users u ON u.id=p.user_id JOIN handles h ON h.user_id=p.user_id WHERE ${builderSql.join(" AND ")} ORDER BY p.updated_at DESC,p.user_id LIMIT ?`).bind(...builderBindings,limit).all<Omit<DiscoveryBuilder,"currentWork"|"projectCount">>();
 
-function searchPattern(query: string) {
-  return `%${query.trim().toLowerCase().replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+  const projectOwnerAccess=access(viewerId,"p","p.user_id"),xAccess=access(viewerId,"x","x.owner_user_id"),xBlock=block(viewerId,"x.owner_user_id");
+  const projectSql:string[]=["u.status='active'","x.status='active'","x.published_at IS NOT NULL","p.published_at IS NOT NULL",xAccess.sql,projectOwnerAccess.sql,xBlock.sql];
+  const projectBindings:unknown[]=[...xAccess.bindings,...projectOwnerAccess.bindings,...xBlock.bindings];
+  if(q){projectSql.push(`(lower(x.title) LIKE ? ESCAPE '\\' OR lower(x.summary) LIKE ? ESCAPE '\\' OR lower(h.handle) LIKE ? ESCAPE '\\' OR EXISTS (SELECT 1 FROM project_taxonomy_items pt WHERE pt.project_id=x.id AND lower(pt.taxonomy_item_id) LIKE ? ESCAPE '\\'))`);projectBindings.push(pattern(q),pattern(q),pattern(q),pattern(q))}
+  if(stage){projectSql.push("lower(x.stage)=lower(?)");projectBindings.push(stage)}
+  if(location){projectSql.push("lower(COALESCE(p.coarse_location,''))=lower(?)");projectBindings.push(location)}
+  if(timezone){projectSql.push("lower(COALESCE(p.timezone,''))=lower(?)");projectBindings.push(timezone)}
+  if(cohort){projectSql.push("EXISTS (SELECT 1 FROM cohort_memberships cm JOIN cohorts c ON c.id=cm.cohort_id WHERE cm.user_id=x.owner_user_id AND cm.status='active' AND c.status='active' AND c.slug=?)");projectBindings.push(cohort.toLowerCase())}
+  for(const[k,v]of[["topic",topic],["tool",tool]]as const)if(v){projectSql.push("EXISTS (SELECT 1 FROM project_taxonomy_items pt WHERE pt.project_id=x.id AND pt.kind=? AND lower(pt.taxonomy_item_id)=lower(?))");projectBindings.push(k,v)}
+  for(const[key,value]of[["problem",problem],["offers",offer],["needs",need],["networking_intent",collaboration]]as const)if(value){const a=access(viewerId,"sf","p.user_id");projectSql.push(`EXISTS (SELECT 1 FROM profile_fields sf WHERE sf.profile_id=p.id AND sf.field_key=? AND ${a.sql} AND lower(sf.value_json) LIKE ? ESCAPE '\\')`);projectBindings.push(key,...a.bindings,pattern(value))}
+  const projects=await db.prepare(`SELECT x.id,x.slug,x.title,x.summary,x.stage,h.handle AS ownerHandle,p.display_name AS ownerName,COALESCE((SELECT json_group_array(pt.taxonomy_item_id) FROM project_taxonomy_items pt WHERE pt.project_id=x.id AND pt.kind='topic'),'[]') AS topicsJson FROM projects x JOIN users u ON u.id=x.owner_user_id JOIN profiles p ON p.user_id=x.owner_user_id JOIN handles h ON h.user_id=x.owner_user_id WHERE ${projectSql.join(" AND ")} ORDER BY x.updated_at DESC,x.id LIMIT ?`).bind(...projectBindings,limit).all<Omit<DiscoveryProject,"topics"> & {topicsJson:string}>();
+  const builders=await Promise.all(builderRows.results.map(async row=>{const fa=access(viewerId,"f","p.user_id"),pa=access(viewerId,"x","x.owner_user_id"),pb=block(viewerId,"x.owner_user_id");const current=await db.prepare(`SELECT json_extract(f.value_json,'$') AS value FROM profile_fields f JOIN profiles p ON p.id=f.profile_id WHERE f.profile_id=(SELECT id FROM profiles WHERE user_id=?) AND f.field_key='current_work' AND ${fa.sql} LIMIT 1`).bind(row.userId,...fa.bindings).first<{value:string}>();const count=await db.prepare(`SELECT count(*) AS count FROM projects x WHERE x.owner_user_id=? AND x.status='active' AND x.published_at IS NOT NULL AND ${pa.sql} AND ${pb.sql}`).bind(row.userId,...pa.bindings,...pb.bindings).first<{count:number}>();return{...row,currentWork:typeof current?.value==="string"?current.value:null,projectCount:Number(count?.count??0)}}));
+  return{builders,projects:projects.results.map(({topicsJson,...project})=>({...project,topics:safeStringArray(topicsJson)}))};
 }
 
-function visibleAudience(viewerId: string | null, alias: string) {
-  return viewerId
-    ? `(${alias}.audience='public' OR ${alias}.audience='signed_in')`
-    : `${alias}.audience='public'`;
+export async function listLocationGroups(db:D1Database,viewerId:string|null){
+  const a=access(viewerId,"p","p.user_id",false),b=block(viewerId,"p.user_id");
+  const rows=await db.prepare(`SELECT p.coarse_location AS location,count(*) AS builderCount FROM profiles p JOIN users u ON u.id=p.user_id WHERE u.status='active' AND p.published_at IS NOT NULL AND p.location_map_opt_in=1 AND p.coarse_location IS NOT NULL AND trim(p.coarse_location)<>'' AND ${a.sql} AND ${b.sql} GROUP BY lower(p.coarse_location),p.coarse_location HAVING count(*)>=5 ORDER BY builderCount DESC,p.coarse_location LIMIT 80`).bind(...a.bindings,...b.bindings).all<{location:string;builderCount:number}>();
+  return rows.results.map(row=>({...row,builderCount:Number(row.builderCount)}));
 }
 
-function blockClause(owner: string) {
-  return `NOT EXISTS (SELECT 1 FROM blocks b WHERE b.revoked_at IS NULL AND ((b.blocker_user_id=${owner} AND b.blocked_user_id=?) OR (b.blocked_user_id=${owner} AND b.blocker_user_id=?)))`;
+export async function getBuildGraph(db:D1Database,viewerId:string|null){
+  const xa=access(viewerId,"x","x.owner_user_id"),pa=access(viewerId,"p","p.user_id"),b=block(viewerId,"x.owner_user_id");
+  const projects=await db.prepare(`SELECT x.id,x.slug,x.title,h.handle,p.display_name AS ownerName FROM projects x JOIN users u ON u.id=x.owner_user_id JOIN profiles p ON p.user_id=x.owner_user_id JOIN handles h ON h.user_id=x.owner_user_id WHERE u.status='active' AND x.status='active' AND x.published_at IS NOT NULL AND p.published_at IS NOT NULL AND ${xa.sql} AND ${pa.sql} AND ${b.sql} ORDER BY x.updated_at DESC LIMIT 40`).bind(...xa.bindings,...pa.bindings,...b.bindings).all<{id:string;slug:string;title:string;handle:string;ownerName:string}>();
+  if(!projects.results.length)return{projects:[],topics:[],edges:[]};const marks=projects.results.map(()=>"?").join(",");const topics=await db.prepare(`SELECT project_id AS projectId,taxonomy_item_id AS topicId FROM project_taxonomy_items WHERE kind='topic' AND project_id IN (${marks}) ORDER BY taxonomy_item_id,project_id`).bind(...projects.results.map(p=>p.id)).all<{projectId:string;topicId:string}>();return{projects:projects.results,topics:[...new Set(topics.results.map(t=>t.topicId))],edges:topics.results};
 }
 
-export async function listDiscovery(
-  db: D1Database,
-  viewerId: string | null,
-  options: { query?: string; location?: string; stage?: string; limit?: number } = {},
-) {
-  const query = options.query?.trim().slice(0, 100) ?? "";
-  const location = options.location?.trim().slice(0, 100) ?? "";
-  const stage = options.stage?.trim().slice(0, 60) ?? "";
-  const limit = Math.max(1, Math.min(options.limit ?? 30, 50));
-  const viewer = viewerId ?? "";
-  const pattern = searchPattern(query);
+export async function listCohorts(db:D1Database,viewerId:string|null){const rows=await db.prepare(`SELECT c.id,c.slug,c.name,c.description,c.visibility,(SELECT count(*) FROM cohort_memberships x WHERE x.cohort_id=c.id AND x.status='active') AS memberCount,cm.role AS viewerRole,cm.status AS viewerStatus FROM cohorts c LEFT JOIN cohort_memberships cm ON cm.cohort_id=c.id AND cm.user_id=? WHERE c.status='active' AND (c.visibility IN ('public','request') OR cm.status IN ('active','invited')) ORDER BY memberCount DESC,c.name`).bind(viewerId??"").all<CohortSummary>();return rows.results.map(row=>({...row,memberCount:Number(row.memberCount)}))}
+export async function createCohort(db:D1Database,userId:string,input:{name:string;slug:string;description:string;visibility:"public"|"request"|"invite"|"private"}){await assertActiveUser(db,userId);await consumeRate(db,`cohort:create:${userId}`,5);const name=input.name.trim(),slug=input.slug.trim().toLowerCase(),description=input.description.trim();if(!name||name.length>100||!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)||slug.length>72||!description||description.length>800||!["public","request","invite","private"].includes(input.visibility))throw new Error("invalid_cohort");const id=`cohort_${crypto.randomUUID()}`,now=Date.now();const results=await db.batch([db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId,now,now),db.prepare("INSERT INTO cohorts(id,slug,name,description,visibility,community_created,status,created_at,updated_at) VALUES (?,?,?,?,?,1,'active',?,?)").bind(id,slug,name,description,input.visibility,now,now),db.prepare("INSERT INTO cohort_memberships(cohort_id,user_id,role,status,joined_at) VALUES (?,?,'owner','active',?)").bind(id,userId,now)]);if(results.some(r=>!r.success))throw new Error("cohort_create_failed");return{id,slug}}
+async function activeRole(db:D1Database,cohortId:string,userId:string){return db.prepare("SELECT role FROM cohort_memberships WHERE cohort_id=? AND user_id=? AND status='active'").bind(cohortId,userId).first<{role:string}>()}
+export async function getCohort(db:D1Database,slug:string,viewerId:string|null){const cohort=(await listCohorts(db,viewerId)).find(item=>item.slug===slug);if(!cohort)return null;const canAdmin=Boolean(cohort.viewerRole&&["owner","admin"].includes(cohort.viewerRole));const canSeeRoster=["public","request"].includes(cohort.visibility)||cohort.viewerStatus==="active";if(!canSeeRoster)return{...cohort,members:[] as {userId?:string;handle:string;displayName:string;summary:string;role:string}[],pendingMembers:[] as {userId:string;handle:string|null;displayName:string}[]};const a=access(viewerId,"p","p.user_id"),b=block(viewerId,"cm.user_id");const rows=await db.prepare(`SELECT cm.user_id AS userId,h.handle,p.display_name AS displayName,p.summary,cm.role FROM cohort_memberships cm JOIN users u ON u.id=cm.user_id JOIN profiles p ON p.user_id=cm.user_id JOIN handles h ON h.user_id=cm.user_id WHERE cm.cohort_id=? AND cm.status='active' AND u.status='active' AND p.published_at IS NOT NULL AND ${a.sql} AND ${b.sql} ORDER BY CASE cm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,p.display_name LIMIT 100`).bind(cohort.id,...a.bindings,...b.bindings).all<{userId:string;handle:string;displayName:string;summary:string;role:string}>();const pending=canAdmin?await db.prepare(`SELECT cm.user_id AS userId,h.handle,COALESCE(p.display_name,'Buildmate') AS displayName FROM cohort_memberships cm JOIN users u ON u.id=cm.user_id LEFT JOIN profiles p ON p.user_id=cm.user_id LEFT JOIN handles h ON h.user_id=cm.user_id WHERE cm.cohort_id=? AND cm.status='requested' AND u.status='active' ORDER BY cm.joined_at,cm.user_id LIMIT 100`).bind(cohort.id).all<{userId:string;handle:string|null;displayName:string}>():{results:[] as {userId:string;handle:string|null;displayName:string}[]};return{...cohort,members:rows.results.map(member=>canAdmin?member:{handle:member.handle,displayName:member.displayName,summary:member.summary,role:member.role}),pendingMembers:pending.results}}
+export async function requestCohortMembership(db:D1Database,userId:string,cohortId:string){await assertActiveUser(db,userId);await consumeRate(db,`cohort:join:${userId}`,20);const cohort=await db.prepare("SELECT visibility FROM cohorts WHERE id=? AND status='active'").bind(cohortId).first<{visibility:string}>();if(!cohort||!["public","request"].includes(cohort.visibility))throw new Error("cohort_not_joinable");const status=cohort.visibility==="public"?"active":"requested",now=Date.now();await db.batch([db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId,now,now),db.prepare("INSERT INTO cohort_memberships(cohort_id,user_id,role,status,joined_at) VALUES (?,?,?,?,?) ON CONFLICT(cohort_id,user_id) DO UPDATE SET status=CASE WHEN cohort_memberships.status IN ('removed','left','declined') THEN excluded.status ELSE cohort_memberships.status END,joined_at=CASE WHEN excluded.status='active' THEN COALESCE(cohort_memberships.joined_at,excluded.joined_at) ELSE cohort_memberships.joined_at END").bind(cohortId,userId,"member",status,status==="active"?now:null)]);return{status}}
+export async function updateCohort(db:D1Database,userId:string,cohortId:string,input:{name?:string;description?:string;visibility?:string;status?:"active"|"archived"|"deleted"}){await assertActiveUser(db,userId);const role=await activeRole(db,cohortId,userId);if(!role||!["owner","admin"].includes(role.role))throw new Error("forbidden");if(input.status&&role.role!=="owner")throw new Error("owner_required");const fields:string[]=[],bindings:unknown[]=[];if(input.name!==undefined){const v=input.name.trim();if(!v||v.length>100)throw new Error("invalid_cohort");fields.push("name=?");bindings.push(v)}if(input.description!==undefined){const v=input.description.trim();if(!v||v.length>800)throw new Error("invalid_cohort");fields.push("description=?");bindings.push(v)}if(input.visibility!==undefined){if(!["public","request","invite","private"].includes(input.visibility))throw new Error("invalid_cohort");fields.push("visibility=?");bindings.push(input.visibility)}if(input.status){fields.push("status=?");bindings.push(input.status)}if(!fields.length)throw new Error("no_changes");bindings.push(Date.now(),cohortId);const result=await db.prepare(`UPDATE cohorts SET ${fields.join(",")},updated_at=? WHERE id=?`).bind(...bindings).run();if(!result.meta.changes)throw new Error("cohort_not_found");return{updated:true}}
+export async function manageCohortMember(db:D1Database,actorId:string,cohortId:string,targetUserId:string,action:"approve"|"decline"|"remove"|"promote"|"demote"|"transfer") {await assertActiveUser(db,actorId);const actor=await activeRole(db,cohortId,actorId);if(!actor||!["owner","admin"].includes(actor.role))throw new Error("forbidden");const target=await db.prepare("SELECT role,status FROM cohort_memberships WHERE cohort_id=? AND user_id=?").bind(cohortId,targetUserId).first<{role:string;status:string}>();if(!target)throw new Error("member_not_found");const now=Date.now();if(["promote","demote","transfer"].includes(action)&&actor.role!=="owner")throw new Error("owner_required");if(target.role==="owner"&&action!=="transfer")throw new Error("owner_protected");if(action==="approve"||action==="decline"){if(target.status!=="requested")throw new Error("request_not_pending");await db.prepare("UPDATE cohort_memberships SET status=?,joined_at=? WHERE cohort_id=? AND user_id=? AND status='requested'").bind(action==="approve"?"active":"declined",action==="approve"?now:null,cohortId,targetUserId).run()}else if(action==="remove"){await db.prepare("UPDATE cohort_memberships SET status='removed' WHERE cohort_id=? AND user_id=? AND role<>'owner'").bind(cohortId,targetUserId).run()}else if(action==="promote"){if(target.status!=="active")throw new Error("member_not_active");await db.prepare("UPDATE cohort_memberships SET role='admin' WHERE cohort_id=? AND user_id=? AND role='member'").bind(cohortId,targetUserId).run()}else if(action==="demote"){await db.prepare("UPDATE cohort_memberships SET role='member' WHERE cohort_id=? AND user_id=? AND role='admin'").bind(cohortId,targetUserId).run()}else{if(actorId===targetUserId||target.status!=="active")throw new Error("invalid_transfer");const results=await db.batch([db.prepare("UPDATE cohort_memberships SET role='admin' WHERE cohort_id=? AND user_id=? AND role='owner'").bind(cohortId,actorId),db.prepare("UPDATE cohort_memberships SET role='owner' WHERE cohort_id=? AND user_id=? AND status='active' AND role<>'owner'").bind(cohortId,targetUserId)]);if(results.some(r=>!r.success)||Number(results[0]?.meta.changes)!==1||Number(results[1]?.meta.changes)!==1)throw new Error("transfer_failed")}return{action}}
+export async function leaveCohort(db:D1Database,userId:string,cohortId:string){await assertActiveUser(db,userId);const result=await db.prepare("UPDATE cohort_memberships SET status='left' WHERE cohort_id=? AND user_id=? AND status='active' AND role<>'owner'").bind(cohortId,userId).run();if(!result.meta.changes)throw new Error("owner_must_transfer");return{left:true}}
 
-  const builders = await db
-    .prepare(
-      `SELECT p.user_id AS userId,h.handle,p.display_name AS displayName,p.summary,p.coarse_location AS coarseLocation,
-        (SELECT json_extract(f.value_json,'$') FROM profile_fields f WHERE f.profile_id=p.id AND f.field_key='current_work' AND ${visibleAudience(viewerId, "f")} LIMIT 1) AS currentWork,
-        (SELECT count(*) FROM projects x WHERE x.owner_user_id=p.user_id AND x.status='active' AND x.published_at IS NOT NULL AND ${visibleAudience(viewerId, "x")}) AS projectCount
-       FROM profiles p JOIN handles h ON h.user_id=p.user_id
-       WHERE p.published_at IS NOT NULL AND ${visibleAudience(viewerId, "p")} AND ${blockClause("p.user_id")}
-         AND (?='' OR lower(p.display_name) LIKE ? ESCAPE '\\' OR lower(p.summary) LIKE ? ESCAPE '\\' OR lower(h.handle) LIKE ? ESCAPE '\\'
-           OR EXISTS (SELECT 1 FROM profile_fields sf WHERE sf.profile_id=p.id AND ${visibleAudience(viewerId, "sf")} AND lower(sf.value_json) LIKE ? ESCAPE '\\'))
-         AND (?='' OR lower(COALESCE(p.coarse_location,''))=lower(?))
-       ORDER BY p.updated_at DESC,p.user_id LIMIT ?`,
-    )
-    .bind(viewer, viewer, query, pattern, pattern, pattern, pattern, location, location, limit)
-    .all<DiscoveryBuilder>();
+export async function createInviteLink(db:D1Database,userId:string,input:{kind:"personal"|"cohort_admin"|"builder"|"connection_card";targetId?:string;recipientUserId?:string;recipientHandle?:string;maximumUses?:number}){await assertActiveUser(db,userId);await consumeRate(db,`invite:create:${userId}`,20);const now=Date.now(),maximumUses=Math.max(1,Math.min(input.maximumUses??20,100));let recipient=input.recipientUserId;if(input.recipientHandle){const row=await db.prepare("SELECT user_id AS userId FROM handles WHERE normalized_handle=?").bind(input.recipientHandle.trim().toLowerCase().replace(/^@/,"")).first<{userId:string}>();if(!row)throw new Error("recipient_not_found");recipient=row.userId}if(recipient===userId)throw new Error("invalid_recipient");if(recipient){const blocked=await blockExists(db,userId,recipient);if(blocked)throw new Error("blocked");const duplicate=await db.prepare("SELECT id FROM invite_links WHERE creator_user_id=? AND recipient_user_id=? AND kind=? AND COALESCE(target_id,'')=COALESCE(?,'') AND revoked_at IS NULL AND expires_at>? LIMIT 1").bind(userId,recipient,input.kind,input.targetId??null,now).first();if(duplicate)throw new Error("invite_already_pending")}
+  if(input.kind==="personal"&&input.targetId)throw new Error("invalid_invite_target");if(input.kind==="cohort_admin"){if(!input.targetId)throw new Error("invalid_invite_target");const m=await activeRole(db,input.targetId,userId);if(!m||!["owner","admin"].includes(m.role))throw new Error("forbidden");const recent=await db.prepare("SELECT count(*) AS count FROM invite_links WHERE creator_user_id=? AND target_id=? AND created_at>?").bind(userId,input.targetId,now-3_600_000).first<{count:number}>();if(Number(recent?.count??0)>=10)throw new Error("cohort_invite_rate_limited")}if(input.kind==="builder"){if(!input.targetId)throw new Error("invalid_invite_target");const owner=await db.prepare("SELECT user_id AS userId FROM profiles WHERE id=?").bind(input.targetId).first<{userId:string}>();if(!owner||owner.userId!==userId)throw new Error("forbidden")}if(input.kind==="connection_card"&&input.targetId){const owner=await db.prepare("SELECT owner_user_id AS userId FROM projects WHERE id=? AND status<>'deleted'").bind(input.targetId).first<{userId:string}>();if(!owner||owner.userId!==userId)throw new Error("forbidden")}
+  const token=randomBytes(24).toString("base64url"),id=`invite_${crypto.randomUUID()}`,expiresAt=now+30*24*60*60*1000;await db.prepare("INSERT INTO invite_links(id,creator_user_id,kind,token_hash,target_id,recipient_user_id,maximum_uses,use_count,expires_at,created_at) VALUES (?,?,?,?,?,?,?,0,?,?)").bind(id,userId,input.kind,hashToken(token),input.targetId??null,recipient??null,recipient?1:maximumUses,expiresAt,now).run();return{id,token,expiresAt,maximumUses:recipient?1:maximumUses}}
+export async function revokeInvite(db:D1Database,userId:string,inviteId:string){await assertActiveUser(db,userId);const result=await db.prepare("UPDATE invite_links SET revoked_at=? WHERE id=? AND creator_user_id=? AND revoked_at IS NULL").bind(Date.now(),inviteId,userId).run();if(!result.meta.changes)throw new Error("invite_not_found");return{revoked:true}}
+export async function listInvites(db:D1Database,userId:string){await assertActiveUser(db,userId);const rows=await db.prepare("SELECT id,kind,target_id AS targetId,maximum_uses AS maximumUses,use_count AS useCount,expires_at AS expiresAt,revoked_at AS revokedAt,created_at AS createdAt FROM invite_links WHERE creator_user_id=? ORDER BY created_at DESC LIMIT 50").bind(userId).all();return rows.results}
+export async function getInvite(db:D1Database,token:string){return db.prepare(`SELECT i.id,i.kind,i.target_id AS targetId,i.maximum_uses AS maximumUses,i.use_count AS useCount,i.expires_at AS expiresAt,p.display_name AS creatorName,h.handle AS creatorHandle,c.name AS cohortName,c.slug AS cohortSlug,project.title AS projectTitle,project.summary AS projectSummary,project.slug AS projectSlug FROM invite_links i JOIN users u ON u.id=i.creator_user_id LEFT JOIN profiles p ON p.user_id=i.creator_user_id LEFT JOIN handles h ON h.user_id=i.creator_user_id LEFT JOIN cohorts c ON c.id=i.target_id AND i.kind='cohort_admin' LEFT JOIN projects project ON project.id=i.target_id AND i.kind='connection_card' AND project.status='active' WHERE i.token_hash=? AND u.status='active' AND i.revoked_at IS NULL AND i.expires_at>? AND i.use_count<i.maximum_uses`).bind(hashToken(token),Date.now()).first<{id:string;kind:string;targetId:string|null;maximumUses:number;useCount:number;expiresAt:number;creatorName:string|null;creatorHandle:string|null;cohortName:string|null;cohortSlug:string|null;projectTitle:string|null;projectSummary:string|null;projectSlug:string|null}>()}
+export async function acceptInvite(db:D1Database,token:string,userId:string){await assertActiveUser(db,userId);await consumeRate(db,`invite:accept:${userId}`,30);const hash=hashToken(token),now=Date.now();const invite=await db.prepare(`SELECT i.id,i.kind,i.target_id AS targetId,i.creator_user_id AS creatorUserId,i.recipient_user_id AS recipientUserId,c.slug AS cohortSlug,h.handle AS creatorHandle,project.slug AS projectSlug FROM invite_links i JOIN users u ON u.id=i.creator_user_id LEFT JOIN cohorts c ON c.id=i.target_id AND i.kind='cohort_admin' LEFT JOIN projects project ON project.id=i.target_id AND i.kind='connection_card' AND project.status='active' LEFT JOIN handles h ON h.user_id=i.creator_user_id WHERE i.token_hash=? AND u.status='active'`).bind(hash).first<{id:string;kind:string;targetId:string|null;creatorUserId:string;recipientUserId:string|null;cohortSlug:string|null;creatorHandle:string|null;projectSlug:string|null}>();if(!invite)throw new Error("invite_not_found");const statements=[db.prepare(`INSERT OR IGNORE INTO invite_redemptions(invite_id,user_id,accepted_at) SELECT i.id,?,? FROM invite_links i WHERE i.id=? AND (i.recipient_user_id IS NULL OR i.recipient_user_id=?) AND i.revoked_at IS NULL AND i.expires_at>? AND (SELECT count(*) FROM invite_redemptions r WHERE r.invite_id=i.id)<i.maximum_uses AND NOT EXISTS (SELECT 1 FROM blocks b WHERE b.revoked_at IS NULL AND ((b.blocker_user_id=i.creator_user_id AND b.blocked_user_id=?) OR (b.blocked_user_id=i.creator_user_id AND b.blocker_user_id=?)))`).bind(userId,now,invite.id,userId,now,userId,userId),db.prepare("UPDATE invite_links SET use_count=(SELECT count(*) FROM invite_redemptions r WHERE r.invite_id=invite_links.id) WHERE id=?").bind(invite.id)];if(invite.kind==="cohort_admin"&&invite.targetId)statements.push(db.prepare("INSERT INTO cohort_memberships(cohort_id,user_id,role,status,joined_at) SELECT ?,?,'member','active',? WHERE EXISTS (SELECT 1 FROM invite_redemptions WHERE invite_id=? AND user_id=?) ON CONFLICT(cohort_id,user_id) DO UPDATE SET status=CASE WHEN cohort_memberships.role='owner' THEN cohort_memberships.status ELSE 'active' END,joined_at=COALESCE(cohort_memberships.joined_at,excluded.joined_at)").bind(invite.targetId,userId,now,invite.id,userId));await db.batch(statements);const receipt=await db.prepare("SELECT accepted_at AS acceptedAt FROM invite_redemptions WHERE invite_id=? AND user_id=?").bind(invite.id,userId).first<{acceptedAt:number}>();if(!receipt)throw new Error("invite_not_found");return{kind:invite.kind,cohortSlug:invite.cohortSlug,creatorHandle:invite.creatorHandle,projectSlug:invite.projectSlug,replay:Number(receipt.acceptedAt)!==now}}
+async function blockExists(db:D1Database,a:string,b:string){return Boolean(await db.prepare("SELECT 1 FROM blocks WHERE revoked_at IS NULL AND ((blocker_user_id=? AND blocked_user_id=?) OR (blocker_user_id=? AND blocked_user_id=?)) LIMIT 1").bind(a,b,b,a).first())}
 
-  const projects = await db
-    .prepare(
-      `SELECT x.id,x.slug,x.title,x.summary,x.stage,h.handle AS ownerHandle,p.display_name AS ownerName,
-        COALESCE((SELECT json_group_array(pt.taxonomy_item_id) FROM project_taxonomy_items pt WHERE pt.project_id=x.id AND pt.kind='topic'),'[]') AS topicsJson
-       FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id JOIN handles h ON h.user_id=x.owner_user_id
-       WHERE x.status='active' AND x.published_at IS NOT NULL AND p.published_at IS NOT NULL
-         AND ${visibleAudience(viewerId, "x")} AND ${visibleAudience(viewerId, "p")} AND ${blockClause("x.owner_user_id")}
-         AND (?='' OR lower(x.title) LIKE ? ESCAPE '\\' OR lower(x.summary) LIKE ? ESCAPE '\\' OR lower(h.handle) LIKE ? ESCAPE '\\'
-           OR EXISTS (SELECT 1 FROM project_taxonomy_items pt WHERE pt.project_id=x.id AND lower(pt.taxonomy_item_id) LIKE ? ESCAPE '\\'))
-         AND (?='' OR lower(x.stage)=lower(?))
-       ORDER BY x.updated_at DESC,x.id LIMIT ?`,
-    )
-    .bind(viewer, viewer, query, pattern, pattern, pattern, pattern, stage, stage, limit)
-    .all<Omit<DiscoveryProject, "topics"> & { topicsJson: string }>();
+export async function setRelevantBuilderWatch(db:D1Database,userId:string,enabled:boolean){await assertActiveUser(db,userId);const now=Date.now();await db.prepare("INSERT INTO watches(id,user_id,kind,target_id,created_at,revoked_at) VALUES (?,?,'relevant_builder','network',?,?) ON CONFLICT(user_id,kind,target_id) DO UPDATE SET revoked_at=excluded.revoked_at").bind(`watch_${crypto.randomUUID()}`,userId,now,enabled?null:now).run();return{enabled}}
+export async function getRelevantBuilderWatch(db:D1Database,userId:string){const row=await db.prepare("SELECT revoked_at AS revokedAt FROM watches WHERE user_id=? AND kind='relevant_builder' AND target_id='network'").bind(userId).first<{revokedAt:number|null}>();return Boolean(row&&row.revokedAt===null)}
+export async function setFollow(db:D1Database,userId:string,targetKind:"profile"|"project"|"topic"|"cohort",targetId:string,enabled:boolean){await assertActiveUser(db,userId);await consumeRate(db,`follow:${userId}`,60);if(!targetId||targetId.length>200)throw new Error("invalid_target");if(enabled)await db.prepare("INSERT INTO follows(follower_user_id,target_kind,target_id,created_at,revoked_at) VALUES (?,?,?,?,NULL) ON CONFLICT(follower_user_id,target_kind,target_id) DO UPDATE SET revoked_at=NULL").bind(userId,targetKind,targetId,Date.now()).run();else await db.prepare("UPDATE follows SET revoked_at=? WHERE follower_user_id=? AND target_kind=? AND target_id=?").bind(Date.now(),userId,targetKind,targetId).run();return{enabled}}
+export async function getHome(db:D1Database,userId:string){await assertActiveUser(db,userId);const [profile,pulse,watch,counts]=await Promise.all([db.prepare("SELECT h.handle,p.display_name AS displayName,p.updated_at AS updatedAt FROM profiles p LEFT JOIN handles h ON h.user_id=p.user_id WHERE p.user_id=?").bind(userId).first(),db.prepare("SELECT expires_at AS expiresAt FROM networking_pulses WHERE user_id=? ORDER BY created_at DESC LIMIT 1").bind(userId).first(),getRelevantBuilderWatch(db,userId),db.prepare(`SELECT (SELECT count(*) FROM match_proposals proposal JOIN match_pairs pair ON pair.id=proposal.match_pair_id WHERE (pair.user_a_id=? OR pair.user_b_id=?) AND proposal.state='pending') AS matches,(SELECT count(*) FROM connection_sides cs JOIN connections c ON c.id=cs.connection_id WHERE cs.user_id=? AND c.state='active') AS connections,(SELECT count(*) FROM room_memberships rm JOIN rooms r ON r.id=rm.room_id WHERE rm.user_id=? AND rm.left_at IS NULL AND r.status='active') AS rooms,(SELECT count(*) FROM circle_memberships cm JOIN circles c ON c.id=cm.circle_id WHERE cm.user_id=? AND cm.status='active' AND c.status='active') AS circles`).bind(userId,userId,userId,userId,userId).first()]);return{profile,pulse,watch,counts}}
 
-  return {
-    builders: builders.results.map((builder) => ({
-      ...builder,
-      projectCount: Number(builder.projectCount),
-      currentWork: typeof builder.currentWork === "string" ? builder.currentWork : null,
-    })),
-    projects: projects.results.map(({ topicsJson, ...project }) => ({
-      ...project,
-      topics: safeStringArray(topicsJson),
-    })),
-  };
-}
-
-export async function listLocationGroups(db: D1Database, viewerId: string | null) {
-  const viewer = viewerId ?? "";
-  const rows = await db
-    .prepare(
-      `SELECT p.coarse_location AS location,count(*) AS builderCount
-       FROM profiles p WHERE p.published_at IS NOT NULL AND p.coarse_location IS NOT NULL AND trim(p.coarse_location)<>''
-       AND ${visibleAudience(viewerId, "p")} AND ${blockClause("p.user_id")}
-       GROUP BY lower(p.coarse_location),p.coarse_location ORDER BY builderCount DESC,p.coarse_location LIMIT 80`,
-    )
-    .bind(viewer, viewer)
-    .all<{ location: string; builderCount: number }>();
-  return rows.results.map((row) => ({ ...row, builderCount: Number(row.builderCount) }));
-}
-
-export async function getBuildGraph(db: D1Database, viewerId: string | null) {
-  const viewer = viewerId ?? "";
-  const projects = await db
-    .prepare(
-      `SELECT x.id,x.slug,x.title,h.handle,p.display_name AS ownerName
-       FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id JOIN handles h ON h.user_id=x.owner_user_id
-       WHERE x.status='active' AND x.published_at IS NOT NULL AND p.published_at IS NOT NULL
-       AND ${visibleAudience(viewerId, "x")} AND ${visibleAudience(viewerId, "p")} AND ${blockClause("x.owner_user_id")}
-       ORDER BY x.updated_at DESC LIMIT 40`,
-    )
-    .bind(viewer, viewer)
-    .all<{ id: string; slug: string; title: string; handle: string; ownerName: string }>();
-  if (!projects.results.length) return { projects: [], topics: [], edges: [] };
-  const placeholders = projects.results.map(() => "?").join(",");
-  const topics = await db
-    .prepare(
-      `SELECT project_id AS projectId,taxonomy_item_id AS topicId FROM project_taxonomy_items WHERE kind='topic' AND project_id IN (${placeholders}) ORDER BY taxonomy_item_id,project_id`,
-    )
-    .bind(...projects.results.map((project) => project.id))
-    .all<{ projectId: string; topicId: string }>();
-  return {
-    projects: projects.results,
-    topics: [...new Set(topics.results.map((topic) => topic.topicId))],
-    edges: topics.results,
-  };
-}
-
-export async function listCohorts(db: D1Database, viewerId: string | null) {
-  const rows = await db
-    .prepare(
-      `SELECT c.id,c.slug,c.name,c.description,c.visibility,
-        (SELECT count(*) FROM cohort_memberships cm WHERE cm.cohort_id=c.id AND cm.status='active') AS memberCount,
-        cm.role AS viewerRole,cm.status AS viewerStatus
-       FROM cohorts c LEFT JOIN cohort_memberships cm ON cm.cohort_id=c.id AND cm.user_id=?
-       WHERE c.status='active' AND (c.visibility IN ('public','request') OR cm.status IN ('active','invited','requested'))
-       ORDER BY memberCount DESC,c.name`,
-    )
-    .bind(viewerId ?? "")
-    .all<CohortSummary>();
-  return rows.results.map((row) => ({ ...row, memberCount: Number(row.memberCount) }));
-}
-
-export async function createCohort(db: D1Database, userId: string, input: { name: string; slug: string; description: string; visibility: "public" | "request" | "invite" | "private" }) {
-  const name = input.name.trim();
-  const slug = input.slug.trim().toLowerCase();
-  const description = input.description.trim();
-  if (!name || name.length > 100 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) || slug.length > 72 || !description || description.length > 800 || !["public", "request", "invite", "private"].includes(input.visibility)) throw new Error("invalid_cohort");
-  const id = `cohort_${crypto.randomUUID()}`;
-  const now = Date.now();
-  const results = await db.batch([
-    db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId, now, now),
-    db.prepare("INSERT INTO cohorts(id,slug,name,description,visibility,community_created,status,created_at,updated_at) VALUES (?,?,?,?,?,1,'active',?,?)").bind(id, slug, name, description, input.visibility, now, now),
-    db.prepare("INSERT INTO cohort_memberships(cohort_id,user_id,role,status,joined_at) VALUES (?,?,'owner','active',?)").bind(id, userId, now),
-  ]);
-  if (results.some((result) => !result.success)) throw new Error("cohort_create_failed");
-  return { id, slug };
-}
-
-export async function getCohort(db: D1Database, slug: string, viewerId: string | null) {
-  const cohort = (await listCohorts(db, viewerId)).find((item) => item.slug === slug);
-  if (!cohort) return null;
-  const canSeeRoster = ["public", "request"].includes(cohort.visibility) || cohort.viewerStatus === "active";
-  if (!canSeeRoster) return { ...cohort, members: [] as { handle: string; displayName: string; summary: string; role: string }[] };
-  const members = await db
-    .prepare(
-      `SELECT h.handle,p.display_name AS displayName,p.summary,cm.role
-       FROM cohort_memberships cm JOIN profiles p ON p.user_id=cm.user_id JOIN handles h ON h.user_id=cm.user_id
-       WHERE cm.cohort_id=? AND cm.status='active' AND p.published_at IS NOT NULL
-       AND (p.audience='public' OR (?<>'' AND p.audience='signed_in')) AND ${blockClause("cm.user_id")}
-       ORDER BY CASE cm.role WHEN 'owner' THEN 0 WHEN 'admin' THEN 1 ELSE 2 END,p.display_name LIMIT 60`,
-    )
-    .bind(cohort.id, viewerId ?? "", viewerId ?? "", viewerId ?? "")
-    .all<{ handle: string; displayName: string; summary: string; role: string }>();
-  return { ...cohort, members: members.results };
-}
-
-export async function requestCohortMembership(db: D1Database, userId: string, cohortId: string) {
-  const now = Date.now();
-  const cohort = await db.prepare("SELECT visibility FROM cohorts WHERE id=? AND status='active'").bind(cohortId).first<{ visibility: string }>();
-  if (!cohort || !["public", "request"].includes(cohort.visibility)) throw new Error("cohort_not_joinable");
-  const status = cohort.visibility === "public" ? "active" : "requested";
-  const role = "member";
-  const results = await db.batch([
-    db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId, now, now),
-    db.prepare("INSERT INTO cohort_memberships(cohort_id,user_id,role,status,joined_at) VALUES (?,?,?,?,?) ON CONFLICT(cohort_id,user_id) DO UPDATE SET status=CASE WHEN cohort_memberships.status IN ('removed','left','declined') THEN excluded.status ELSE cohort_memberships.status END,joined_at=CASE WHEN excluded.status='active' THEN COALESCE(cohort_memberships.joined_at,excluded.joined_at) ELSE cohort_memberships.joined_at END").bind(cohortId, userId, role, status, status === "active" ? now : null),
-  ]);
-  if (results.some((result) => !result.success)) throw new Error("membership_request_failed");
-  return { status };
-}
-
-export async function createInviteLink(
-  db: D1Database,
-  userId: string,
-  input: { kind: "personal" | "cohort_admin" | "builder" | "connection_card"; targetId?: string; maximumUses?: number },
-) {
-  const now = Date.now();
-  const maximumUses = Math.max(1, Math.min(input.maximumUses ?? 20, 100));
-  if (input.kind === "personal" && input.targetId) throw new Error("invalid_invite_target");
-  if (input.kind === "cohort_admin") {
-    if (!input.targetId) throw new Error("invalid_invite_target");
-    const membership = await db.prepare("SELECT role FROM cohort_memberships WHERE cohort_id=? AND user_id=? AND status='active'").bind(input.targetId ?? "", userId).first<{ role: string }>();
-    if (!membership || !["owner", "admin"].includes(membership.role)) throw new Error("forbidden");
-  }
-  if (input.kind === "builder") {
-    if (!input.targetId) throw new Error("invalid_invite_target");
-    const owner = await db.prepare("SELECT user_id AS userId FROM profiles WHERE id=?").bind(input.targetId ?? "").first<{ userId: string }>();
-    if (!owner || owner.userId !== userId) throw new Error("forbidden");
-  }
-  if (input.kind === "connection_card" && input.targetId) {
-    const owner = await db.prepare("SELECT owner_user_id AS userId FROM projects WHERE id=? AND status<>'deleted'").bind(input.targetId).first<{ userId: string }>();
-    if (!owner || owner.userId !== userId) throw new Error("forbidden");
-  }
-  const token = randomBytes(24).toString("base64url");
-  const id = `invite_${crypto.randomUUID()}`;
-  const expiresAt = now + 30 * 24 * 60 * 60 * 1000;
-  const results = await db.batch([
-    db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId, now, now),
-    db.prepare("INSERT INTO invite_links(id,creator_user_id,kind,token_hash,target_id,maximum_uses,use_count,expires_at,created_at) VALUES (?,?,?,?,?,?,0,?,?)").bind(id, userId, input.kind, hashToken(token), input.targetId ?? null, maximumUses, expiresAt, now),
-  ]);
-  if (results.some((result) => !result.success)) throw new Error("invite_create_failed");
-  return { id, token, expiresAt, maximumUses };
-}
-
-export async function getInvite(db: D1Database, token: string) {
-  return db.prepare(
-    `SELECT i.id,i.kind,i.target_id AS targetId,i.maximum_uses AS maximumUses,i.use_count AS useCount,i.expires_at AS expiresAt,
-      p.display_name AS creatorName,h.handle AS creatorHandle,c.name AS cohortName,c.slug AS cohortSlug
-     FROM invite_links i LEFT JOIN profiles p ON p.user_id=i.creator_user_id LEFT JOIN handles h ON h.user_id=i.creator_user_id
-     LEFT JOIN cohorts c ON c.id=i.target_id
-     WHERE i.token_hash=? AND i.revoked_at IS NULL AND i.expires_at>? AND i.use_count<i.maximum_uses`,
-  ).bind(hashToken(token), Date.now()).first<{ id: string; kind: string; targetId: string | null; maximumUses: number; useCount: number; expiresAt: number; creatorName: string | null; creatorHandle: string | null; cohortName: string | null; cohortSlug: string | null }>();
-}
-
-export async function acceptInvite(db: D1Database, token: string, userId: string) {
-  const invite = await getInvite(db, token);
-  if (!invite) throw new Error("invite_not_found");
-  const now = Date.now();
-  const statements = [
-    db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId, now, now),
-  ];
-  if (invite.kind === "cohort_admin" && invite.targetId) {
-    statements.push(db.prepare("INSERT INTO cohort_memberships(cohort_id,user_id,role,status,joined_at) SELECT ?,?,'member','active',? WHERE EXISTS (SELECT 1 FROM invite_links WHERE id=? AND revoked_at IS NULL AND expires_at>? AND use_count<maximum_uses) ON CONFLICT(cohort_id,user_id) DO UPDATE SET status='active',joined_at=COALESCE(cohort_memberships.joined_at,excluded.joined_at)").bind(invite.targetId, userId, now, invite.id, now));
-  }
-  statements.push(db.prepare("UPDATE invite_links SET use_count=use_count+1 WHERE id=? AND revoked_at IS NULL AND expires_at>? AND use_count<maximum_uses").bind(invite.id, now));
-  const results = await db.batch(statements);
-  if (results.some((result) => !result.success) || Number(results.at(-1)?.meta?.changes ?? 0) !== 1) throw new Error("invite_not_found");
-  return { kind: invite.kind, cohortSlug: invite.cohortSlug, creatorHandle: invite.creatorHandle };
-}
-
-export async function setRelevantBuilderWatch(db: D1Database, userId: string, enabled: boolean) {
-  const now = Date.now();
-  const results = await db.batch([
-    db.prepare("INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId, now, now),
-    db.prepare("INSERT INTO watches(id,user_id,kind,target_id,created_at,revoked_at) VALUES (?,?,'relevant_builder','network',?,?) ON CONFLICT(user_id,kind,target_id) DO UPDATE SET revoked_at=excluded.revoked_at").bind(`watch_${crypto.randomUUID()}`, userId, now, enabled ? null : now),
-  ]);
-  if (results.some((result) => !result.success)) throw new Error("watch_update_failed");
-  return { enabled };
-}
-
-export async function getRelevantBuilderWatch(db: D1Database, userId: string) {
-  const row = await db.prepare("SELECT revoked_at AS revokedAt FROM watches WHERE user_id=? AND kind='relevant_builder' AND target_id='network'").bind(userId).first<{ revokedAt: number | null }>();
-  return Boolean(row && row.revokedAt === null);
-}
-
-function hashToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
-
-function safeStringArray(value: string) {
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string").slice(0, 12) : [];
-  } catch {
-    return [];
-  }
-}
+function hashToken(token:string){return createHash("sha256").update(token).digest("hex")}
+function safeStringArray(value:string){try{const parsed=JSON.parse(value);return Array.isArray(parsed)?parsed.filter((x):x is string=>typeof x==="string").slice(0,12):[]}catch{return[]}}

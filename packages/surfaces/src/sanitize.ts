@@ -6,6 +6,8 @@ const ACTIVE_CONTENT = /<(?:script|style|iframe|object|embed|form|input|button|t
 export type SanitizedDecorativeRegion = { id: string; label: string; html: string; css: string; srcDoc: string };
 
 export function sanitizeDecorativeRegion(input: { id: string; label: string; html: string; css: string }): SanitizedDecorativeRegion {
+  if (!/^[a-z][a-z0-9_-]{0,63}$/i.test(input.id) || !input.label.trim() || input.label.length > 100) throw new Error("invalid_decorative_region");
+  if (input.html.length > 12_000 || input.css.length > 20_000) throw new Error("decorative_region_too_large");
   if (ACTIVE_CONTENT.test(input.html)) throw new Error("unsafe_decorative_html");
   const html = parseDecorativeHtml(input.html);
   const css = scopeDecorativeCss(input.css, input.id);

@@ -1,0 +1,6 @@
+import { isAuthResponse,requireApiUser } from "../../../../src/auth/require-user";
+import { updateCohort } from "../../../../src/discovery/service";
+import { getPlatformBindings } from "../../../../src/platform/bindings";
+import { requireSameOriginMutation } from "../../../../src/platform/same-origin";
+export async function PATCH(request:Request,{params}:{params:Promise<{id:string}>}){const origin=requireSameOriginMutation(request);if(origin)return origin;const user=await requireApiUser();if(isAuthResponse(user))return user;try{const{id}=await params;const body=await request.json() as {name?:string;description?:string;visibility?:string;status?:"active"|"archived"|"deleted"};const{DB}=await getPlatformBindings();return Response.json(await updateCohort(DB,user.id,id,body))}catch(error){const message=error instanceof Error?error.message:"cohort_update_failed";return Response.json({error:message},{status:message.includes("required")||message==="forbidden"?403:400})}}
+export async function DELETE(request:Request,context:{params:Promise<{id:string}>}){const next=new Request(request,{method:"PATCH",body:JSON.stringify({status:"deleted"}),headers:new Headers(request.headers)});next.headers.set("content-type","application/json");return PATCH(next,context)}

@@ -1,0 +1,1 @@
+import{requireUser}from"../../../src/auth/require-user";import{RevisionPreview}from"../../../components/profile-projects/RevisionPreview";export default async function ProfileDesignPage(){await requireUser('/profile/design');return <RevisionPreview/>}

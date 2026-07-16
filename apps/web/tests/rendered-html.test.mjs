@@ -21,7 +21,8 @@ test("server-renders the Buildmates public landing page", async () => {
   assert.match(html, /<title>Buildmates<\/title>/i);
   assert.match(html, /Find your people/);
   assert.match(html, /Build your profile/);
-  assert.match(html, /Your existing connected apps stay under their own permissions/);
+  assert.match(html, /You approve the work summaries that leave your conversation/);
+  assert.match(html, /work signals in. mutual relevance out./);
   assert.doesNotMatch(html, /Your site is taking shape|Codex is working|react-loading-skeleton/);
 });
 
@@ -31,8 +32,9 @@ test("ships product metadata and removes the starter preview", async () => {
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /listDiscovery/);
+  assert.match(page, /a connection, from signal to room/i);
   assert.match(layout, /title: \{ default: "Buildmates"/);
+  assert.match(layout, /summary_large_image/);
   assert.match(layout, /export const viewport: Viewport/);
   assert.doesNotMatch(layout, /Starter Project|next\/font\/google|codex-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

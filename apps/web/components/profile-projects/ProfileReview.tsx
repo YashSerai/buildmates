@@ -1,0 +1,189 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import styles from "./ProductForms.module.css";
+const audiences = [
+  "public",
+  "signed_in",
+  "suggested_connections",
+  "mutual_connections",
+  "private",
+];
+
+export function ProfileReview({
+  defaultHandle = "",
+}: {
+  defaultHandle?: string;
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(formData: FormData) {
+    setBusy(true);
+    setError("");
+    const handle = String(formData.get("handle"));
+    const fieldNames = [
+      "current_work",
+      "interests",
+      "ambitions",
+      "exploring",
+      "networking_intent",
+    ] as const;
+    const fields = fieldNames
+      .map((key) => ({
+        key,
+        value: String(formData.get(key) ?? "").trim(),
+        audience: String(formData.get(`${key}_audience`) ?? "public"),
+      }))
+      .filter((field) => field.value);
+    const body = {
+      handle,
+      displayName: String(formData.get("displayName")),
+      summary: String(formData.get("summary")),
+      audience: String(formData.get("audience")),
+      indexable: Boolean(formData.get("indexable")),
+      allowMatching: Boolean(formData.get("allowMatching")),
+      acceptanceMode: String(formData.get("acceptanceMode")),
+      coarseLocation: String(formData.get("coarseLocation") ?? ""),
+      locationMapOptIn: Boolean(formData.get("locationMapOptIn")),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      fields,
+      statistics: String(formData.get("statistics") ?? "").split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 12).map((line, index) => {
+        const [label, ...value] = line.split("|");
+        return { key: `custom_${index + 1}`, label: label.trim(), value: value.join("|").trim(), provenance: "self_reported", audience: "public" };
+      }).filter((statistic) => statistic.label && statistic.value),
+    };
+    const response = await fetch(
+      `/api/profiles/${encodeURIComponent(handle)}`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    const data = (await response.json()) as { error?: string; handle: string };
+    if (!response.ok) {
+      setError(data.error ?? "Profile could not be saved.");
+      setBusy(false);
+      return;
+    }
+    router.push(`/@${data.handle}`);
+    router.refresh();
+  }
+  return (
+    <form action={submit} className={styles.form}>
+      <header>
+        <p className={styles.eyebrow}>Profile review</p>
+        <h1>Choose what other builders can know.</h1>
+        <p>
+          Your profile starts structured so privacy, discovery, and generated
+          designs stay reliable. You can revise it with Codex later.
+        </p>
+      </header>
+      {error && (
+        <p role="alert" className={styles.error}>
+          {error}
+        </p>
+      )}
+      <div className={styles.grid}>
+        <Field
+          name="displayName"
+          label="Display name"
+          required
+          maxLength={80}
+        />
+        <Field
+          name="handle"
+          label="Profile address"
+          defaultValue={defaultHandle}
+          required
+          pattern="[a-zA-Z0-9_]{3,32}"
+        />
+        <label className={styles.wide}>
+          Short introduction
+          <textarea name="summary" required maxLength={600} rows={4} />
+        </label>
+        <Field name="coarseLocation" label="Location (city or region)" />
+        <Select name="audience" label="Profile visibility" values={audiences} />
+        <Select
+          name="acceptanceMode"
+          label="Introduction approval"
+          values={["manual", "full_autopilot"]}
+        />
+      </div>
+      <h2>Current context</h2>
+      {[
+        ["current_work", "What are you building now?"],
+        ["interests", "Interests"],
+        ["ambitions", "Ambitions"],
+        ["exploring", "What are you exploring?"],
+        ["networking_intent", "Who would be interesting to meet?"],
+      ].map(([name, label]) => (
+        <div className={styles.fieldRow} key={name}>
+          <label>
+            {label}
+            <textarea name={name} rows={2} maxLength={1000} />
+          </label>
+          <Select
+            name={`${name}_audience`}
+            label="Who can see this?"
+            values={audiences}
+          />
+        </div>
+      ))}
+      <label className={styles.check}>
+        <input type="checkbox" name="allowMatching" />
+        Use approved fields for matching
+      </label>
+      <label className={styles.wide}>
+        Optional public profile counters
+        <span>One per line: Label | Value. Codex can refresh approved counters later, but Buildmates does not infer usage data it cannot access.</span>
+        <textarea name="statistics" rows={3} placeholder="Connections made | 12" />
+      </label>
+      <label className={styles.check}>
+        <input type="checkbox" name="indexable" />
+        Allow search engines to index my public profile
+      </label>
+      <label className={styles.check}>
+        <input type="checkbox" name="locationMapOptIn" />
+        Include my coarse location in anonymous map groups of at least five builders
+      </label>
+      <button disabled={busy}>
+        {busy ? "Saving…" : "Save and view profile"}
+      </button>
+    </form>
+  );
+}
+function Field(
+  props: React.InputHTMLAttributes<HTMLInputElement> & { label: string },
+) {
+  const { label, ...input } = props;
+  return (
+    <label>
+      {label}
+      <input {...input} />
+    </label>
+  );
+}
+function Select({
+  name,
+  label,
+  values,
+}: {
+  name: string;
+  label: string;
+  values: string[];
+}) {
+  return (
+    <label>
+      {label}
+      <select name={name}>
+        {values.map((value) => (
+          <option key={value} value={value}>
+            {value.replaceAll("_", " ")}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}

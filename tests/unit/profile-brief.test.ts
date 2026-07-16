@@ -1,0 +1,2 @@
+import {describe,expect,it}from"vitest";import{createProfileGenerationBrief}from"@buildmates/surfaces";
+describe("profile generation brief",()=>{it("contains only explicitly authorized bindings",()=>{const brief=createProfileGenerationBrief({handle:"ada",fields:[{key:"profile.name",label:"Name",value:"Ada",bindingType:"text"},{key:"private.secret",label:"Secret",value:"hidden",bindingType:"text"}].slice(0,1)});expect(brief.authorizedContent).toEqual({"profile.name":"Ada"});expect(JSON.stringify(brief)).not.toContain("hidden")})});

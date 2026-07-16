@@ -1,0 +1,529 @@
+.page {
+  min-height: 100vh;
+  background: #f3f1eb;
+  color: #19201d;
+  padding: 0 0 72px;
+}
+.header {
+  height: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1240px;
+  margin: auto;
+  padding: 0 28px;
+  border-bottom: 1px solid #d7d4ca;
+}
+.wordmark {
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  font-size: 1.2rem;
+  text-decoration: none;
+  color: inherit;
+}
+.header nav {
+  display: flex;
+  gap: 20px;
+}
+.header nav a {
+  color: #4f5853;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+.intro {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 56px 28px 34px;
+}
+.intro h1 {
+  font-size: clamp(2.1rem, 5vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.055em;
+  max-width: 900px;
+  margin: 10px 0 20px;
+  font-weight: 620;
+}
+.intro > p:last-child {
+  max-width: 680px;
+  color: #58615c;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+.eyebrow {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-weight: 750;
+  color: #32634d;
+}
+.workspace {
+  max-width: 1240px;
+  margin: auto;
+  padding: 0 28px;
+  display: grid;
+  grid-template-columns: 270px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.progress,
+.stepPanel {
+  background: #fff;
+  border: 1px solid #d9d6cc;
+  border-radius: 14px;
+  min-width: 0;
+  max-width: 100%;
+}
+.progress {
+  padding: 18px;
+  position: sticky;
+  top: 20px;
+}
+.progressSummary {
+  padding: 4px 4px 16px;
+  border-bottom: 1px solid #ece9e1;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: end;
+}
+.progressSummary span {
+  font-size: 0.78rem;
+  color: #707872;
+}
+.progressSummary strong {
+  font-size: 0.86rem;
+  text-align: right;
+}
+.progress ol {
+  list-style: none;
+  padding: 12px 0 0;
+  margin: 0;
+  display: grid;
+  gap: 3px;
+}
+.progress li {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  color: #727873;
+  font-size: 0.84rem;
+}
+.progress li > span:first-child {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #d9ddd9;
+  border-radius: 50%;
+  font-size: 0.7rem;
+}
+.progress .currentStep {
+  background: #eaf2ed;
+  color: #183c2d;
+  font-weight: 650;
+}
+.progress .currentStep > span:first-child {
+  background: #285e45;
+  color: white;
+  border-color: #285e45;
+}
+.progress .completeStep {
+  color: #32634d;
+}
+.stepPanel {
+  min-height: 620px;
+  overflow: hidden;
+}
+.resumeLine {
+  display: flex;
+  justify-content: space-between;
+  padding: 14px 24px;
+  background: #f8f7f3;
+  border-bottom: 1px solid #e7e4dc;
+  color: #64706a;
+  font-size: 0.78rem;
+}
+.stepContent {
+  padding: 38px clamp(22px, 6vw, 70px) 44px;
+  max-width: 840px;
+}
+.stepContent h2 {
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  letter-spacing: -0.04em;
+  margin: 9px 0 12px;
+}
+.description {
+  max-width: 680px;
+  color: #606965;
+  line-height: 1.55;
+  margin: 0 0 26px;
+}
+.stack {
+  display: grid;
+  gap: 18px;
+  margin: 22px 0;
+}
+.stack label,
+.stepContent > label,
+.signalCard label,
+.permissionRow label {
+  display: grid;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  color: #3b4741;
+}
+input,
+textarea,
+select {
+  font: inherit;
+  font-weight: 450;
+  color: #17201c;
+  background: #fff;
+  border: 1px solid #bdc3be;
+  border-radius: 8px;
+  padding: 11px 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+textarea {
+  resize: vertical;
+  line-height: 1.45;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #d09b45;
+  outline-offset: 2px;
+}
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 16px;
+  background: #214f3b;
+  color: #fff;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.secondaryButton {
+  background: #e6ebe7;
+  color: #244c3a;
+}
+.textButton {
+  background: transparent;
+  color: #385848;
+  padding: 7px 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 22px;
+}
+.optional {
+  font-weight: 450;
+  color: #7a817d;
+}
+.inlineNote,
+.modelNote,
+.emptyState {
+  padding: 13px 15px;
+  border-left: 3px solid #c39a55;
+  background: #faf6eb;
+  color: #59605c;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+.boundaryGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0;
+}
+.boundaryGrid > div {
+  padding: 18px;
+  background: #f7f6f2;
+  border: 1px solid #e1ded5;
+  border-radius: 10px;
+}
+.boundaryGrid p {
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: #5f6863;
+  margin: 8px 0 0;
+}
+.permissionRow {
+  border: 1px solid #d8dcd8;
+  border-radius: 10px;
+  padding: 18px;
+  margin: 0;
+}
+.permissionRow legend {
+  font-size: 1rem;
+  font-weight: 750;
+  padding: 0 6px;
+}
+.permissionRow > p {
+  font-size: 0.82rem;
+  color: #626a66;
+  margin: 8px 0;
+}
+.sourceMeta,
+.twoColumns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.signalList {
+  display: grid;
+  gap: 14px;
+  margin: 22px 0;
+}
+.signalCard {
+  border: 1px solid #d9ddd9;
+  border-radius: 10px;
+  padding: 18px;
+}
+.signalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  font-size: 0.76rem;
+  color: #68716c;
+}
+.statusBadge {
+  text-transform: capitalize;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: #e8f1ec;
+  color: #285e45;
+}
+.statusBadge[data-status="stale"] {
+  background: #f4ead8;
+  color: #76561e;
+}
+.checkLabel {
+  display: flex !important;
+  grid-template-columns: 18px 1fr !important;
+  align-items: center;
+  gap: 9px !important;
+}
+.checkLabel input {
+  width: 18px;
+  height: 18px;
+}
+.choiceGroup {
+  border: 0;
+  padding: 0;
+  margin: 22px 0;
+  display: grid;
+  gap: 10px;
+}
+.choiceGroup legend {
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.choiceGroup label {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid #d2d7d3;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.choiceGroup input {
+  width: 18px;
+}
+.choiceGroup span {
+  display: grid;
+  gap: 4px;
+}
+.choiceGroup small {
+  font-weight: 450;
+  color: #636b67;
+  line-height: 1.45;
+}
+.selectedChoice {
+  border-color: #397358 !important;
+  background: #eff6f1;
+}
+.modelNote {
+  margin: 0;
+}
+.modelNote p {
+  margin: 5px 0 0;
+}
+.profilePreview {
+  margin: 24px 0;
+  padding: clamp(25px, 6vw, 56px);
+  min-height: 260px;
+  border-radius: 12px;
+  background: #1d2b25;
+  color: #f5f2e8;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.profilePreview > span {
+  color: #9fc1ae;
+  font-size: 0.82rem;
+}
+.profilePreview h2 {
+  font-size: clamp(2rem, 6vw, 4rem);
+  margin: 8px 0 10px;
+}
+.profilePreview p {
+  max-width: 620px;
+  color: #d7ded9;
+  line-height: 1.55;
+}
+.profilePreview strong {
+  color: #9fc1ae;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 14px;
+}
+.rangeGrid {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 16px;
+}
+.rangeGrid label {
+  display: grid;
+  gap: 8px;
+}
+.completion {
+  display: grid;
+  gap: 10px;
+  margin: 26px 0;
+}
+.completion a {
+  color: #245940;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.liveMessage {
+  min-height: 22px;
+  margin: 0;
+  padding: 0 70px 28px;
+  color: #3c654f;
+  font-size: 0.84rem;
+}
+.emptyState {
+  margin: 22px 0;
+}
+.emptyState p {
+  margin: 5px 0 0;
+}
+.statusBadge[data-status="revoked"] {
+  background: #eee;
+  color: #666;
+}
+@media (max-width: 800px) {
+  .header {
+    padding: 0 18px;
+  }
+  .header nav a:first-child {
+    display: none;
+  }
+  .intro {
+    padding: 38px 18px 24px;
+  }
+  .workspace {
+    grid-template-columns: 1fr;
+    padding: 0 14px;
+    gap: 12px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
+  }
+  .workspace > * {
+    min-width: 0;
+  }
+  .progress {
+    position: static;
+    padding: 14px;
+  }
+  .progress ol {
+    display: flex;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+  .progress li {
+    min-width: 46px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    text-align: center;
+    font-size: 0.62rem;
+  }
+  .progress li > span:first-child {
+    flex: none;
+  }
+  .progressSummary {
+    align-items: center;
+  }
+  .stepPanel {
+    min-height: 560px;
+  }
+  .stepContent {
+    padding: 28px 20px 36px;
+  }
+  .resumeLine {
+    padding: 12px 18px;
+  }
+  .boundaryGrid,
+  .sourceMeta,
+  .twoColumns,
+  .rangeGrid {
+    grid-template-columns: 1fr;
+  }
+  .liveMessage {
+    padding: 0 20px 24px;
+  }
+  .actionRow button {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Shared Buildmates field-guide treatment. Functional density stays; generic dashboard chrome does not. */
+.page{background:var(--paper);color:var(--ink)}
+.header{max-width:none;padding-inline:clamp(18px,4vw,64px);border-bottom:1px solid var(--rule)}
+.wordmark{font-weight:800;text-transform:lowercase}
+.intro{max-width:1240px;padding-top:clamp(48px,8vw,92px)}
+.intro h1{font-weight:800;line-height:.9;letter-spacing:-.07em;text-transform:lowercase}
+.eyebrow{font-family:var(--font-code);color:var(--moss)}
+.progress,.stepPanel{border-color:var(--rule);border-radius:0;box-shadow:6px 6px 0 #ded9ce}
+.progress{background:#e1e8d7}.stepPanel{background:var(--paper-raised)}
+.progress li,.progress li>span:first-child,.boundaryGrid>div,.permissionRow,.signalCard,.statusBadge{border-radius:0}
+.progress .currentStep{background:var(--night);color:var(--paper)}
+.progress .currentStep>span:first-child{background:var(--signal);border-color:var(--signal);color:var(--ink)}
+.stepContent h2{font-weight:800;letter-spacing:-.045em}
+button{background:var(--moss);box-shadow:3px 3px 0 #d3cfc4}.secondaryButton{background:#dfe6d8;color:var(--moss)}

@@ -16,6 +16,11 @@ export const SETUP_STEPS = [
 
 export type SetupStep = (typeof SETUP_STEPS)[number];
 
+// Capability proof is deliberately short-lived. A weekly automation has enough
+// time to refresh it, while an abandoned or revoked host cannot authorize
+// interpersonal actions indefinitely.
+export const AUTOMATION_CAPABILITY_TTL_MS = 8 * 24 * 60 * 60 * 1000;
+
 export const setupStepSchema = z.enum(SETUP_STEPS);
 
 export type SetupProgress = {

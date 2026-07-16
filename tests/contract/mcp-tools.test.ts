@@ -36,6 +36,7 @@ function fixture() {
     allowAttempt: async () => true,
     resolveLinkedUser: async ({ mcpSubject }) => links.has(mcpSubject) ? { userId: links.get(mcpSubject)! } : null,
     validateTaxonomy: async ({ taxonomyVersion, topicIds }) => taxonomyVersion === "1" && topicIds.every((id) => id === "topic-matching"),
+    recordAutomationCapabilityProof: async ({ now }) => ({ capability: "available", checkedAt: now, expiresAt: new Date(Date.parse(now) + 8 * 86_400_000).toISOString() }),
     completeIdentityLink: async ({ mcpSubject, code }) => {
       const entry = codes.get(code);
       if (!entry || entry.used || entry.expiresAt <= Date.parse("2026-07-15T12:00:00.000Z")) return { linked: false, reason: "invalid_or_expired" };
@@ -52,6 +53,12 @@ async function invoke(services: BuildmatesToolServices, name: string, input: Rec
 }
 
 describe("Buildmates MCP contract", () => {
+  it("records automation capability only through an authenticated linked MCP principal", async () => {
+    const { services, links } = fixture();
+    await expect(invoke(services,"probe_automation_capability",{probeId:"probe-auth-check"})).rejects.toThrow("identity_link_required");
+    links.set(SUBJECT_A,"user_alice");
+    await expect(invoke(services,"probe_automation_capability",{probeId:"probe-auth-check"})).resolves.toEqual({capability:"available",checkedAt:"2026-07-15T12:00:00.000Z",expiresAt:"2026-07-23T12:00:00.000Z"});
+  });
   it("publishes one SDK registry with accurate annotations", async () => {
     const { services } = fixture();
     const server = createBuildmatesMcpServer(services);

@@ -1,0 +1,119 @@
+.form {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 5rem) clamp(1rem, 4vw, 3rem);
+  color: #191918;
+  background: #f1f4ee;
+}
+.form header {
+  max-width: 650px;
+  margin-bottom: 2.5rem;
+}
+.form h1 {
+  font:
+    600 clamp(2.25rem, 7vw, 4.75rem)/0.95 Georgia,
+    serif;
+  letter-spacing: -0.04em;
+  margin: 0.4rem 0 1rem;
+}
+.form h2 {
+  font:
+    600 1.4rem Georgia,
+    serif;
+  margin: 2.5rem 0 1rem;
+}
+.form p {
+  line-height: 1.65;
+  color: #55524c;
+}
+.eyebrow {
+  font-size: 0.78rem !important;
+  font-weight: 700;
+  color: #4f5c50 !important;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+.form label {
+  display: grid;
+  gap: 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+.form input,
+.form textarea,
+.form select {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #c8c3b8;
+  border-radius: 4px;
+  background: #fff;
+  padding: 0.8rem;
+  color: #191918;
+  font: inherit;
+}
+.form input:focus,
+.form textarea:focus,
+.form select:focus {
+  outline: 3px solid #d8b34c;
+  outline-offset: 1px;
+}
+.wide {
+  grid-column: 1/-1;
+}
+.wide span {
+  font-weight: 400;
+  color: #706c64;
+}
+.fieldRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 210px;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.check {
+  display: flex !important;
+  align-items: center;
+  gap: 0.6rem !important;
+  margin: 1rem 0;
+}
+.check input {
+  width: 1.1rem !important;
+  height: 1.1rem;
+}
+.form button {
+  border: 0;
+  border-radius: 4px;
+  background: #242d25;
+  color: white;
+  padding: 0.9rem 1.25rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  cursor: pointer;
+}
+.form button:disabled {
+  opacity: 0.6;
+}
+.error {
+  border-left: 4px solid #9f2f25;
+  background: #fff0ec;
+  padding: 0.8rem;
+  color: #7b2119 !important;
+}
+@media (max-width: 640px) {
+  .grid,
+  .fieldRow {
+    grid-template-columns: 1fr;
+  }
+  .wide {
+    grid-column: auto;
+  }
+  .form {
+    padding-top: 2rem;
+  }
+  .form h1 {
+    font-size: 2.65rem;
+  }
+}

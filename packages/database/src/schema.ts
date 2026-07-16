@@ -261,7 +261,7 @@ export const builderMatchIndex = sqliteTable("builder_match_index", {
   coarseLocation: text("coarse_location"),
   timezone: text("timezone"),
   updatedAt: updated(),
-});
+}, (t) => [index("builder_match_index_taxonomy_version_idx").on(t.taxonomyVersionId, t.version)]);
 
 export const pairScores = sqliteTable(
   "pair_scores",
@@ -290,6 +290,8 @@ export const pairScores = sqliteTable(
       t.indexVersionB,
       t.weightVersion,
     ),
+    index("pair_scores_user_a_expiry_score_idx").on(t.userAId, t.expiresAt, t.totalBasisPoints),
+    index("pair_scores_user_b_expiry_score_idx").on(t.userBId, t.expiresAt, t.totalBasisPoints),
     check("pair_score_canonical_pair", sql`${t.userAId} < ${t.userBId}`),
     check("pair_score_range", sql`${t.totalBasisPoints} between 0 and 10000`),
   ],
@@ -428,6 +430,9 @@ export const profiles = sqliteTable(
       .notNull()
       .default(false),
     coarseLocation: text("coarse_location"),
+    locationMapOptIn: integer("location_map_opt_in", { mode: "boolean" })
+      .notNull()
+      .default(false),
     timezone: text("timezone"),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }),
     createdAt: created(),
@@ -473,11 +478,15 @@ export const projects = sqliteTable(
     status: text("status", { enum: ["draft", "active", "archived", "deleted"] })
       .notNull()
       .default("draft"),
+    stage: text("stage").notNull().default("exploring"),
+    indexable: integer("indexable", { mode: "boolean" }).notNull().default(false),
+    publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
     createdAt: created(),
     updatedAt: updated(),
   },
   (t) => [
-    uniqueIndex("project_owner_slug_unique").on(t.ownerUserId, t.slug),
+    uniqueIndex("project_slug_unique").on(t.slug),
     check(
       "project_audience_valid",
       sql`${t.audience} in ('public','signed_in','suggested_connections','mutual_connections','private')`,
@@ -485,6 +494,45 @@ export const projects = sqliteTable(
     check("project_allow_matching_boolean", sql`${t.allowMatching} in (0,1)`),
   ],
 );
+
+export const profileFields = sqliteTable(
+  "profile_fields",
+  {
+    profileId: text("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+    fieldKey: text("field_key").notNull(),
+    valueJson: text("value_json").notNull(),
+    audience: text("audience", { enum: ["public", "signed_in", "suggested_connections", "mutual_connections", "private"] }).notNull().default("private"),
+    cohortScopeId: text("cohort_scope_id").references(() => cohorts.id),
+    allowMatching: integer("allow_matching", { mode: "boolean" }).notNull().default(false),
+    sourceStatus: text("source_status", { enum: ["generated", "confirmed"] }).notNull().default("confirmed"),
+    provenance: text("provenance", { enum: ["self_reported", "codex_summary", "connected_app", "system"] }).notNull().default("self_reported"),
+    updatedAt: updated(),
+  },
+  (t) => [primaryKey({ columns: [t.profileId, t.fieldKey] }), index("profile_fields_audience_idx").on(t.profileId, t.audience), check("profile_field_audience_valid", sql`${t.audience} in ('public','signed_in','suggested_connections','mutual_connections','private')`), check("profile_field_matching_boolean", sql`${t.allowMatching} in (0,1)`), check("profile_field_source_valid", sql`${t.sourceStatus} in ('generated','confirmed')`), check("profile_field_provenance_valid", sql`${t.provenance} in ('self_reported','codex_summary','connected_app','system')`)],
+);
+
+export const profileStatistics = sqliteTable("profile_statistics", {
+  profileId: text("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  statKey: text("stat_key").notNull(),
+  label: text("label").notNull(),
+  value: text("value").notNull(),
+  provenance: text("provenance", { enum: ["self_reported", "connected_app", "system"] }).notNull(),
+  audience: text("audience", { enum: ["public", "signed_in", "suggested_connections", "mutual_connections", "private"] }).notNull().default("private"),
+  updatedAt: updated(),
+}, (t) => [primaryKey({ columns: [t.profileId, t.statKey] }), check("profile_stat_audience_valid", sql`${t.audience} in ('public','signed_in','suggested_connections','mutual_connections','private')`), check("profile_stat_provenance_valid", sql`${t.provenance} in ('self_reported','connected_app','system')`)]);
+
+export const projectLinks = sqliteTable("project_links", {
+  id: text("id").primaryKey(), projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), label: text("label").notNull(), url: text("url").notNull(), position: integer("position").notNull().default(0), createdAt: created(),
+});
+export const projectMedia = sqliteTable("project_media", {
+  id: text("id").primaryKey(), projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), assetId: text("asset_id").notNull().references(() => surfaceAssets.id), altText: text("alt_text").notNull(), position: integer("position").notNull().default(0), createdAt: created(),
+});
+export const projectUpdates = sqliteTable("project_updates", {
+  id: text("id").primaryKey(), projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), authorUserId: userRef("author_user_id"), body: text("body").notNull(), audience: text("audience", { enum: ["public", "signed_in", "suggested_connections", "mutual_connections", "private"] }).notNull().default("public"), createdAt: created(), editedAt: integer("edited_at", { mode: "timestamp_ms" }),
+}, (t) => [check("project_update_audience_valid", sql`${t.audience} in ('public','signed_in','suggested_connections','mutual_connections','private')`)]);
+export const projectTaxonomyItems = sqliteTable("project_taxonomy_items", {
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), kind: text("kind", { enum: ["topic", "tool", "domain"] }).notNull(), taxonomyItemId: text("taxonomy_item_id").notNull(), createdAt: created(),
+}, (t) => [primaryKey({ columns: [t.projectId, t.kind, t.taxonomyItemId] }), check("project_taxonomy_kind_valid", sql`${t.kind} in ('topic','tool','domain')`)]);
 export const projectCollaborators = sqliteTable(
   "project_collaborators",
   {
@@ -525,13 +573,31 @@ export const inviteLinks = sqliteTable(
     }).notNull(),
     tokenHash: text("token_hash").notNull(),
     targetId: text("target_id"),
+    recipientUserId: text("recipient_user_id").references(() => users.id),
     maximumUses: integer("maximum_uses").notNull().default(1),
     useCount: integer("use_count").notNull().default(0),
     expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
     revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
     createdAt: created(),
   },
-  (t) => [uniqueIndex("invite_token_hash_unique").on(t.tokenHash)],
+  (t) => [
+    uniqueIndex("invite_token_hash_unique").on(t.tokenHash),
+    index("invite_recipient_active_idx").on(t.recipientUserId, t.expiresAt),
+  ],
+);
+export const inviteRedemptions = sqliteTable(
+  "invite_redemptions",
+  {
+    inviteId: text("invite_id")
+      .notNull()
+      .references(() => inviteLinks.id),
+    userId: userRef("user_id"),
+    acceptedAt: integer("accepted_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.inviteId, t.userId] }),
+    index("invite_redemptions_user_idx").on(t.userId, t.acceptedAt),
+  ],
 );
 
 export const cohorts = sqliteTable(
@@ -792,6 +858,8 @@ export const matchProposals = sqliteTable(
     attemptNumber: integer("attempt_number").notNull(),
     evidenceVersionA: integer("evidence_version_a").notNull(),
     evidenceVersionB: integer("evidence_version_b").notNull(),
+    taxonomyVersion: integer("taxonomy_version").notNull().default(1),
+    weightVersion: integer("weight_version").notNull().default(1),
     acceptanceModeA: text("acceptance_mode_a", {
       enum: ["manual", "full_autopilot"],
     }).notNull(),
@@ -1007,6 +1075,29 @@ export const reconnectRequests = sqliteTable("reconnect_requests", {
     .default("pending"),
   createdAt: created(),
   respondedAt: integer("responded_at", { mode: "timestamp_ms" }),
+}, (t) => [
+  uniqueIndex("reconnect_one_pending_per_connection").on(t.connectionId).where(sql`${t.response} = 'pending'`),
+]);
+
+export const connectionSnapshots = sqliteTable(
+  "connection_snapshots",
+  {
+    connectionId: text("connection_id")
+      .notNull()
+      .references(() => connections.id),
+    subjectUserId: userRef("subject_user_id"),
+    displayName: text("display_name").notNull(),
+    summary: text("summary").notNull(),
+    capturedAt: integer("captured_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.connectionId, t.subjectUserId] })],
+);
+export const connectionContextSnapshots = sqliteTable("connection_context_snapshots", {
+  connectionId: text("connection_id").primaryKey().references(() => connections.id),
+  reason: text("reason").notNull(),
+  sharedContextJson: text("shared_context_json").notNull().default("[]"),
+  themeTopicId: text("theme_topic_id").references(() => topics.id),
+  capturedAt: integer("captured_at", { mode: "timestamp_ms" }).notNull(),
 });
 
 export const rooms = sqliteTable(
@@ -1109,6 +1200,75 @@ export const roomUpgradeProposals = sqliteTable("room_upgrade_proposals", {
     .default("proposed"),
   createdAt: created(),
 });
+export const roomUpgradeResponses = sqliteTable(
+  "room_upgrade_responses",
+  {
+    proposalId: text("proposal_id")
+      .notNull()
+      .references(() => roomUpgradeProposals.id),
+    userId: userRef("user_id"),
+    response: text("response", { enum: ["accepted", "declined"] }).notNull(),
+    createdAt: created(),
+  },
+  (t) => [primaryKey({ columns: [t.proposalId, t.userId] })],
+);
+export const roomModules = sqliteTable(
+  "room_modules",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id").notNull().references(() => rooms.id),
+    proposalId: text("proposal_id").notNull().references(() => roomUpgradeProposals.id),
+    kind: text("kind", {
+      enum: ["resource_shelf", "experiment_tracker", "decision_log", "feedback_queue", "milestone_tracker"],
+    }).notNull(),
+    configJson: text("config_json").notNull().default("{}"),
+    active: integer("active", { mode: "boolean" }).notNull().default(true),
+    createdAt: created(),
+  },
+  (t) => [
+    uniqueIndex("room_module_kind_unique").on(t.roomId, t.kind),
+    index("room_module_room_idx").on(t.roomId, t.active),
+  ],
+);
+export const meetingProposals = sqliteTable(
+  "meeting_proposals",
+  {
+    id: text("id").primaryKey(),
+    roomId: text("room_id").notNull().references(() => rooms.id),
+    proposerUserId: userRef("proposer_user_id"),
+    parentProposalId: text("parent_proposal_id"),
+    startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
+    endsAt: integer("ends_at", { mode: "timestamp_ms" }).notNull(),
+    timezone: text("timezone").notNull(),
+    note: text("note"),
+    status: text("status", { enum: ["proposed", "accepted", "declined", "countered", "cancelled"] })
+      .notNull()
+      .default("proposed"),
+    respondedByUserId: text("responded_by_user_id").references(() => users.id),
+    respondedAt: integer("responded_at", { mode: "timestamp_ms" }),
+    createdAt: created(),
+    updatedAt: updated(),
+  },
+  (t) => [
+    index("meeting_proposal_room_status_idx").on(t.roomId, t.status, t.createdAt),
+    check("meeting_proposal_time_order", sql`${t.endsAt} > ${t.startsAt}`),
+  ],
+);
+export const availabilityWindows = sqliteTable("availability_windows", {
+  id: text("id").primaryKey(),
+  roomId: text("room_id").notNull().references(() => rooms.id),
+  userId: userRef("user_id"),
+  startsAt: integer("starts_at", { mode: "timestamp_ms" }).notNull(),
+  endsAt: integer("ends_at", { mode: "timestamp_ms" }).notNull(),
+  timezone: text("timezone").notNull(),
+  status: text("status", { enum: ["approved", "withdrawn"] }).notNull().default("approved"),
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  uniqueIndex("availability_window_owner_interval_unique").on(t.roomId, t.userId, t.startsAt, t.endsAt),
+  index("availability_window_room_status_time_idx").on(t.roomId, t.status, t.startsAt, t.endsAt),
+  check("availability_window_time_order", sql`${t.endsAt} > ${t.startsAt}`),
+]);
 
 export const circles = sqliteTable("circles", {
   id: text("id").primaryKey(),
@@ -1148,6 +1308,19 @@ export const circleMemberships = sqliteTable(
     index("circle_membership_user_status_circle_idx").on(t.userId, t.status, t.circleId),
   ],
 );
+export const circleMessages = sqliteTable("circle_messages", {
+  id: text("id").primaryKey(),
+  circleId: text("circle_id").notNull().references(() => circles.id),
+  senderUserId: userRef("sender_user_id"),
+  clientMessageId: text("client_message_id").notNull(),
+  body: text("body").notNull(),
+  createdAt: created(),
+  editedAt: integer("edited_at", { mode: "timestamp_ms" }),
+  deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+}, (t) => [
+  uniqueIndex("circle_message_client_unique").on(t.circleId, t.senderUserId, t.clientMessageId),
+  index("circle_message_circle_time_idx").on(t.circleId, t.createdAt, t.id),
+]);
 export const circleProposals = sqliteTable("circle_proposals", {
   id: text("id").primaryKey(),
   circleId: text("circle_id")
@@ -1461,6 +1634,7 @@ export const calendarEventReceipts = sqliteTable(
   {
     id: text("id").primaryKey(),
     roomId: text("room_id").notNull().references(() => rooms.id),
+    meetingProposalId: text("meeting_proposal_id").references(() => meetingProposals.id),
     attachedByUserId: userRef("attached_by_user_id"),
     provider: text("provider").notNull(),
     providerEventId: text("provider_event_id").notNull(),

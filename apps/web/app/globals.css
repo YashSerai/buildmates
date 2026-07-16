@@ -1,12 +1,21 @@
 @import "tailwindcss";
 
-:root { --background: #f0f2e9; --foreground: #171915; color-scheme: light; }
+:root {
+  --background: #f3f0e7; --foreground: #181b17;
+  --paper: #f3f0e7; --paper-raised: #fffdf7; --ink: #181b17; --ink-soft: #51574e;
+  --night: #1b211b; --moss: #244f39; --leaf: #a9bc91; --signal: #e87543;
+  --rule: #b9b9ab; --rule-dark: #667063;
+  --font-display: Arial, Helvetica, sans-serif;
+  --font-body: Arial, Helvetica, sans-serif;
+  --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, monospace;
+  --font-sans: var(--font-body);
+  --font-mono: var(--font-code);
 }
 
 * { box-sizing: border-box; }
@@ -15,11 +24,14 @@ body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   text-rendering: optimizeLegibility;
 }
 a { color: inherit; }
 button, input, select, textarea { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
-:focus-visible { outline: 3px solid #b45a35; outline-offset: 3px; }
+h1, h2, h3 { font-family: var(--font-display) !important; }
+button, input, select, textarea { border-radius: 0 !important; }
+:focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
+::selection { background: var(--leaf); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }

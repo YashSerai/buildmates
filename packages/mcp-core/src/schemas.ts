@@ -69,5 +69,12 @@ export const profileModelSchema = z.object({
   audience: audienceSchema,
   allowMatching: z.boolean(),
   acceptanceMode: z.enum(["manual", "full_autopilot"]),
+  statistics: z.array(z.object({
+    key: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
+    label: z.string().trim().min(1).max(50),
+    value: z.string().trim().min(1).max(80),
+    provenance: z.enum(["self_reported", "connected_app", "system"]),
+    audience: audienceSchema,
+  }).strict()).max(12).optional(),
   idempotencyKey: idempotencyKeySchema,
 }).strict();

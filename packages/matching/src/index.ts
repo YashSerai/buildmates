@@ -1,1 +1,9 @@
-export const matchingPackage = "@buildmates/matching";
+export * from "./taxonomy";
+export * from "./normalize";
+export * from "./builder-index";
+export * from "./features";
+export * from "./score";
+export * from "./retrieve";
+export * from "./explain";
+export * from "./state-machine";
+export * from "./fixtures";

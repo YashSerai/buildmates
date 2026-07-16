@@ -19,6 +19,7 @@ export type BuildmatesToolServices = {
   resolveLinkedUser(input: { mcpSubject: string; workspaceScope: string }): Promise<{ userId: string } | null>;
   validateTaxonomy(input: { taxonomyVersion: string; topicIds: string[]; toolIds: string[]; domainIds: string[]; stageIds: string[]; collaborationIntentIds: string[] }): Promise<boolean>;
   executeRemoteTool?(input: { name: string; input: unknown; mcpSubject: string }): Promise<unknown>;
+  recordAutomationCapabilityProof?(input: { userId: string; now: string }): Promise<{ capability: "available"; checkedAt: string; expiresAt: string }>;
   now?: () => Date;
   createId?: () => string;
 };
@@ -183,15 +184,19 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     const room = await requiredRecord<Record<string, unknown>>(services, "room", input.roomId as string, context.userId!);
     return { roomId: room.id, participants: room.value.participants ?? [], timezones: room.value.timezones ?? [], candidateWindows: room.value.candidateWindows ?? [], agenda: room.value.agenda ?? "Continue the Buildmates introduction", options: ["codex_deep_link", "copy_prompt", "manual_times", "ics"] };
   }),
-  tool("attach_calendar_event", "Attach Calendar event receipt", "After the user's Calendar provider confirms creation, stores only the minimal event receipt. This is a consequential write.", z.object({ receiptId: idSchema, roomId: idSchema, provider: z.string().trim().min(1).max(80), providerEventId: z.string().trim().min(1).max(256), startsAt: isoDateSchema, endsAt: isoDateSchema, participantLabels: z.array(z.string().trim().min(1).max(120)).min(2).max(30), status: z.enum(["confirmed", "cancelled"]), providerConfirmed: z.literal(true), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "attach_calendar_event", input, async () => {
+  tool("attach_calendar_event", "Attach Calendar event receipt", "After the user's Calendar provider confirms an accepted Buildmates meeting, stores only the minimal event receipt. This is a consequential write.", z.object({ receiptId: idSchema, roomId: idSchema, meetingProposalId: idSchema, provider: z.string().trim().min(1).max(80), providerEventId: z.string().trim().min(1).max(256), startsAt: isoDateSchema, endsAt: isoDateSchema, participantLabels: z.array(z.string().trim().min(1).max(120)).min(2).max(30), status: z.enum(["confirmed", "cancelled"]), providerConfirmed: z.literal(true), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "attach_calendar_event", input, async () => {
     const room = await requiredRecord(services, "room", input.roomId as string, context.userId!);
     if (Date.parse(input.endsAt as string) <= Date.parse(input.startsAt as string)) throw new Error("calendar_interval_invalid");
-    const receipt = { roomId: room.id, provider: input.provider, providerEventId: input.providerEventId, startsAt: input.startsAt, endsAt: input.endsAt, participantLabels: input.participantLabels, status: input.status };
+    const receipt = { roomId: room.id, meetingProposalId: input.meetingProposalId, provider: input.provider, providerEventId: input.providerEventId, startsAt: input.startsAt, endsAt: input.endsAt, participantLabels: input.participantLabels, status: input.status, trustedProviderConfirmation: true };
     return confirmed(await services.repository.write({ kind: "calendar_receipt", id: input.receiptId as string, ownerUserId: context.userId!, memberUserIds: room.memberUserIds, value: receipt, now: now(services) }));
   }), false, true),
 
   tool("get_automation_checkpoint", "Get automation checkpoint", "Returns the linked user's resumable checkpoint for one automation kind.", z.object({ kind: z.enum(["work_pulse", "matching", "notifications", "profile_refresh"]), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => ({ checkpoint: value(await services.repository.readForMember("automation_checkpoint", `${context.userId}:${input.kind}`, context.userId!)) })),
   tool("update_automation_checkpoint", "Update automation checkpoint", "Stores a resumable cursor, cadence state, and last outcome for the linked user's automation.", z.object({ checkpointId: idSchema, kind: z.enum(["work_pulse", "matching", "notifications", "profile_refresh"]), cursor: z.string().max(500).nullable(), state: z.enum(["configured", "running", "succeeded", "needs_attention", "disabled"]), lastOutcome: z.string().trim().max(500), enabled: z.boolean().optional(), cadence: z.enum(["manual", "daily", "twice_weekly", "weekly"]).nullable().optional(), nextRunAt: isoDateSchema.nullable(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "update_automation_checkpoint", input, async () => confirmed(await services.repository.write({ kind: "automation_checkpoint", id: `${context.userId}:${input.kind}`, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) })))),
+  tool("probe_automation_capability", "Confirm automation capability", "Records a short-lived server-verified proof that the authenticated Buildmates MCP connection can perform writes. Browser requests cannot create this proof.", z.object({ probeId: idSchema, ...workspaceInput }).strict(), writeAnnotations, async (_input, context, services) => {
+    if (!services.recordAutomationCapabilityProof) throw new Error("automation_probe_unavailable");
+    return services.recordAutomationCapabilityProof({ userId: context.userId!, now: now(services) });
+  }),
 ] as const;
 
 export const BUILD_MATES_MCP_TOOLS = buildmatesToolRegistry.map((definition) => definition.name);
