@@ -9,8 +9,8 @@ Buildmates is releasable only when:
 - plugin onboarding is exercised from a clean session where account access permits;
 - desktop and phone browser states are inspected, including loading, empty, error, permission, long-content, and network-failure cases;
 - source-control, deployment, browser, and runtime evidence are recorded separately;
-- rollback instructions exist for migrations and generated surfaces;
-- any human-only second-account validation is isolated after every automated multi-identity check passes.
+- the deployment, migration, data, and generated-surface procedures in `docs/release/rollback.md` are current;
+- any human-only canonical-account authentication is isolated, and a separate second identity is required only for live two-user validation after automated multi-identity checks pass.
 
 ## Evidence by truth layer
 

@@ -1,6 +1,6 @@
 # Buildmates Launch Goal
 
-Status: ready to activate  
+Status: active — launch readiness gate
 Activation phrase: `go`
 
 ## Terminal outcome
