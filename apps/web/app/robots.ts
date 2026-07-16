@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://buildmates-network.yashns.chatgpt.site";
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://buildmates.yashns.chatgpt.site";
   return {
     rules: [{
       userAgent: "*",

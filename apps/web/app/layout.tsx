@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://buildmates-network.yashns.chatgpt.site"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://buildmates.yashns.chatgpt.site"),
   title: { default: "Buildmates", template: "%s | Buildmates" },
   description: "A builder network shaped by what people are working on now.",
   icons: {
