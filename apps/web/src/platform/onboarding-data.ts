@@ -851,6 +851,7 @@ export async function runPrivacyCommand(
       DB.prepare("DELETE FROM notifications WHERE user_id=?").bind(userId),
       DB.prepare("DELETE FROM automation_checkpoints WHERE user_id=?").bind(userId),
       DB.prepare("DELETE FROM setup_states WHERE user_id=?").bind(userId),
+      DB.prepare("UPDATE web_sessions SET revoked_at=COALESCE(revoked_at,?) WHERE user_id=?").bind(now,userId),
       DB.prepare("UPDATE identity_links SET revoked_at=COALESCE(revoked_at,?) WHERE user_id=?").bind(now,userId),
       DB.prepare("UPDATE identity_principals SET revoked_at=COALESCE(revoked_at,?) WHERE id IN (SELECT principal_id FROM identity_links WHERE user_id=?)").bind(now,userId),
       DB.prepare("UPDATE reports SET details=NULL,updated_at=? WHERE reporter_user_id=?").bind(now,userId),

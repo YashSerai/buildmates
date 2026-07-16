@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
+import { signInTestUser } from "./helpers/auth";
 
-test("website preparation does not impersonate a Codex identity link",async({page},testInfo)=>{await page.setExtraHTTPHeaders({"oai-authenticated-user-id":`website-only-${testInfo.project.name}-${Date.now()}`,"oai-authenticated-user-issuer":"local-e2e"});await page.goto("/onboarding");await expect(page.getByText("Website preparation saved")).toBeVisible();await expect(page.getByRole("heading",{name:"Connect Buildmates in Codex"})).toBeVisible();await expect(page.getByText("0 of 11")).toBeVisible();});
+test("website preparation does not impersonate a Codex identity link",async({page},testInfo)=>{await signInTestUser(page,`website-only-${testInfo.project.name}-${Date.now()}`);await page.goto("/onboarding");await expect(page.getByText("Website preparation saved")).toBeVisible();await expect(page.getByRole("heading",{name:"Connect Buildmates in Codex"})).toBeVisible();await expect(page.getByText("0 of 11")).toBeVisible();});
 
 test("sparse-context builder completes the mandatory first run and resumes", async ({ page }, testInfo) => {
   await useIdentity(page, `onboarding-${testInfo.project.name}-${Date.now()}`);
@@ -58,8 +59,7 @@ test("source policy language is individual, non-exhaustive, and keyboard operabl
 });
 
 async function useIdentity(page: import("@playwright/test").Page, subject: string) {
-  await page.setExtraHTTPHeaders({ "oai-authenticated-user-id": subject, "oai-authenticated-user-issuer": "local-e2e", "oai-authenticated-user-full-name": "Buildmates%20Tester", "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8" });
-  await page.goto("/");
+  await signInTestUser(page, subject);
   await page.evaluate(async()=>{const codeResponse=await fetch("/api/identity/link-code",{method:"POST"});const {code}=await codeResponse.json() as {code:string};const linked=await fetch("/api/testing/complete-link",{method:"POST",headers:{"content-type":"application/json","x-buildmates-e2e":"1"},body:JSON.stringify({code})});if(!linked.ok)throw new Error(`e2e_link_failed:${linked.status}:${await linked.text()}`)});
 }
 async function assertNoOverflow(page: import("@playwright/test").Page) { const size = await page.locator("main").evaluate((element) => ({ clientWidth: element.clientWidth, scrollWidth: element.scrollWidth })); expect(size.scrollWidth - size.clientWidth).toBeLessThanOrEqual(1); }

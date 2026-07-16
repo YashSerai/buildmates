@@ -1,8 +1,7 @@
 import { importPKCS8, SignJWT } from "jose";
-import type { PlatformIdentity } from "./identity";
 
 export async function createMcpAuthorizationAssertion(
-  identity: PlatformIdentity,
+  identity: { channel: "web"; subject: string; workspaceScope: "global" },
   config: { privateKeyPem: string; issuer: string; audience: string; keyId: string; now?: number },
 ): Promise<string> {
   const now = config.now ?? Math.floor(Date.now() / 1000);

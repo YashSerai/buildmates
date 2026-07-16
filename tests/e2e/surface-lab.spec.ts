@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { signInTestUser } from "./helpers/auth";
+test.beforeEach(async({page},testInfo)=>{await signInTestUser(page,`surfaces-${testInfo.project.name}-${testInfo.title}`)});
 
 test("protected Surface Lab renders both isolated responsive specs and trusted actions", async ({ page }) => {
   await page.goto("/surface-lab");

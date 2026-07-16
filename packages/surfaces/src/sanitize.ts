@@ -124,6 +124,6 @@ export function surfaceAssetResponseHeaders(contentType: string): Readonly<Recor
     "Cross-Origin-Resource-Policy": "same-site",
     "Referrer-Policy": "no-referrer",
     "Cache-Control": "private, no-store",
-    "Vary": "oai-authenticated-user-id, Authorization",
+    "Vary": "Cookie, Authorization",
   };
 }

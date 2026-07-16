@@ -72,6 +72,41 @@ export const identityLinkCodes = sqliteTable(
   ],
 );
 
+export const webLoginAttempts = sqliteTable(
+  "web_login_attempts",
+  {
+    stateHash: text("state_hash").primaryKey(),
+    provider: text("provider", { enum: ["github"] }).notNull(),
+    codeVerifier: text("code_verifier").notNull(),
+    returnTo: text("return_to").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    consumedAt: integer("consumed_at", { mode: "timestamp_ms" }),
+    ...timestamps,
+  },
+  (table) => [index("web_login_attempt_expiry_idx").on(table.expiresAt)],
+);
+
+export const webSessions = sqliteTable(
+  "web_sessions",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull(),
+    principalId: text("principal_id")
+      .notNull()
+      .references(() => identityPrincipals.id),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    lastSeenAt: integer("last_seen_at", { mode: "timestamp_ms" }).notNull(),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("web_session_token_hash_unique").on(table.tokenHash),
+    index("web_session_user_idx").on(table.userId, table.expiresAt),
+    index("web_session_principal_idx").on(table.principalId, table.expiresAt),
+  ],
+);
+
 export const oauthTokens = sqliteTable(
   "oauth_tokens",
   {

@@ -20,7 +20,7 @@ export default async function CapabilityCheckPage() {
       ) : (
         <>
           <p>Public reachability is working. Stable authenticated identity is not present in this request, so storage diagnostics are unavailable.</p>
-          <Link href="/signin-with-chatgpt?return_to=%2Fcapability-check">Sign in to run protected checks</Link>
+          <Link href="/api/auth/github/start?return_to=%2Fcapability-check">Sign in with GitHub to run protected checks</Link>
         </>
       )}
       <p style={{ marginTop: 40 }}><Link href="/">Return to Buildmates</Link></p>

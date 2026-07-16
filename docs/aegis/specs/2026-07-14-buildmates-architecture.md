@@ -50,9 +50,9 @@ When MCP is external, requests to the web data authority use a short-lived signe
 
 Anonymous access is allowed for the landing page and owner-authorized public profiles, projects, cohorts, maps, and graph data.
 
-Protected website routes use ChatGPT Sites' platform-owned Sign in with ChatGPT flow when the public-user capability gate passes. Server routes map the authenticated provider subject to an internal Buildmates `userId`. Client state never authorizes access.
+Protected website routes use app-owned GitHub OAuth for the launch release. The server performs the authorization-code exchange, verifies GitHub's numeric account ID, maps it to a random internal Buildmates `userId`, and issues a hashed, revocable, HttpOnly session. Client state and caller-supplied `oai-authenticated-*` headers never authorize access.
 
-The public gate separates anonymous reachability from authenticated subject quality. If the public Site itself is unreachable to non-owners, hosting—not GitHub OAuth—must change. The `IdentityProvider` interface retains GitHub OAuth as a dormant fallback only when the Site is reachable but Sign in with ChatGPT cannot provide a stable server-verifiable subject. The product does not run two implicit identity systems or merge accounts by email.
+The public gate separates anonymous reachability from authenticated subject quality. Anonymous reachability passed, while Sign in with ChatGPT subject authenticity failed, so the `IdentityProvider` boundary selects GitHub OAuth for the website. ChatGPT/Codex remains a separate MCP OAuth channel joined only by the explicit single-use linking code. The product does not run two implicit website identity systems or merge accounts by email.
 
 Buildmates is its own MCP OAuth 2.1 authorization server/resource server using authorization code with PKCE. Authorization uses the active website `IdentityProvider`, but issues a stable, opaque MCP `sub` distinct from the web provider subject. Discovery, registered redirect URIs, authorization, token issuance/validation, refresh rotation, revocation, expiry, and audience are contract-tested. The opaque MCP principal has no Buildmates user-data authority until the explicit link completes.
 

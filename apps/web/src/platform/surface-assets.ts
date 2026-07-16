@@ -99,5 +99,5 @@ async function hexDigest(bytes: Uint8Array): Promise<string> {
 }
 
 function privateNotFound(): Response {
-  return Response.json({ error: "not_found" }, { status: 404, headers: { "cache-control": "private, no-store", vary: "oai-authenticated-user-id, Authorization" } });
+  return Response.json({ error: "not_found" }, { status: 404, headers: { "cache-control": "private, no-store", vary: "Cookie, Authorization" } });
 }

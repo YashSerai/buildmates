@@ -25,4 +25,4 @@ export async function POST(request: Request) {
   }
 }
 
-function privateHeaders(): HeadersInit { return { "cache-control": "private, no-store", pragma: "no-cache", vary: "oai-authenticated-user-id" }; }
+function privateHeaders(): HeadersInit { return { "cache-control": "private, no-store", pragma: "no-cache", vary: "Cookie" }; }

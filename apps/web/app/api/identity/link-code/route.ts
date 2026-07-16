@@ -81,6 +81,6 @@ function privateHeaders(): HeadersInit {
   return {
     "cache-control": "private, no-store",
     pragma: "no-cache",
-    vary: "oai-authenticated-user-id",
+    vary: "Cookie",
   };
 }

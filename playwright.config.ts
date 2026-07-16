@@ -6,7 +6,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: "line",
-  use: { baseURL: "http://localhost:3100", trace: "retain-on-failure", extraHTTPHeaders: { "oai-authenticated-user-id": "surface-lab-test-user", "oai-authenticated-user-issuer": "local-e2e" } },
-  webServer: { command: "npm run dev --workspace @buildmates/web -- --port 3100", url: "http://localhost:3100", reuseExistingServer: true, timeout: 120_000 },
+  use: { baseURL: "http://localhost:3100", trace: "retain-on-failure" },
+  webServer: { command: "cross-env BUILDMATES_E2E=1 npm run dev --workspace @buildmates/web -- --port 3100", url: "http://localhost:3100", reuseExistingServer: true, timeout: 120_000 },
   projects: [{ name: "chromium-desktop", use: { ...devices["Desktop Chrome"] } }, { name: "chromium-phone", use: { ...devices["Pixel 7"] } }],
 });

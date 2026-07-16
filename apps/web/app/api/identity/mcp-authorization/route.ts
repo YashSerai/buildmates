@@ -1,11 +1,11 @@
-import { getPlatformIdentity } from "@/src/platform/identity";
+import { getCurrentUser } from "@/src/auth/require-user";
 import { createMcpAuthorizationAssertion } from "@/src/platform/mcp-authorization";
 
 export async function GET(request: Request) {
-  const identity = await getPlatformIdentity();
-  if (!identity) {
+  const user = await getCurrentUser();
+  if (!user) {
     const returnTo = new URL(request.url).pathname + new URL(request.url).search;
-    return Response.redirect(new URL(`/signin-with-chatgpt?return_to=${encodeURIComponent(returnTo)}`, request.url), 302);
+    return Response.redirect(new URL(`/api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`, request.url), 302);
   }
   const privateKeyPem = process.env.MCP_WEB_AUTHORIZATION_PRIVATE_KEY_PEM;
   const mcpBaseUrl = process.env.MCP_OAUTH_BASE_URL;
@@ -13,7 +13,7 @@ export async function GET(request: Request) {
   const returnTo = new URL(request.url).searchParams.get("return_to");
   if (!returnTo || !isAllowedMcpCallback(returnTo, mcpBaseUrl)) return Response.json({ error: "invalid_return_to" }, { status: 400 });
 
-  const assertion = await createMcpAuthorizationAssertion(identity, {
+  const assertion = await createMcpAuthorizationAssertion({ channel: "web", subject: user.id, workspaceScope: "global" }, {
     privateKeyPem,
     issuer: process.env.MCP_WEB_AUTHORIZATION_ISSUER || "buildmates-web",
     audience: process.env.MCP_WEB_AUTHORIZATION_AUDIENCE || "buildmates-mcp-authorization",

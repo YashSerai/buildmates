@@ -3,6 +3,7 @@ import { requireUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { getIdentityConnectionStatus } from "@/src/platform/identity-connections";
 import { ConnectionsClient } from "./ConnectionsClient";
+import { SignOutButton } from "@/components/auth/SignOutButton";
 import styles from "./connections.module.css";
 
 export const metadata: Metadata = {
@@ -28,11 +29,9 @@ export default async function ConnectionsPage() {
         </a>
         <div className={styles.account}>
           <span className={styles.accountName}>
-            {user.identity.displayName ?? "Signed in with ChatGPT"}
+            {user.identity.displayName ?? "Signed in with GitHub"}
           </span>
-          <a className={styles.signOut} href="/signout-with-chatgpt?return_to=%2F">
-            Sign out
-          </a>
+          <SignOutButton className={styles.signOut} />
         </div>
       </header>
 

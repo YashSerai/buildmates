@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { signInTestUser } from "./helpers/auth";
 
 test("authenticated user can approve a one-time Codex link without layout overflow", async ({ page }, testInfo) => {
   await useIsolatedIdentity(page, `approval-${testInfo.project.name}-${Date.now()}`);
@@ -51,10 +52,5 @@ test("connection approval has a visible keyboard focus state and honors reduced 
 });
 
 async function useIsolatedIdentity(page: import("@playwright/test").Page, subject: string) {
-  await page.setExtraHTTPHeaders({
-    "oai-authenticated-user-id": subject,
-    "oai-authenticated-user-issuer": "local-e2e",
-    "oai-authenticated-user-full-name": "Buildmates%20Tester",
-    "oai-authenticated-user-full-name-encoding": "percent-encoded-utf-8",
-  });
+  await signInTestUser(page, subject);
 }

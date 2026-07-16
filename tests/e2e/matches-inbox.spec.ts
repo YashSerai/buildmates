@@ -1,4 +1,6 @@
 import { expect,test } from "@playwright/test";
+import { signInTestUser } from "./helpers/auth";
+test.beforeEach(async({page},testInfo)=>{await signInTestUser(page,`matches-${testInfo.project.name}-${testInfo.title}`)});
 
 test("matches provides honest cold-start actions without horizontal overflow",async({page})=>{await page.goto("/matches");await expect(page).toHaveTitle("Matches | Buildmates");await expect(page.getByRole("heading",{name:"People worth meeting now."})).toBeVisible();await expect(page.getByRole("heading",{name:"No strong match yet"}).first()).toBeVisible();await expect(page.getByRole("link",{name:"Explore projects"}).first()).toBeVisible();await expect(page.getByRole("link",{name:"Invite a builder"}).first()).toBeVisible();const dimensions=await page.locator("main").evaluate((element)=>({client:element.clientWidth,scroll:element.scrollWidth}));expect(dimensions.scroll-dimensions.client).toBeLessThanOrEqual(1)});
 
