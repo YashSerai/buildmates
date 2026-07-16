@@ -25,7 +25,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       <Link className={styles.action} href={profile ? `/builders/${profile.handle}` : "/onboarding"}>{profile ? "View your profile" : "Finish onboarding"}</Link>
       <SignOutButton className={styles.secondary} />
     </> : <>
-      <p className={styles.lead}>Sign in with GitHub to create your Buildmates account. You can then connect ChatGPT/Codex without sharing GitHub credentials or repository access.</p>
+      <p className={styles.lead}>Sign in with GitHub to create your Buildmates account. You can then connect Buildmates in Codex without sharing GitHub credentials or repository access.</p>
       {query.auth_error ? <p role="alert">GitHub sign-in did not finish. Please try again.</p> : null}
       <Link className={styles.action} href="/api/auth/github/start?return_to=%2Faccount">Continue with GitHub</Link>
     </>}

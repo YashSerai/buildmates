@@ -34,6 +34,10 @@ export function PrivacyClient({
       };
       if (!response.ok)
         throw new Error(payload.error || "Could not complete that request.");
+      if (body.command === "request_deletion") {
+        window.location.assign("/account/deleted");
+        return;
+      }
       if (payload.snapshot) setSnapshot(payload.snapshot);
       setMessage(
         payload.jobId
@@ -284,7 +288,7 @@ export function PrivacyClient({
             </label>
             <button
               onClick={() =>
-                command({
+                void command({
                   command: "pause_matching",
                   until: new Date(`${pauseUntil}T23:59:59.000Z`).toISOString(),
                 })
@@ -323,7 +327,7 @@ export function PrivacyClient({
               </dd>
             </div>
             <div>
-              <dt>Unattended writes</dt>
+              <dt>Background actions</dt>
               <dd>
                 {snapshot.automation?.capability.replaceAll("_", " ") ??
                   "Not checked"}
@@ -384,18 +388,12 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Export and account deletion"
-            description="Download a current copy immediately or request a tracked export job. Deletion places the account into a deleting state immediately."
+            description="Download a current copy of your Buildmates data. Deletion places the account into a deleting state immediately."
           />
           <div className={styles.controlRow}>
             <a href="/api/privacy/export" download>
               Download my data
             </a>
-            <button
-              onClick={() => command({ command: "request_export" })}
-              disabled={busy}
-            >
-              Request data export
-            </button>
             <label>
               Type DELETE BUILDMATES
               <input

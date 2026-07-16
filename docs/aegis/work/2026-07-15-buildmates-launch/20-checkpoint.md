@@ -78,6 +78,16 @@ Status: active
 - The account export now includes identity-link metadata without secrets, sessions without token hashes, networking controls, growth records, generated Surfaces/assets, match decisions, relationship reminders, room/Circle participation, scheduling, notifications, automation, safety records, and lifecycle state in addition to the original profile/project/signal data.
 - Focused proof: account-deletion integration passes 2/2 including R2 failure/recovery/concurrency and sentinel removal; privacy export runs successfully through the real authenticated route in Chromium; web typecheck and production build pass. Central API error allowlisting and nonce CSP remain post-launch hardening because user responses already suppress 500-level internals and the current Sites/Vinext runtime requires inline framework bootstrap.
 
+## Copy and UI/UX audit repair checkpoint - 2026-07-16
+
+- Discovery now leads with current work, topic, stage, and coarse location. Optional challenge/share/value signals and secondary filters live under an accessible disclosure, so the product no longer presents needs and offers as prerequisites for connection.
+- Internal builder UUID exclusions and the unprocessed queued-export control are removed from user-facing flows. Immediate authenticated export remains the supported path. Full Autopilot, raw-context storage, inbox timing, background actions, and identity-linking copy now match the implemented product boundaries.
+- Published generated profiles keep trusted navigation and real follow/edit/redesign actions outside generated authority. Preview-only Surface action rows are omitted unless a trusted action handler exists.
+- Existing profiles now load into the profile editor with their current audiences, fields, statistics, matching choice, location controls, and introduction mode instead of opening a blank replacement form.
+- Profile and room redesign now lead with a Codex handoff that names the governed Surface and required workflow. Raw generation briefs and SurfaceSpec JSON remain available only under Advanced as a universal fallback.
+- Account deletion now redirects to a terminal signed-out confirmation surface. Global loading/error states use the Buildmates shell and provide a stable recovery path. Primary controls use a 44px minimum and the shared typography stack no longer defaults to Arial or overrides generated corner tokens.
+- Focused evidence: web and MCP-core typechecks pass; the production web build passes; affected profile/discovery/privacy Playwright coverage passes on desktop and phone after stale expectations were updated. The first 16-test batch had 12 passing and four expectation-only failures caused by superseded copy/export behavior; the exact four reruns pass.
+
 ## ResumeStateHint
 
 Read `10-intent.md`, this checkpoint, `GOAL.md`, and `BUILD_INDEX.md`; verify the worktree, branch, and Git status before resuming. Never resume from chat memory alone.

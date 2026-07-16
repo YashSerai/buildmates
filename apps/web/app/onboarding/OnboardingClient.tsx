@@ -699,17 +699,6 @@ function NetworkingStep({
           />
         </label>
         <label>
-          Exclude specific builder IDs{" "}
-          <span className={styles.optional}>One per line</span>
-          <textarea
-            rows={3}
-            value={form.exclusions}
-            onChange={(event) =>
-              setForm({ ...form, exclusions: event.target.value })
-            }
-          />
-        </label>
-        <label>
           Snooze matching until <span className={styles.optional}>Optional</span>
           <input type="datetime-local" value={form.snoozedUntil} onChange={(event)=>setForm({...form,snoozedUntil:event.target.value})} />
         </label>

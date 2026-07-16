@@ -95,7 +95,8 @@ function Node({ node, spec, bindings, regions, onAction }: { node: SurfaceNode; 
     case "callout":
       return <aside className="surface-callout"><strong>{textBinding(bindings[node.titleBinding], "Worth noting")}</strong><p>{textBinding(bindings[node.bodyBinding], "No shared note is available yet.")}</p></aside>;
     case "action-row":
-      return <div className="surface-actions" aria-label="Surface actions">{node.actions.map((item) => <div className="surface-action" key={item.id}><button type="button" data-action={item.action} disabled={!onAction} onClick={() => onAction?.(item.action, item.id)} title={onAction ? undefined : "This action is unavailable in preview"}>{TRUSTED_ACTION_LABELS[item.action]}</button>{item.supportingCopy ? <span>{item.supportingCopy}</span> : null}</div>)}</div>;
+      if (!onAction) return null;
+      return <div className="surface-actions" aria-label="Surface actions">{node.actions.map((item) => <div className="surface-action" key={item.id}><button type="button" data-action={item.action} onClick={() => onAction(item.action, item.id)}>{TRUSTED_ACTION_LABELS[item.action]}</button>{item.supportingCopy ? <span>{item.supportingCopy}</span> : null}</div>)}</div>;
     case "decorative-region": {
       const region = regions.get(node.regionId);
       const credentialless = { credentialless: "" } as React.IframeHTMLAttributes<HTMLIFrameElement> & { credentialless: string };

@@ -23,8 +23,7 @@ test("privacy center audits source revocation, matching pause, export, and delet
   await expect(page.getByText("No active source policies")).toBeVisible();
   await page.getByRole("button", { name: "Pause matching" }).click();
   await expect(page.getByRole("status")).toContainText("Privacy setting updated");
-  await page.getByRole("button", { name: "Request data export" }).click();
-  await expect(page.getByText(/export · queued/i)).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download my data" })).toHaveAttribute("href", "/api/privacy/export");
   const exportResult=await page.evaluate(async()=>{const response=await fetch("/api/privacy/export");return{status:response.status,payload:await response.json() as {schema?:string;projects?:unknown[];sourcePolicies?:unknown[]}}});
   expect(exportResult.status).toBe(200);
   expect(exportResult.payload.schema).toBe("buildmates-account-export/v1");

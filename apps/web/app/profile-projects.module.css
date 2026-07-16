@@ -1,3 +1,8 @@
+.profileShell { min-height: 100vh; background: #edf2ec; color: #1e201d; }
+.profileActions { min-height: 56px; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px 22px; padding: 8px clamp(1rem, 4vw, 4rem); border-bottom: 1px solid #c9c4b8; background: #f7f8f2; }
+.profileActions a { min-height: 44px; display: inline-flex; align-items: center; font-weight: 700; text-underline-offset: 4px; }
+.profileActions button { min-height: 44px; border: 1px solid #1e201d; background: #a9bc91; color: #1e201d; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+.profileActions span { display: inline-flex; align-items: center; gap: 8px; }
 .page {
   min-height: 100vh;
   background: #edf2ec;

@@ -1,2 +1,32 @@
-import { requireUser } from "../../../src/auth/require-user";import { ProfileReview } from "../../../components/profile-projects/ProfileReview";
-export default async function ProfileEditPage(){await requireUser("/profile/edit");return <main><ProfileReview/></main>}
+import Link from "next/link";
+import { ProfileReview } from "../../../components/profile-projects/ProfileReview";
+import { requireUser } from "../../../src/auth/require-user";
+import { getPlatformBindings } from "../../../src/platform/bindings";
+import { getProfileByHandle } from "../../../src/profile-projects/service";
+import styles from "../../profile-projects.module.css";
+
+export default async function ProfileEditPage() {
+  const user = await requireUser("/profile/edit");
+  const { DB } = await getPlatformBindings();
+  const handle = await DB.prepare("SELECT handle FROM handles WHERE user_id=? LIMIT 1").bind(user.id).first<{ handle: string }>();
+  const profile = handle ? await getProfileByHandle(DB, handle.handle, user.id) : null;
+
+  return <main className={styles.profileShell}>
+    <div className={styles.profileActions}><Link href={handle ? `/@${handle.handle}` : "/home"}>Back to profile</Link><Link href="/onboarding">Continue setup in Codex</Link></div>
+    <ProfileReview
+      defaultHandle={handle?.handle ?? ""}
+      initial={profile ? {
+        displayName: profile.displayName,
+        summary: profile.summary,
+        audience: profile.audience,
+        acceptanceMode: profile.acceptanceMode,
+        coarseLocation: profile.coarseLocation ?? "",
+        allowMatching: profile.allowMatching,
+        indexable: profile.indexable,
+        locationMapOptIn: profile.locationMapOptIn,
+        fields: profile.fields,
+        statistics: profile.statistics,
+      } : undefined}
+    />
+  </main>;
+}

@@ -12,12 +12,26 @@ const audiences = [
 
 export function ProfileReview({
   defaultHandle = "",
+  initial,
 }: {
   defaultHandle?: string;
+  initial?: {
+    displayName: string;
+    summary: string;
+    audience: string;
+    acceptanceMode: string;
+    coarseLocation: string;
+    allowMatching: boolean;
+    indexable: boolean;
+    locationMapOptIn: boolean;
+    fields: Array<{ key: string; value: unknown; audience: string }>;
+    statistics: Array<{ label: string; value: string }>;
+  };
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const initialFields = new Map(initial?.fields.map((field) => [field.key, field]));
   async function submit(formData: FormData) {
     setBusy(true);
     setError("");
@@ -89,6 +103,7 @@ export function ProfileReview({
         <Field
           name="displayName"
           label="Display name"
+          defaultValue={initial?.displayName}
           required
           maxLength={80}
         />
@@ -101,14 +116,15 @@ export function ProfileReview({
         />
         <label className={styles.wide}>
           Short introduction
-          <textarea name="summary" required maxLength={600} rows={4} />
+          <textarea name="summary" defaultValue={initial?.summary} required maxLength={600} rows={4} />
         </label>
-        <Field name="coarseLocation" label="Location (city or region)" />
-        <Select name="audience" label="Profile visibility" values={audiences} />
+        <Field name="coarseLocation" label="Location (city or region)" defaultValue={initial?.coarseLocation} />
+        <Select name="audience" label="Profile visibility" values={audiences} defaultValue={initial?.audience} />
         <Select
           name="acceptanceMode"
           label="Introduction approval"
           values={["manual", "full_autopilot"]}
+          defaultValue={initial?.acceptanceMode}
         />
       </div>
       <h2>Current context</h2>
@@ -122,30 +138,31 @@ export function ProfileReview({
         <div className={styles.fieldRow} key={name}>
           <label>
             {label}
-            <textarea name={name} rows={2} maxLength={1000} />
+            <textarea name={name} rows={2} maxLength={1000} defaultValue={String(initialFields.get(name)?.value ?? "")} />
           </label>
           <Select
             name={`${name}_audience`}
             label="Who can see this?"
             values={audiences}
+            defaultValue={initialFields.get(name)?.audience}
           />
         </div>
       ))}
       <label className={styles.check}>
-        <input type="checkbox" name="allowMatching" />
+        <input type="checkbox" name="allowMatching" defaultChecked={initial?.allowMatching} />
         Use approved fields for matching
       </label>
       <label className={styles.wide}>
         Optional public profile counters
         <span>One per line: Label | Value. Codex can refresh approved counters later, but Buildmates does not infer usage data it cannot access.</span>
-        <textarea name="statistics" rows={3} placeholder="Connections made | 12" />
+        <textarea name="statistics" rows={3} placeholder="Connections made | 12" defaultValue={initial?.statistics.map((item) => `${item.label} | ${item.value}`).join("\n")} />
       </label>
       <label className={styles.check}>
-        <input type="checkbox" name="indexable" />
+        <input type="checkbox" name="indexable" defaultChecked={initial?.indexable} />
         Allow search engines to index my public profile
       </label>
       <label className={styles.check}>
-        <input type="checkbox" name="locationMapOptIn" />
+        <input type="checkbox" name="locationMapOptIn" defaultChecked={initial?.locationMapOptIn} />
         Include my coarse location in anonymous map groups of at least five builders
       </label>
       <button disabled={busy}>
@@ -169,15 +186,17 @@ function Select({
   name,
   label,
   values,
+  defaultValue,
 }: {
   name: string;
   label: string;
   values: string[];
+  defaultValue?: string;
 }) {
   return (
     <label>
       {label}
-      <select name={name}>
+      <select name={name} defaultValue={defaultValue}>
         {values.map((value) => (
           <option key={value} value={value}>
             {value.replaceAll("_", " ")}

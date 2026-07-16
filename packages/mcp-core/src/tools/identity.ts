@@ -16,7 +16,7 @@ export function registerIdentityTools(server: McpServer, services: IdentityToolS
     "get_link_url",
     {
       title: "Get Buildmates identity link URL",
-      description: "Returns the web page where the authenticated MCP principal can obtain a one-time link code. No user data is returned before linking.",
+      description: "Returns the Buildmates page where you can securely link this Codex connection. It does not return account data.",
       annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     async (extra) => {
@@ -29,7 +29,7 @@ export function registerIdentityTools(server: McpServer, services: IdentityToolS
     "complete_identity_link",
     {
       title: "Complete Buildmates identity link",
-      description: "Consumes a short-lived, single-use code. This is the only user-data mutation allowed before identity linking.",
+      description: "Uses a short-lived, single-use code to link this Codex connection to your signed-in Buildmates account.",
       inputSchema: {
         code: z.string().trim().regex(/^[A-F0-9]{32}$/),
         workspaceScope: z.literal("global").default("global"),

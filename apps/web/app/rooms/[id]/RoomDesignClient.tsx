@@ -19,7 +19,7 @@ type Revision = {
 };
 type SurfaceData = {
   brief: { authorizedContent: SurfaceBindings } & Record<string, unknown>;
-  surface: { publishedRevisionId: string | null; publishedRevisionNumber: number | null; memberCount: number };
+  surface: { id: string; publishedRevisionId: string | null; publishedRevisionNumber: number | null; memberCount: number };
   history: Revision[];
 };
 
@@ -63,6 +63,11 @@ export function RoomDesignClient({ roomId }: { roomId: string }) {
       setNotice("Paste a complete JSON SurfaceSpec from Codex.");
     }
   }
+  const designPrompt = data ? `Redesign our Buildmates room surface ${data.surface.id}. First call get_surface_generation_brief, follow the Buildmates surfaces workflow and current Design Policy, then submit a private preview. Keep the room lightweight and themed around why we connected. Do not publish; both members must review it.` : "";
+  async function copyDesignPrompt() {
+    try { await navigator.clipboard.writeText(designPrompt); setNotice("Codex design prompt copied."); }
+    catch { setNotice("Copy was blocked. Select the prompt in Advanced options and copy it manually."); }
+  }
 
   return <details className={styles.designWorkspace}>
     <summary>Redesign this room with Codex</summary>
@@ -70,12 +75,8 @@ export function RoomDesignClient({ roomId }: { roomId: string }) {
       <p>Either member can propose a design. It stays a private preview until both people approve it; publishing never changes chat, membership, or permissions.</p>
       {notice && <p role="status">{notice}</p>}
       {!data ? <p>Loading design history…</p> : <>
-        <details>
-          <summary>Copy the authorized Codex generation brief</summary>
-          <pre>{JSON.stringify(data.brief, null, 2)}</pre>
-        </details>
-        <label>SurfaceSpec JSON<textarea rows={12} value={spec} onChange={(event) => setSpec(event.target.value)} /></label>
-        <button type="button" disabled={busy || !spec.trim()} onClick={createDraft}>Validate private preview</button>
+        <div className={styles.designActions}><a href={`codex://open?prompt=${encodeURIComponent(designPrompt)}`}>Design with Codex</a><button type="button" onClick={copyDesignPrompt}>Copy Codex prompt</button></div>
+        <details><summary>Advanced: generation brief and manual SurfaceSpec</summary><pre>{JSON.stringify(data.brief, null, 2)}</pre><label>Codex prompt<textarea readOnly rows={5} value={designPrompt} onFocus={(event) => event.currentTarget.select()} /></label><label>SurfaceSpec JSON<textarea rows={12} value={spec} onChange={(event) => setSpec(event.target.value)} /></label><button type="button" disabled={busy || !spec.trim()} onClick={createDraft}>Validate private preview</button></details>
         <h3>Private preview history</h3>
         <ol className={styles.designHistory}>
           {data.history.map((revision) => {

@@ -114,7 +114,7 @@
 .primaryLink {
   display: inline-flex;
   align-items: center;
-  min-height: 42px;
+  min-height: 44px;
   box-sizing: border-box;
   padding: 11px 16px;
   background: var(--moss, #214f3b);

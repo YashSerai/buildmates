@@ -178,14 +178,6 @@ export function AutomationClient({
             />
           </label>
           <label className={styles.full}>
-            Exclude specific builder IDs, one per line
-            <textarea
-              rows={3}
-              value={form.exclusions}
-              onChange={(e) => setForm({ ...form, exclusions: e.target.value })}
-            />
-          </label>
-          <label className={styles.full}>
             Snooze matching until <span>Optional</span>
             <input type="datetime-local" value={form.snoozedUntil} onChange={(e)=>setForm({...form,snoozedUntil:e.target.value})} />
           </label>
@@ -237,8 +229,8 @@ export function AutomationClient({
           <div>
             <h2>One Buildmates automation</h2>
             <p>
-              Automatic checks no-op quietly when nothing relevant changed. Host
-              usage limits still apply.
+              Automatic checks stay quiet when nothing relevant changed. Your
+              Codex usage limits still apply.
             </p>
           </div>
           <span
@@ -278,7 +270,7 @@ export function AutomationClient({
         </button>
         {initialSnapshot.codexConnected ? (
           <button className={styles.secondaryButton} onClick={()=>save({action:"save_automation",cadence,enabled:cadence!=="manual",sourceLivenessReviewed:liveness,requestCapabilityRecheck:true})} disabled={busy || !liveness}>
-            Request unattended-write recheck
+            Recheck background actions
           </button>
         ) : null}
       </section>
