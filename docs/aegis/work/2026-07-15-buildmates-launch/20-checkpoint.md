@@ -87,6 +87,7 @@ Status: active
 - Profile and room redesign now lead with a Codex handoff that names the governed Surface and required workflow. Raw generation briefs and SurfaceSpec JSON remain available only under Advanced as a universal fallback.
 - Account deletion now redirects to a terminal signed-out confirmation surface. Global loading/error states use the Buildmates shell and provide a stable recovery path. Primary controls use a 44px minimum and the shared typography stack no longer defaults to Arial or overrides generated corner tokens.
 - Focused evidence: web and MCP-core typechecks pass; the production web build passes; affected profile/discovery/privacy Playwright coverage passes on desktop and phone after stale expectations were updated. The first 16-test batch had 12 passing and four expectation-only failures caused by superseded copy/export behavior; the exact four reruns pass.
+- Production deployment: exact pushed commit `5585b2760d9f05a5542965e1585609d2105dfbef` is public as ChatGPT Sites version 2 at `https://buildmates.yashns.chatgpt.site`. The post-deploy smoke passes the public landing, D1 readiness, security headers, authenticated redirect boundary, launch metadata, and external MCP OAuth boundary. Live authenticated one-account and two-account interpersonal browser flows remain separate evidence gates; this deployment does not claim they were re-run.
 
 ## ResumeStateHint
 
