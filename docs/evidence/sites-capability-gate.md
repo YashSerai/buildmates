@@ -78,3 +78,18 @@ Until those boxes are backed by deployment/browser/runtime artifacts, the select
 - Chrome's ChatGPT profile dialog displays `founders@trysoulmate.com`; its correct saved Google provider identity is `founders%trysoulmate.com@gtempaccount.com`. Selecting that saved identity completes Google OAuth, but the Sites callback and a subsequent root request still return `Site not found` before Buildmates code runs. Attempting to add the provider address to the custom allowlist fails with `User 'founders%trysoulmate.com@gtempaccount.com' was not found in this workspace`; the existing canonical founders allowlist remains unchanged at revision 2. The remaining owner-flow boundary is Sites custom-access identity resolution, not Google verification.
 - Owner-bypass focused runtime checks remain green: landing 200, D1-backed readiness `{"status":"ok"}`, robots 200, manifest 200, protected `/home` 307 to dispatch-owned SIWC, and unauthenticated MCP initialize 401. These checks do not substitute for an authenticated production subject.
 - The current Sites starter contract documents verified email and optional full name, while Buildmates' stable web identity gate requires `oai-authenticated-user-id`. On the first successful canonical callback, `/capability-check` must prove that stable subject before authenticated launch claims; otherwise the documented external identity/hosting fallback is required rather than joining accounts by email.
+
+### 2026-07-16 public SIWC capability result
+
+- User-approved access-policy revision 3 makes the Site public. Anonymous landing and D1-backed `/api/ready` return 200, and `/home` returns a 307 to dispatch-owned SIWC.
+- The correct saved founders provider identity completes the OAuth callback without the former access-policy `Site not found` response in both Chrome and the Codex in-app browser.
+- After callback, `/account` still renders the signed-out state and `/capability-check` reports that stable authenticated identity is absent. Repeating the check in two browser surfaces rules out the prior custom access policy and a Chrome-only session defect.
+- The SIWC capability gate therefore fails for this deployment. The architecture's external web identity/hosting fallback is active; email-derived account joining remains prohibited.
+
+### 2026-07-16 ChatGPT-only identity decision and header-security probe
+
+- A direct request carrying caller-supplied `oai-authenticated-*` headers reached the public application identity path. The current deterministic subject hash therefore cannot be treated as proof of an authenticated person or as a launch-ready authorization boundary.
+- GitHub OAuth was considered as an external fallback and explicitly rejected. ChatGPT remains the only website login.
+- The application repair is a server-owned mapping from a verified ChatGPT principal to a random Buildmates UUID. All product data and MCP links resolve through that UUID; email and display name are not internal keys and do not join identities.
+- The repair must centralize protected resolution, reject revoked and deleted principals, prevent silent account reactivation, and pass focused repeat-login, impersonation, deletion, and web-to-MCP convergence checks.
+- This application repair does not by itself prove that the Sites gateway authenticates or sanitizes forwarded headers. Public authenticated launch remains blocked until the live gateway supplies a trustworthy ChatGPT principal and direct forged requests cannot select another user's UUID.

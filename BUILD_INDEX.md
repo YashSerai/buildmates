@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: private production release candidate live
+Status: production release candidate deployed; ChatGPT-only identity repair planned before public authenticated launch
 Last updated: 2026-07-16
 Product line: Meet people through what you build.
 
@@ -26,7 +26,9 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - Buildmates is the only required plugin. Other connected apps remain optional sources governed by host permissions plus individual Buildmates source-use policies; generic installed-app enumeration is not assumed.
 - First run has a mandatory resumable outcome and supports sparse context through adaptive questions, manual input, one selected project/repository, pasted description, and portfolio links.
 - Buildmates never receives third-party connector credentials or raw conversation history.
+- ChatGPT is the only website login. The first verified ChatGPT principal is mapped server-side to a random Buildmates UUID; that UUID, never email or display name, owns product data.
 - Web and MCP identities never join by email/name. The only pre-link MCP write atomically consumes a short-lived code; external MCP requests delegate a signed OAuth subject, never a caller-supplied internal user ID.
+- A revoked or deleted ChatGPT principal cannot silently recreate or reactivate its former Buildmates account.
 - Raw prompts, full documents, private repositories, email bodies, and calendar contents are not persisted as Work Signals.
 - Day-one server-side matching uses no paid model inference and requires no vector embeddings.
 - Work Signals use a versioned canonical taxonomy, and candidate retrieval reads a denormalized builder match index plus reproducible pair-score rows.
@@ -51,7 +53,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 
 | Area | Day-one behavior | Later expansion | Status |
 |---|---|---|---|
-| Landing and identity | Public explanation, Sign in with ChatGPT, mobile web access | Custom domains and organization identity | Implemented in source; public-user verification pending |
+| Landing and identity | Public explanation, Sign in with ChatGPT, random internal Buildmates UUID, mobile web access | Custom domains and organization identity | Public reachability verified; Sites SIWC capability/security gate failed; ChatGPT-only repair planned |
 | Agentic first run | Visible setup progress, rich/sparse context branches, privacy/profile preview, preferences, automation, first useful outcome | Smarter adaptive questioning | Implemented; integration review pending |
 | Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Implemented; live connector proof pending |
 | Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Implemented; unattended production proof pending |
@@ -72,14 +74,14 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Privacy and safety | Canonical visibility, source ledger, block/shared-context redaction, immediate export, physical R2 deletion, rate limits and audit trail | Organization policy tooling | Implemented; production smoke pending |
 | Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
 | Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
-| Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | Source and production smoke complete; separate-account proof pending |
+| Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | Public smoke complete; authenticated production and separate-account proof pending |
 
 ## Continuous launch validation
 
 These checks are part of one continuous implementation run. They produce evidence and select fallbacks; they are not handoff points where execution returns to the user:
 
 1. Deploy nested `apps/web` as a public ChatGPT Site; prove anonymous non-owner reachability, shared-workspace resolution, D1, and R2.
-2. Prove a stable public-user subject; use GitHub OAuth only when the Site is reachable but SIWC auth/subject behavior fails.
+2. Prove a server-verifiable ChatGPT principal for a public user, then map it to a random internal Buildmates UUID. Do not introduce a second login provider.
 3. Prove private object authorization between two users using a minimal capability record.
 4. Select and prove the thin Sites or external MCP topology, OAuth 2.1/PKCE, and the signed subject-resolving internal boundary when external.
 5. Link web and MCP identities using an OAuth-only pre-link operation and a compare-and-set consumed single-use code.
@@ -126,6 +128,19 @@ Buildmates is not complete when screens merely render. Completion requires:
 - source-control, deployment, and live-runtime truth are reported separately;
 - the repository, deployment, operator documentation, and production verification are complete.
 
+## Final launch-quality gates
+
+These gates run in order and are part of launch readiness, not optional post-launch polish:
+
+1. **Functionality and production-material pass.** Complete the selected authenticated hosting path, D1/R2 writes, MCP linking and tools, onboarding, every visible product flow, responsive states, accessibility behavior, production smoke, and the live two-user boundary where an independent identity is required. Remove dead controls, placeholders, misleading fallbacks, and claims that exceed verified runtime behavior.
+2. **Copy and content-material audit.** Review every user-facing string across marketing, install, authentication, onboarding, profiles, discovery, matching, rooms, Connections, Circles, scheduling, settings, privacy, moderation, notifications, empty/loading/error/permission states, and exports. Enforce the builder-network thesis, mutual relevance rather than transactional expert matching, one terminology system, truthful privacy/automation language, concrete action labels, no internal process narration, no unsupported claims, and no generic AI/SaaS filler.
+3. **Folk-referenced UI/UX audit.** Re-open the live `folk.com` reference during the audit and use its editorial clarity, confident typography, whitespace, color restraint, information rhythm, and human relationship focus as directional cues without copying its brand, assets, or layouts. Apply the canonical anti-slop design law plus the routed design/accessibility skills. Inspect every public and authenticated surface at relevant desktop and phone sizes, including long content and loading/empty/error/permission/network-failure states; verify hierarchy, gutters, overflow, touch targets, keyboard/focus, contrast, reduced motion, responsive navigation, control affordance, console errors, and network failures with saved rendered evidence.
+4. **Release proof.** Rebuild and redeploy any audit changes, run focused affected checks plus the final launch matrix, record source/deployment/browser/runtime truth separately, publish the release tag only after all gates pass, and keep every remaining human-only limitation explicit.
+
+Anti-slop remains a global implementation rule throughout all four gates; it is not deferred to the final visual pass.
+
+The copy audit must cover projects, cohort/admin/invite flows, map and graph discovery, follows and watches, block/report/appeal, deletion, SurfaceSpec preview/approval/history/rollback, operator recovery, plugin and MCP manifests/tool errors, Codex first-run and automation prompts, match explanations and starters, digests, ICS/calendar text, metadata and social cards, alt text, and exports. The UI/UX evidence ledger must cross route, role/state, and viewport; include anonymous, sparse-onboarding, established, connected, owner/admin/member, operator/moderator, blocked, suspended, and revoked states; and retain screenshots, console/network logs, and interaction traces. Accessibility proof includes landmarks/headings, accessible names and instructions, screen-reader announcements, non-color cues, keyboard operation, and zoom/reflow.
+
 ## Current next action
 
-Resolve the ChatGPT Sites custom-access mismatch, then verify production sign-in, first-run onboarding, authenticated navigation, profile/account flows, D1/R2 writes, and website-to-MCP identity linking. `founders%trysoulmate.com@gtempaccount.com` is the correct saved Google identity for the canonical `founders@trysoulmate.com` ChatGPT account. Selecting it completes Google OAuth, but the Sites callback and root still return `Site not found` before Buildmates code runs. Sites retains the canonical founders allowlist entry at access-policy revision 2 and rejects the temporary provider address as not belonging to the workspace, so credentials and account selection are no longer the blocker. A second independent identity is required only for live object-isolation, reciprocal matching, Full Autopilot, shared-room, messaging, and joint-governance checks; automated multi-identity coverage remains required regardless. The current Site remains owner-only, and changing it to public requires an explicit launch-access decision. Source commit `2fffa10`, private Sites version 3, and the independently redeployed MCP Worker are live and smoke-tested.
+Implement the approved ChatGPT-only identity repair before changing runtime code elsewhere: replace the deterministic header hash with a server-side ChatGPT-principal-to-random-Buildmates-UUID mapping; migrate every protected consumer to the resolver; reject revoked/deleted mappings; and preserve explicit single-use MCP linking. Then run one focused auth/security validation and redeploy. The Site is reachable publicly, but the live dispatch-owned SIWC callback currently returns to an anonymous application state, and a direct request carrying caller-supplied `oai-authenticated-*` headers reached application identity code. Treat that as an unresolved Sites gateway capability/security failure: do not claim authenticated launch readiness until a verified ChatGPT session produces a trustworthy principal and forged requests cannot access another UUID's data. GitHub login is explicitly rejected. Maintain the factual build-story record in `docs/devpost/build-story-ledger.md`. A second independent identity is required only for live object-isolation, reciprocal matching, Full Autopilot, shared-room, messaging, and joint-governance checks; automated multi-identity coverage remains required regardless. Runtime source commit `2fffa10`, Sites version 3, and the independently deployed MCP Worker remain the last production artifacts.
