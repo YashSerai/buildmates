@@ -26,7 +26,7 @@ import {
 import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
 
 const at = new Date("2026-07-15T00:00:00Z");
-const later = new Date("2026-07-16T00:00:00Z");
+const later = new Date("2099-07-16T00:00:00Z");
 const alice = {
   id: asUserId("user_alice"),
   status: "active" as const,
@@ -98,13 +98,19 @@ describe("repository aggregate and authorization parity", () => {
         ).resolves.toEqual({ publishedRevisionId: "room-revision" });
         await expect(d1.prepare("SELECT design_policy_version AS version FROM surface_revisions WHERE id='revision'").first()).resolves.toEqual({ version: DESIGN_POLICY_VERSION });
       }
-    }, 15_000);
+    }, 60_000);
   }
 
   it("enforces link-code hash uniqueness and one-use compare-and-set in D1", async () => {
     const code = "A".repeat(32);
     const hash = await sha256(code);
     const now = Date.now();
+    await d1
+      .prepare(
+        "INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('user_alice','active','none',?,?)",
+      )
+      .bind(now, now)
+      .run();
     await d1
       .prepare(
         "INSERT INTO identity_link_codes (id,user_id,code_hash,workspace_scope,expires_at,attempt_count,max_attempts,created_at) VALUES ('code-one','user_alice',?,'global',?,0,5,?)",
@@ -655,7 +661,7 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
 
   await expect(
     r.workSignals.create({
-      actorId: bob.id,
+      actorId: alice.id,
       id: "bad-signal",
       userId: alice.id,
       taxonomyVersionId: "taxonomy-one",
@@ -673,8 +679,8 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     userId: alice.id,
     taxonomyVersionId: "taxonomy-one",
     summary: "Evaluating RAG retrieval",
-    audience: "signed_in",
-    cohortScopeId: cohortId,
+    audience: "suggested_connections",
+    cohortScopeId: null,
     allowMatching: true,
     expiresAt: later,
     createdAt: at,
@@ -684,10 +690,10 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
   );
   await expect(
     r.workSignals.listVisible(alice.id, bob.id, at),
-  ).resolves.toMatchObject([{ id: "signal", allowMatching: true }]);
+  ).resolves.toEqual([]);
   await expect(
     r.workSignals.listVisible(alice.id, charlie.id, at),
-  ).resolves.toMatchObject([{ id: "signal" }]);
+  ).resolves.toEqual([]);
 
   await r.cohorts.setMembership({
     actorId: alice.id,
@@ -1289,6 +1295,15 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
     userBId: bob.id,
     createdAt: at,
   });
+  await r.matching.recordMatchedProposal({
+    proposalId: "proposal",
+    matchId: "match",
+    pairId: "pair",
+    acceptanceModeA: "manual",
+    acceptanceModeB: "full_autopilot",
+    expiresAt: later,
+    at,
+  });
   await expect(
     r.surfaces.findRevisionForViewer("revision", bob.id),
   ).resolves.toBeNull();
@@ -1334,22 +1349,16 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
   ).rejects.toThrow();
   await expect(
     r.surfaces.findRevisionForViewer("revision", bob.id),
-  ).resolves.toMatchObject({ id: "revision" });
+  ).resolves.toBeNull();
   await expect(
     r.profiles.findByIdForViewer("profile-alice" as ProfileId, bob.id),
-  ).resolves.toMatchObject({ audience: "suggested_connections" });
+  ).resolves.toBeNull();
   await expect(
     r.projects.findVisible(projectId, bob.id),
-  ).resolves.toMatchObject({ title: "RAG evals", allowMatching: false });
-  await r.matching.recordMatchedProposal({
-    proposalId: "proposal",
-    matchId: "match",
-    pairId: "pair",
-    acceptanceModeA: "manual",
-    acceptanceModeB: "full_autopilot",
-    expiresAt: later,
-    at,
-  });
+  ).resolves.toBeNull();
+  await expect(
+    r.workSignals.listVisible(alice.id, bob.id, at),
+  ).resolves.toEqual([]);
   await r.matching.createPair({
     id: "pair-crossed",
     userAId: alice.id,

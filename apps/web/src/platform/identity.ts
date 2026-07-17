@@ -12,6 +12,7 @@ export type PlatformIdentity = {
   userId: string;
   sessionId: string;
 };
+export type AppealIdentity = PlatformIdentity & { accountStatus: "active" | "suspended" };
 
 export async function getPlatformIdentity(): Promise<PlatformIdentity | null> {
   const value = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
@@ -40,6 +41,36 @@ export async function requirePlatformIdentity(returnTo: string): Promise<Platfor
 
 export async function requireApiIdentity(): Promise<PlatformIdentity | Response> {
   const identity = await getPlatformIdentity();
+  return identity ?? Response.json({ error: "authentication_required" }, { status: 401, headers: { "cache-control": "private, no-store", vary: "Cookie" } });
+}
+
+export async function getAppealIdentity(): Promise<AppealIdentity | null> {
+  const value = (await cookies()).get(SESSION_COOKIE)?.value ?? "";
+  const separator = value.indexOf(".");
+  if (separator < 1) return null;
+  const sessionId = value.slice(0, separator);
+  const secret = value.slice(separator + 1);
+  if (!sessionId || !secret || secret.length > 256) return null;
+  const { DB } = await getPlatformBindings();
+  const row = await DB.prepare(`SELECT s.id AS sessionId,s.user_id AS userId,p.subject,u.status AS accountStatus
+    FROM web_sessions s
+    JOIN users u ON u.id=s.user_id AND u.status IN ('active','suspended')
+    JOIN identity_principals p ON p.id=s.principal_id AND p.channel='web' AND p.issuer='github.com' AND p.revoked_at IS NULL
+    JOIN identity_links l ON l.principal_id=p.id AND l.user_id=u.id AND l.provider_channel='web' AND l.provider_issuer='github.com' AND l.revoked_at IS NULL
+    WHERE s.id=? AND s.token_hash=? AND s.revoked_at IS NULL AND s.expires_at>? LIMIT 1`)
+    .bind(sessionId, await sha256(secret), Date.now()).first<{ sessionId: string; userId: string; subject: string; accountStatus: "active" | "suspended" }>();
+  if (!row) return null;
+  return { channel: "web", issuer: "github.com", subject: row.subject, workspaceScope: "global", displayName: null, userId: row.userId, sessionId: row.sessionId, accountStatus: row.accountStatus };
+}
+
+export async function requireAppealIdentity(returnTo = "/account/appeal"): Promise<AppealIdentity> {
+  const identity = await getAppealIdentity();
+  if (identity) return identity;
+  redirect(`/api/auth/github/start?return_to=${encodeURIComponent(safeReturnPath(returnTo))}`);
+}
+
+export async function requireAppealApiIdentity(): Promise<AppealIdentity | Response> {
+  const identity = await getAppealIdentity();
   return identity ?? Response.json({ error: "authentication_required" }, { status: 401, headers: { "cache-control": "private, no-store", vary: "Cookie" } });
 }
 

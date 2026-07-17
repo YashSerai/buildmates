@@ -678,15 +678,14 @@ export async function mutateOnboarding(
     });
   }
   if (action === "complete_outcome") {
-    const target = text(body.target, 2, 120, "watch topic").toLowerCase();
-    const id = `watch_${stableIdSuffix(userId, target)}`;
+    const id = `watch_${stableIdSuffix(userId, "relevant_builder", "network")}`;
     await DB.prepare(
-      "INSERT INTO watches (id,user_id,kind,target_id,created_at,revoked_at) VALUES (?,?,'topic',?,?,NULL) ON CONFLICT(user_id,kind,target_id) DO UPDATE SET revoked_at=NULL",
+      "INSERT INTO watches (id,user_id,kind,target_id,created_at,revoked_at) VALUES (?,?,'relevant_builder','network',?,NULL) ON CONFLICT(user_id,kind,target_id) DO UPDATE SET revoked_at=NULL",
     )
-      .bind(id, userId, target, Date.now())
+      .bind(id, userId, Date.now())
       .run();
     await completeStepInOrder(DB, userId, "first_useful_outcome");
-    return audit(DB, userId, "watch.created", "topic", target, {});
+    return audit(DB, userId, "watch.created", "relevant_builder", "network", {});
   }
   throw new InputError("Unknown onboarding action.");
 }
@@ -708,7 +707,7 @@ export async function updateWorkSignal(
     return audit(DB, userId, `work_signal.${action}`, "work_signal", id, {});
   }
   const summary = text(body.summary, 1, 1200, "signal summary");
-  const audience = audienceValue(body.audience);
+  const audience = workSignalAudienceValue(body.audience);
   const expiresAt = dateAfter(body.expiresAt, now, "Signal expiry");
   const results = await DB.batch([
     DB.prepare("UPDATE work_signals SET free_text_summary=?,audience=?,allow_matching=?,expires_at=?,updated_at=? WHERE id=? AND user_id=? AND revoked_at IS NULL").bind(
@@ -997,6 +996,12 @@ function audienceValue(value: unknown): Audience {
     ].includes(result)
   )
     throw new InputError("Invalid visibility.");
+  return result as Audience;
+}
+function workSignalAudienceValue(value: unknown): Audience {
+  const result = String(value);
+  if (!["suggested_connections", "mutual_connections", "private"].includes(result))
+    throw new InputError("Work Signals cannot be public.");
   return result as Audience;
 }
 function integer(

@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { getSetupState, completeSetupStep, type SetupProgress } from "@buildmates/domain";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, safeParseSurfaceSpec } from "@buildmates/surfaces";
+import { CANONICAL_CITIES, getSetupState, completeSetupStep, resolveCanonicalCity, type SetupProgress } from "@buildmates/domain";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, safeParseSurfaceSpec, type SurfaceSpec } from "@buildmates/surfaces";
 import { canonicalToolInputHash } from "./tool-hash";
 import { z } from "zod";
 import type { McpProductRepository, McpRecord } from "./repository";
@@ -20,6 +20,13 @@ export type BuildmatesToolServices = {
   validateTaxonomy(input: { taxonomyVersion: string; topicIds: string[]; toolIds: string[]; domainIds: string[]; stageIds: string[]; collaborationIntentIds: string[] }): Promise<boolean>;
   executeRemoteTool?(input: { name: string; input: unknown; mcpSubject: string }): Promise<unknown>;
   recordAutomationCapabilityProof?(input: { userId: string; now: string }): Promise<{ capability: "available"; checkedAt: string; expiresAt: string }>;
+  getCandidateShortlist?(input: { userId: string; batchId?: string; limit: number; now: string }): Promise<{
+    batchId: string | null;
+    expiresAt: string | null;
+    candidates: Array<{ userId: string; displayName: string; summary: string; indexVersion: number; taxonomyVersion: number; visibleReasons: string[]; visibleEvidenceIds: string[]; proposalId: string | null }>;
+  }>;
+  recordCandidateEvaluation?(input: { userId: string; evaluationId: string; batchId: string; candidateUserId: string; decision: "approve" | "decline" | "defer"; reasonSummary: string; evidenceIds: string[]; indexVersion: number; now: string }): Promise<{ evaluationId: string; proposalId: string; state: string; connectionId: string | null; roomId: string | null }>;
+  recordManualMatchResponse?(input: { userId: string; responseId: string; proposalId: string; response: "interested" | "decline"; now: string }): Promise<{ responseId: string; state: string; connectionId: string | null; roomId: string | null }>;
   now?: () => Date;
   createId?: () => string;
 };
@@ -29,7 +36,7 @@ type ToolDefinition = {
   name: string;
   title: string;
   description: string;
-  input: z.ZodObject<z.ZodRawShape>;
+  input: z.ZodType;
   annotations: { readOnlyHint: boolean; destructiveHint: boolean; idempotentHint: boolean; openWorldHint: boolean };
   preLink?: boolean;
   consequential?: boolean;
@@ -45,15 +52,17 @@ const deleteAnnotations = { readOnlyHint: false, destructiveHint: true, idempote
 
 export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   tool("get_link_url", "Get identity link URL", "Returns the HTTPS Buildmates sign-in and one-time approval-code page for this OAuth principal. It exposes no user data.", z.object(workspaceInput).strict(), readAnnotations, async (_, context, services) => ({ url: new URL("/settings/connections", services.linkBaseUrl).toString(), workspaceScope: context.workspaceScope }), true),
-  tool("complete_identity_link", "Complete identity link", "Atomically consumes a short-lived approval code for this OAuth principal. This is the only mutation available before linking.", z.object({ code: z.string().trim().regex(/^[A-F0-9]{32}$/), ...workspaceInput }).strict(), { ...writeAnnotations, idempotentHint: false }, async (input, context, services) => {
+  tool("complete_identity_link", "Complete identity link", "Uses a short-lived, one-time approval code to connect this Codex app to the signed-in Buildmates account. No account data is available before linking.", z.object({ code: z.string().trim().regex(/^[A-F0-9]{32}$/), ...workspaceInput }).strict(), { ...writeAnnotations, idempotentHint: false }, async (input, context, services) => {
     if (!(await services.allowAttempt({ mcpSubject: context.mcpSubject, operation: "complete_identity_link" }))) return { linked: false, reason: "rate_limited" };
     return services.completeIdentityLink({ mcpSubject: context.mcpSubject, code: input.code as string, workspaceScope: context.workspaceScope });
   }, true),
 
-  tool("get_setup_state", "Get setup state", "Returns the visible, resumable first-run finish line and next incomplete step.", z.object(workspaceInput).strict(), readAnnotations, async (_, context, services) => {
-    const record = await services.repository.readForMember<SetupProgress>("setup", context.userId!, context.userId!);
+  tool("get_setup_state", "Get setup state", "Returns the visible, resumable first-run finish line and next incomplete step. Before identity linking it safely returns identity_link as the next step and exposes no user data.", z.object(workspaceInput).strict(), readAnnotations, async (_, context, services) => {
+    const linked = await services.resolveLinkedUser({ mcpSubject: context.mcpSubject, workspaceScope: context.workspaceScope });
+    if (!linked) return getSetupState();
+    const record = await services.repository.readForMember<SetupProgress>("setup", linked.userId, linked.userId);
     return getSetupState(linkedSetupProgress(record?.value, services));
-  }),
+  }, true),
   tool("complete_setup_step", "Complete setup step", "Completes exactly the next mandatory setup step after validating its step-specific evidence.", z.object({ payload: setupPayloadSchema, ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "complete_setup_step", input, async () => {
     const current = await services.repository.readForMember<SetupProgress>("setup", context.userId!, context.userId!);
     const payload = input.payload as z.infer<typeof setupPayloadSchema>;
@@ -74,14 +83,14 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   })),
 
   tool("get_source_preferences", "Get source-use policies", "Lists Buildmates-only source-use policies. This list is non-exhaustive and does not change host connector permissions.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("source_policy", context.userId!, pageOptions(input)); return { exhaustive: false, policies: page.records.map(value), nextCursor: page.nextCursor }; }),
-  tool("save_source_preference", "Save source-use policy", "Saves a Buildmates-only policy for a confidently visible or user-named source; it never changes provider permissions.", z.object({ sourceId: idSchema, displayName: z.string().trim().min(1).max(100), category: z.enum(["projects_code", "documents_designs", "communities_messaging", "calendar", "email", "hackathons_cohorts", "other"]), policy: sourcePolicySchema, supportsActions: z.boolean(), approveNextWorkSignal: z.boolean().default(false), sourceOrigin: z.enum(["current_conversation", "declared_optional_dependency", "user_named"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "save_source_preference", input, async () => {
+  tool("save_source_preference", "Save source-use policy", "Saves a Buildmates-only policy for a confidently visible or user-named source. Ask each time can approve one next signal; Allow approved Work Signals permits recurring extraction until changed. This never changes host or provider permissions.", z.object({ sourceId: idSchema, displayName: z.string().trim().min(1).max(100), category: z.enum(["projects_code", "documents_designs", "communities_messaging", "calendar", "email", "hackathons_cohorts", "other"]), policy: sourcePolicySchema, supportsActions: z.boolean(), approveNextWorkSignal: z.boolean().default(false), sourceOrigin: z.enum(["current_conversation", "declared_optional_dependency", "user_named"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "save_source_preference", input, async () => {
     if (input.policy === "actions_only" && input.supportsActions !== true) throw new Error("source_actions_unsupported");
     const saved = await services.repository.write({ kind: "source_policy", id: input.sourceId as string, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) });
     return confirmed(saved);
   })),
 
   tool("list_work_signals", "List approved Work Signals", "Lists only the linked user's approved structured summaries; raw connector content is never returned.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("work_signal", context.userId!, pageOptions(input)); return { signals: page.records.map(value), nextCursor: page.nextCursor }; }),
-  tool("submit_work_signal", "Submit approved Work Signal", "Stores a user-approved concise summary and canonical identifiers. Raw prompts, chats, documents, repositories, email, calendar content, and credentials are not accepted.", z.object({ signal: workSignalSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
+  tool("submit_work_signal", "Submit permitted Work Signal", "Stores a concise summary used only for matching, along with approved topics and tools. Ask each time requires a one-time approval. Raw prompts, chats, documents, repository contents, email bodies, calendar contents, and credentials are not accepted.", z.object({ signal: workSignalSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
     const signal = input.signal as z.infer<typeof workSignalSchema>;
     const source = await services.repository.readForMember<Record<string, unknown>>("source_policy", signal.sourceId, context.userId!);
     const policy = source?.value.policy;
@@ -99,29 +108,39 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   }),
 
   tool("get_profile_model", "Get profile model", "Returns the linked user's structured profile model and publication controls.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("profile_model", context.userId!, pageOptions(input)); return { profiles: page.records.map(value), nextCursor: page.nextCursor }; }),
+  tool("list_map_cities", "List supported Map cities", "Returns the city choices available for optional participation in the anonymous aggregate Map. It contains no user data.", z.object(workspaceInput).strict(), readAnnotations, async () => ({ cities: CANONICAL_CITIES.map(({ id, label, country }) => ({ id, label, country })) })),
   tool("update_profile_model", "Update profile model", "Stores a reviewed structured profile; it does not infer or invent missing facts.", z.object({ profile: profileModelSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
     const profile = input.profile as z.infer<typeof profileModelSchema>;
-    return idempotent(context, services, "update_profile_model", profile, async () => confirmed(await services.repository.write({ kind: "profile_model", id: profile.profileId, ownerUserId: context.userId!, value: profile, now: now(services) })));
+    const city = resolveCanonicalCity(profile.coarseLocation);
+    if (profile.locationMapOptIn && !city) throw new Error("map_city_required");
+    const normalizedProfile = { ...profile, coarseLocation: city?.label ?? profile.coarseLocation };
+    return idempotent(context, services, "update_profile_model", profile, async () => {
+      const saved = confirmed(await services.repository.write({ kind: "profile_model", id: profile.profileId, ownerUserId: context.userId!, value: normalizedProfile, now: now(services) }));
+      return { ...saved, surfaceId: (saved.details as Record<string, unknown>).surfaceId ?? null };
+    });
   }),
 
-  tool("create_invite_link", "Create invite link", "Creates a revocable invite or connection card without pre-authorizing visibility or connection state.", z.object({ inviteId: idSchema, kind: z.enum(["personal", "cohort_admin", "builder", "connection_card"]), headline: z.string().trim().min(1).max(180), expiresAt: isoDateSchema, maximumUses: z.number().int().min(1).max(1000), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "create_invite_link", input, async () => confirmed(await services.repository.write({ kind: "invite", id: input.inviteId as string, ownerUserId: context.userId!, value: { ...withoutRuntime(input), status: "active", uses: 0 }, now: now(services) })))),
+  tool("create_invite_link", "Create invite link", "Creates a revocable personal, builder-profile, or project connection-card invite. Builder and connection-card invites require an owned target.", z.object({ inviteId: idSchema, kind: z.enum(["personal", "builder", "connection_card"]), targetId: idSchema.optional(), headline: z.string().trim().min(1).max(180), expiresAt: isoDateSchema, maximumUses: z.number().int().min(1).max(1000), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "create_invite_link", input, async () => {if(input.kind==="personal"&&input.targetId)throw new Error("invalid_invite_target");if(input.kind!=="personal"&&!input.targetId)throw new Error("invalid_invite_target");return confirmed(await services.repository.write({ kind: "invite", id: input.inviteId as string, ownerUserId: context.userId!, value: { ...withoutRuntime(input), status: "active", uses: 0 }, now: now(services) }))})),
   tool("revoke_invite_link", "Revoke invite link", "Revokes an invite owned by the linked user.", z.object({ inviteId: idSchema, ...mutate }).strict(), deleteAnnotations, async (input, context, services) => idempotent(context, services, "revoke_invite_link", input, async () => ({ confirmationState: (await services.repository.deleteForOwner("invite", input.inviteId as string, context.userId!)) ? "revoked" : "not_found" }))),
-  tool("set_follow_or_watch", "Set follow or watch", "Creates or removes an authorized follow/watch for a profile, project, topic, cohort, or relevant builder.", z.object({ relationId: idSchema, relation: z.enum(["follow", "watch"]), targetKind: z.enum(["profile", "project", "topic", "cohort", "relevant_builder"]), targetId: idSchema, enabled: z.boolean(), ...mutate }).strict(), { ...writeAnnotations, destructiveHint: true }, async (input, context, services) => idempotent(context, services, "set_follow_or_watch", input, async () => {
+  tool("set_follow_or_watch", "Set follow or watch", "Creates or removes an authorized follow for a visible profile, project, or topic, or toggles the single relevant-builder network watch.", z.discriminatedUnion("relation", [
+    z.object({ relationId: idSchema, relation: z.literal("follow"), targetKind: z.enum(["profile", "project", "topic"]), targetId: idSchema, enabled: z.boolean(), ...mutate }).strict(),
+    z.object({ relationId: idSchema, relation: z.literal("watch"), targetKind: z.literal("relevant_builder"), targetId: z.literal("network"), enabled: z.boolean(), ...mutate }).strict(),
+  ]), { ...writeAnnotations, destructiveHint: true }, async (input, context, services) => idempotent(context, services, "set_follow_or_watch", input, async () => {
     return confirmed(await services.repository.write({ kind: "follow_watch", id: input.relationId as string, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) }));
   })),
+  tool("get_follows_and_watches", "Get follows and relevance watch", "Returns the linked user's active follows and whether scheduled relevance checks are enabled. It does not run a check or send an instant notification.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("follow_watch", context.userId!, pageOptions(input)); return { choices: page.records.map(value), nextCursor: page.nextCursor }; }),
 
-  tool("get_candidate_shortlist", "Get candidate shortlist", "Returns a bounded, viewer-authorized candidate batch for user-side evaluation.", z.object({ batchId: idSchema.optional(), ...pageInput }).strict(), readAnnotations, async (input, context, services) => {
-    if (input.batchId) return { batches: [value(await requiredRecord(services, "candidate_batch", input.batchId as string, context.userId!))], nextCursor: null };
-    const page = await services.repository.listPageForMember("candidate_batch", context.userId!, pageOptions(input));
-    return { batches: page.records.map(value), nextCursor: page.nextCursor };
+  tool("get_candidate_shortlist", "Get candidate shortlist", "Creates or refreshes a bounded, viewer-authorized candidate batch for user-side evaluation. Each candidate includes only approved display context and any existing proposal identifier.", z.object({ batchId: idSchema.optional(), limit: z.number().int().min(1).max(30).default(30), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
+    if (!services.getCandidateShortlist) throw new Error("matching_service_unavailable");
+    return services.getCandidateShortlist({ userId: context.userId!, batchId: input.batchId as string | undefined, limit: input.limit as number, now: now(services) });
   }),
-  tool("record_candidate_evaluation", "Record candidate evaluation", "Records this user's structured evaluation. It may advance reciprocal matching, so it is consequential.", z.object({ evaluationId: idSchema, proposalId: idSchema, decision: z.enum(["approve", "decline", "defer"]), reasonSummary: summarySchema, evidenceIds: z.array(idSchema).max(30).default([]), indexVersion: z.number().int().nonnegative(), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "record_candidate_evaluation", input, async () => {
-    await requiredRecord(services, "match_proposal", input.proposalId as string, context.userId!);
-    return confirmed(await services.repository.write({ kind: "candidate_evaluation", id: input.evaluationId as string, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) }));
+  tool("record_candidate_evaluation", "Record candidate evaluation", "Records this user's independent decision for one authorized candidate. An approval can open a room immediately when the other user already approved and both stored acceptance modes allow Full Autopilot.", z.object({ evaluationId: idSchema, batchId: idSchema, candidateUserId: idSchema, decision: z.enum(["approve", "decline", "defer"]), reasonSummary: summarySchema, evidenceIds: z.array(idSchema).max(30).default([]), indexVersion: z.number().int().nonnegative(), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "record_candidate_evaluation", input, async () => {
+    if (!services.recordCandidateEvaluation) throw new Error("matching_service_unavailable");
+    return services.recordCandidateEvaluation({ userId: context.userId!, evaluationId: input.evaluationId as string, batchId: input.batchId as string, candidateUserId: input.candidateUserId as string, decision: input.decision as "approve" | "decline" | "defer", reasonSummary: input.reasonSummary as string, evidenceIds: input.evidenceIds as string[], indexVersion: input.indexVersion as number, now: now(services) });
   }), false, true),
   tool("record_manual_match_response", "Record manual match response", "Records an explicit Interested or decline response for this user only.", z.object({ responseId: idSchema, proposalId: idSchema, response: z.enum(["interested", "decline"]), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "record_manual_match_response", input, async () => {
-    await requiredRecord(services, "match_proposal", input.proposalId as string, context.userId!);
-    return confirmed(await services.repository.write({ kind: "manual_match_response", id: input.responseId as string, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) }));
+    if (!services.recordManualMatchResponse) throw new Error("matching_service_unavailable");
+    return services.recordManualMatchResponse({ userId: context.userId!, responseId: input.responseId as string, proposalId: input.proposalId as string, response: input.response as "interested" | "decline", now: now(services) });
   }), false, true),
 
   tool("get_connections", "Get Connections", "Returns persistent Connections visible to the linked member.", z.object({ connectionId: idSchema.optional(), ...pageInput }).strict(), readAnnotations, async (input, context, services) => { if (input.connectionId) return { connections: [value(await requiredRecord(services, "connection", input.connectionId as string, context.userId!))], nextCursor: null }; const page = await services.repository.listPageForMember("connection", context.userId!, pageOptions(input)); return { connections: page.records.map(value), nextCursor: page.nextCursor }; }),
@@ -159,13 +178,16 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   tool("get_surface_generation_brief", "Get surface generation brief", "Returns the current Design Policy, authorized bindings, governance, base revision, accessibility rules, and privacy boundary before generation.", z.object({ surfaceId: idSchema, ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const surface = await services.repository.readForMember<Record<string, unknown>>("surface", input.surfaceId as string, context.userId!);
     if (!surface || !surfaceBriefIsComplete(surface.value, context.userId!)) throw new Error("surface_brief_unavailable");
-    return { surfaceId: surface.id, kind: surface.value.kind, designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents: surface.value.trustedComponents }, allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, governance: surface.value.governance, baseRevision: surface.value.publishedRevisionId ?? null, constraints: { scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only" } };
+    return { surfaceId: surface.id, kind: surface.value.kind, designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents: surface.value.trustedComponents }, allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, authorizedBindingTypes: surface.value.authorizedBindingTypes ?? null, governance: surface.value.governance, baseRevision: surface.value.publishedRevisionId ?? null, constraints: { scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only" } };
   }),
   tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown(), visibility: z.enum(["private_preview", "personal_view"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
     const surface = await requiredRecord(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     if (!parsed.success) throw new Error("surface_spec_invalid");
-    return confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview" }, now: now(services) }));
+    const surfaceValue = surface.value as Record<string, unknown>;
+    if (parsed.data.kind !== surfaceValue.kind || (surfaceValue.authorizedBindingTypes && !surfaceBindingsAllowed(parsed.data, surfaceValue.authorizedBindings))) throw new Error("surface_spec_invalid");
+    const saved = confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview" }, now: now(services) }));
+    return { ...saved, previewUrl: new URL("/profile/design", services.linkBaseUrl).toString() };
   })),
   tool("decide_surface_revision", "Approve or reject surface revision", "Records this authorized member's explicit approval or rejection; shared publication remains governed.", z.object({ revisionId: idSchema, decision: z.enum(["approved", "rejected"]), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "decide_surface_revision", input, async () => {
     return confirmed(await services.repository.write({ kind: "surface_approval", id: `${input.revisionId}:${context.userId}`, ownerUserId: context.userId!, value: { revisionId: input.revisionId, decision: input.decision }, now: now(services) }));
@@ -180,20 +202,21 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     return { confirmationState: "persisted", revisionId: details.rollbackRevisionId, publicationStatus: details.publicationStatus, proposalId: details.proposalId ?? null };
   }), false, true),
 
-  tool("prepare_calendar_handoff", "Prepare Calendar handoff", "Returns only authorized participants, time zones, candidate windows, and agenda for a room. Buildmates never calls Calendar directly.", z.object({ roomId: idSchema, ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
+  tool("prepare_calendar_handoff", "Prepare Calendar handoff", "Returns authorized participant labels, time zones, shared candidate windows, and a room agenda. It does not create an event or call a Calendar provider.", z.object({ roomId: idSchema, ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const room = await requiredRecord<Record<string, unknown>>(services, "room", input.roomId as string, context.userId!);
+    if (room.value.status !== "active") throw new Error("room_not_available");
     return { roomId: room.id, participants: room.value.participants ?? [], timezones: room.value.timezones ?? [], candidateWindows: room.value.candidateWindows ?? [], agenda: room.value.agenda ?? "Continue the Buildmates introduction", options: ["codex_deep_link", "copy_prompt", "manual_times", "ics"] };
   }),
-  tool("attach_calendar_event", "Attach Calendar event receipt", "After the user's Calendar provider confirms an accepted Buildmates meeting, stores only the minimal event receipt. This is a consequential write.", z.object({ receiptId: idSchema, roomId: idSchema, meetingProposalId: idSchema, provider: z.string().trim().min(1).max(80), providerEventId: z.string().trim().min(1).max(256), startsAt: isoDateSchema, endsAt: isoDateSchema, participantLabels: z.array(z.string().trim().min(1).max(120)).min(2).max(30), status: z.enum(["confirmed", "cancelled"]), providerConfirmed: z.literal(true), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "attach_calendar_event", input, async () => {
+  tool("attach_calendar_event", "Attach Calendar event receipt", "After a Calendar provider confirms the room's accepted meeting, stores the provider ID, times, participant labels, and status only. It does not store Calendar credentials or event contents. This is a consequential write.", z.object({ receiptId: idSchema, roomId: idSchema, meetingProposalId: idSchema, provider: z.string().trim().min(1).max(80), providerEventId: z.string().trim().min(1).max(256), startsAt: isoDateSchema, endsAt: isoDateSchema, participantLabels: z.array(z.string().trim().min(1).max(120)).min(2).max(30), status: z.enum(["confirmed", "cancelled"]), providerConfirmed: z.literal(true), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "attach_calendar_event", input, async () => {
     const room = await requiredRecord(services, "room", input.roomId as string, context.userId!);
     if (Date.parse(input.endsAt as string) <= Date.parse(input.startsAt as string)) throw new Error("calendar_interval_invalid");
     const receipt = { roomId: room.id, meetingProposalId: input.meetingProposalId, provider: input.provider, providerEventId: input.providerEventId, startsAt: input.startsAt, endsAt: input.endsAt, participantLabels: input.participantLabels, status: input.status, trustedProviderConfirmation: true };
     return confirmed(await services.repository.write({ kind: "calendar_receipt", id: input.receiptId as string, ownerUserId: context.userId!, memberUserIds: room.memberUserIds, value: receipt, now: now(services) }));
   }), false, true),
 
-  tool("get_automation_checkpoint", "Get automation checkpoint", "Returns the linked user's resumable checkpoint for one automation kind.", z.object({ kind: z.enum(["work_pulse", "matching", "notifications", "profile_refresh"]), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => ({ checkpoint: value(await services.repository.readForMember("automation_checkpoint", `${context.userId}:${input.kind}`, context.userId!)) })),
-  tool("update_automation_checkpoint", "Update automation checkpoint", "Stores a resumable cursor, cadence state, and last outcome for the linked user's automation.", z.object({ checkpointId: idSchema, kind: z.enum(["work_pulse", "matching", "notifications", "profile_refresh"]), cursor: z.string().max(500).nullable(), state: z.enum(["configured", "running", "succeeded", "needs_attention", "disabled"]), lastOutcome: z.string().trim().max(500), enabled: z.boolean().optional(), cadence: z.enum(["manual", "daily", "twice_weekly", "weekly"]).nullable().optional(), nextRunAt: isoDateSchema.nullable(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "update_automation_checkpoint", input, async () => confirmed(await services.repository.write({ kind: "automation_checkpoint", id: `${context.userId}:${input.kind}`, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) })))),
-  tool("probe_automation_capability", "Confirm automation capability", "Records a short-lived server-verified proof that the authenticated Buildmates MCP connection can perform writes. Browser requests cannot create this proof.", z.object({ probeId: idSchema, ...workspaceInput }).strict(), writeAnnotations, async (_input, context, services) => {
+  tool("get_automation_checkpoint", "Get Work Pulse progress", "Returns the saved progress, requested schedule, last outcome, and next run for the linked user's single Buildmates Work Pulse.", z.object(workspaceInput).strict(), readAnnotations, async (_input, context, services) => ({ checkpoint: value(await services.repository.readForMember("automation_checkpoint", `${context.userId}:buildmates`, context.userId!)) })),
+  tool("update_automation_checkpoint", "Update Work Pulse progress", "Saves progress, requested schedule, source availability review, and last outcome for the linked user's single Work Pulse. Codex creates and schedules the recurring task.", z.object({ checkpointId: idSchema, cursor: z.string().max(500).nullable(), state: z.enum(["configured", "running", "succeeded", "needs_attention", "disabled"]), lastOutcome: z.string().trim().max(500), enabled: z.boolean().optional(), cadence: z.enum(["automatic", "manual", "daily", "twice_weekly", "weekly"]).nullable().optional(), sourceLivenessReviewed: z.boolean().optional(), nextRunAt: isoDateSchema.nullable(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "update_automation_checkpoint", input, async () => confirmed(await services.repository.write({ kind: "automation_checkpoint", id: `${context.userId}:buildmates`, ownerUserId: context.userId!, value: { ...withoutRuntime(input), kind: "buildmates" }, now: now(services) })))),
+  tool("probe_automation_capability", "Check background actions", "Checks whether this connected Buildmates app can save background results. A website request alone cannot mark this check as passed.", z.object({ probeId: idSchema, ...workspaceInput }).strict(), writeAnnotations, async (_input, context, services) => {
     if (!services.recordAutomationCapabilityProof) throw new Error("automation_probe_unavailable");
     return services.recordAutomationCapabilityProof({ userId: context.userId!, now: now(services) });
   }),
@@ -213,8 +236,8 @@ export function createBuildmatesMcpServer(services: BuildmatesToolServices): Mcp
     }, async (raw, extra) => {
       try {
         const subject = requireMcpSubject(extra.authInfo?.extra?.mcp_sub);
-        const value = services.executeRemoteTool && !definition.preLink
-          ? await services.executeRemoteTool({ name: definition.name, input: raw, mcpSubject: subject })
+        const value = shouldExecuteRemoteTool(definition.name, services)
+          ? await services.executeRemoteTool!({ name: definition.name, input: raw, mcpSubject: subject })
           : await executeBuildmatesTool(definition.name, raw, subject, services);
         return result(value);
       } catch (error) {
@@ -223,6 +246,10 @@ export function createBuildmatesMcpServer(services: BuildmatesToolServices): Mcp
     });
   }
   return server;
+}
+
+export function shouldExecuteRemoteTool(name: string, services: Pick<BuildmatesToolServices, "executeRemoteTool">): boolean {
+  return Boolean(services.executeRemoteTool && name !== "get_link_url" && name !== "complete_identity_link");
 }
 
 export async function executeBuildmatesTool(name: string, raw: unknown, subject: unknown, services: BuildmatesToolServices): Promise<unknown> {
@@ -238,7 +265,7 @@ export async function executeBuildmatesTool(name: string, raw: unknown, subject:
   return definition.execute(input, { mcpSubject, userId: linked?.userId ?? null, workspaceScope }, services);
 }
 
-function tool(name: string, title: string, description: string, input: z.ZodObject<z.ZodRawShape>, annotations: ToolDefinition["annotations"], execute: ToolDefinition["execute"], preLink = false, consequential = false): ToolDefinition {
+function tool(name: string, title: string, description: string, input: z.ZodType, annotations: ToolDefinition["annotations"], execute: ToolDefinition["execute"], preLink = false, consequential = false): ToolDefinition {
   return { name, title, description, input, annotations, execute, preLink, consequential };
 }
 
@@ -303,6 +330,13 @@ function linkedSetupProgress(progress: SetupProgress | undefined, services: Buil
   return progress ?? { completedSteps: ["identity_link"], updatedAt: now(services) };
 }
 
+function surfaceBindingsAllowed(spec: SurfaceSpec, authorized: unknown): boolean {
+  if (!Array.isArray(authorized) || authorized.some((value) => typeof value !== "string")) return false;
+  const allowed = new Set(authorized as string[]);
+  return spec.bindingManifest.content.every((binding) => allowed.has(binding.key))
+    && spec.bindingManifest.media.every((binding) => allowed.has(binding.key) && allowed.has(binding.altKey));
+}
+
 async function verifySetupEvidence(payload: z.infer<typeof setupPayloadSchema>, userId: string, services: BuildmatesToolServices): Promise<void> {
   if (payload.step === "source_selection") for (const id of payload.sourceIds) await requiredRecord(services, "source_policy", id, userId);
   if (payload.step === "signal_privacy_review") for (const id of payload.reviewedSignalIds) await requiredRecord(services, "work_signal", id, userId);
@@ -333,5 +367,5 @@ async function verifySetupEvidence(payload: z.infer<typeof setupPayloadSchema>, 
 function safeError(error: unknown): string {
   if (error instanceof z.ZodError) return "invalid_input";
   if (!(error instanceof Error)) return "tool_failed";
-  return ["oauth_required", "identity_link_required", "invalid_workspace_scope", "object_not_found_or_not_authorized", "surface_brief_unavailable", "idempotency_conflict", "version_conflict", "surface_spec_invalid", "pulse_expiry_invalid", "calendar_interval_invalid", "revision_surface_mismatch", "source_actions_unsupported", "source_policy_denied", "source_approval_required", "taxonomy_identifiers_invalid", "setup_evidence_missing"].includes(error.message) ? error.message : "tool_failed";
+  return ["oauth_required", "identity_link_required", "invalid_workspace_scope", "object_not_found_or_not_authorized", "surface_brief_unavailable", "idempotency_conflict", "version_conflict", "surface_spec_invalid", "pulse_expiry_invalid", "calendar_interval_invalid", "revision_surface_mismatch", "source_actions_unsupported", "source_policy_denied", "source_approval_required", "taxonomy_identifiers_invalid", "setup_evidence_missing", "map_city_required", "invalid_invite_target", "invalid_follow_watch_target", "room_not_available"].includes(error.message) ? error.message : "tool_failed";
 }

@@ -1,10 +1,11 @@
 import { establishGithubSession, sessionCookie } from "@/src/auth/github-oauth";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { requireSameOriginMutation } from "@/src/platform/same-origin";
+import { allowLocalTestingRoute } from "@/src/security/testing-route";
 
 export async function POST(request: Request) {
   const { DB, BUILDMATES_E2E } = await getPlatformBindings();
-  if (BUILDMATES_E2E !== "1" || request.headers.get("x-buildmates-e2e") !== "1") return Response.json({ error: "not_found" }, { status: 404 });
+  if (!allowLocalTestingRoute(request, BUILDMATES_E2E)) return Response.json({ error: "not_found" }, { status: 404 });
   const originFailure = requireSameOriginMutation(request);
   if (originFailure) return originFailure;
   const body = await request.json().catch(() => ({})) as { subject?: unknown };

@@ -32,7 +32,10 @@ export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Li
     await input.DB.prepare("INSERT INTO surface_assets (id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)<? AND (SELECT COALESCE(SUM(byte_size),0) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)+?<=? ON CONFLICT(id) DO NOTHING")
       .bind(id,input.actorId,objectKey,contentType,bytes.byteLength,sha256,(input.at??new Date()).getTime(),input.actorId,MAX_SURFACE_ASSET_OBJECTS,input.actorId,bytes.byteLength,MAX_SURFACE_ASSET_TOTAL_BYTES).run();
   } catch(error) {
-    await input.bucket.delete(objectKey).catch(()=>undefined);
+    // A failed D1 response does not prove the write was rolled back. Because the
+    // R2 key is content-addressed, deleting it here could break a committed row
+    // (or a concurrent upload) after an ambiguous database outcome. Orphan
+    // cleanup must instead reconcile confirmed-unreferenced objects later.
     throw error;
   }
   const stored = await input.DB.prepare("SELECT id FROM surface_assets WHERE id=? AND owner_user_id=? AND object_key=? AND content_type=? AND byte_size=? AND sha256=? AND deleted_at IS NULL")

@@ -9,8 +9,8 @@ export default function AccountDeletedPage() {
   return <main className={styles.page}>
     <ProductHeader />
     <article className={styles.article}>
-      <h1>Your Buildmates account is deleted.</h1>
-      <p className={styles.lead}>Your access has been revoked and deletion has begun. Buildmates keeps only the limited, content-free safety and integrity records described in the privacy policy.</p>
+      <h1>Your Buildmates account is being deleted.</h1>
+      <p className={styles.lead}>Access is revoked immediately. Buildmates has removed or anonymized account content and is deleting your uploaded assets. If that deletion needs to resume, the account remains inaccessible while it finishes. Only the limited dates, safety outcomes, and abuse-prevention records described in the privacy policy remain afterward.</p>
       <Link className={styles.action} href="/">Return to Buildmates</Link>
       <Link className={styles.secondary} href="/privacy">Review the privacy model</Link>
     </article>

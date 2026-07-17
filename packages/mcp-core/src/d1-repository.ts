@@ -50,11 +50,24 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
     if (kind === "room") {
       const row = await first(DB, "SELECT r.* FROM rooms r JOIN room_memberships rm ON rm.room_id=r.id WHERE r.id=? AND rm.user_id=? AND rm.left_at IS NULL", requestedId, actor);
       if (!row) return null;
-      const members = await all(DB, "SELECT user_id FROM room_memberships WHERE room_id=? AND left_at IS NULL", requestedId);
-      return record(kind, requestedId, actor, members.map((member) => String(member.user_id)).filter((user) => user !== actor), roomValue(row) as T, Number(row.updated_at ?? 1), at);
+      const members = await all(DB, "SELECT rm.user_id,p.display_name,p.timezone FROM room_memberships rm LEFT JOIN profiles p ON p.user_id=rm.user_id WHERE rm.room_id=? AND rm.left_at IS NULL ORDER BY rm.joined_at,rm.user_id", requestedId);
+      const other = members.find((member) => String(member.user_id) !== actor);
+      const windows = other ? await all(DB, `SELECT MAX(mine.starts_at,theirs.starts_at) AS starts_at,MIN(mine.ends_at,theirs.ends_at) AS ends_at,mine.timezone AS mine_timezone,theirs.timezone AS theirs_timezone
+        FROM availability_windows mine JOIN availability_windows theirs ON theirs.room_id=mine.room_id AND theirs.user_id=? AND theirs.status='approved'
+        WHERE mine.room_id=? AND mine.user_id=? AND mine.status='approved' AND MAX(mine.starts_at,theirs.starts_at)<MIN(mine.ends_at,theirs.ends_at)
+        ORDER BY starts_at LIMIT 20`, String(other.user_id), requestedId, actor) : [];
+      const theme = row.theme_topic_id ? await first(DB, "SELECT label FROM topics WHERE id=?", row.theme_topic_id) : null;
+      const room = {
+        ...roomValue(row),
+        participants: members.map((member) => ({ userId: String(member.user_id), label: String(member.display_name ?? "Buildmate") })),
+        timezones: members.filter((member) => member.timezone).map((member) => ({ userId: String(member.user_id), timezone: String(member.timezone) })),
+        candidateWindows: windows.map((window) => ({ startsAt: new Date(Number(window.starts_at)).toISOString(), endsAt: new Date(Number(window.ends_at)).toISOString(), viewerTimezone: String(window.mine_timezone), otherTimezone: String(window.theirs_timezone) })),
+        agenda: theme?.label ? `Continue the Buildmates introduction around ${String(theme.label)}` : "Continue the Buildmates introduction",
+      };
+      return record(kind, requestedId, actor, members.map((member) => String(member.user_id)).filter((user) => user !== actor), room as T, Number(row.updated_at ?? 1), at);
     }
     if (kind === "circle") {
-      const row = await first(DB, "SELECT c.* FROM circles c JOIN circle_memberships cm ON cm.circle_id=c.id WHERE c.id=? AND cm.user_id=? AND cm.status='active'", requestedId, actor);
+      const row = await first(DB, "SELECT c.*,(SELECT s.id FROM surfaces s WHERE s.kind='circle' AND s.subject_id=c.id LIMIT 1) AS surface_id FROM circles c JOIN circle_memberships cm ON cm.circle_id=c.id WHERE c.id=? AND cm.user_id=? AND cm.status='active'", requestedId, actor);
       if (!row) return null;
       const members = await all(DB, "SELECT user_id FROM circle_memberships WHERE circle_id=? AND status='active'", requestedId);
       return record(kind, requestedId, actor, members.map((member) => String(member.user_id)).filter((user) => user !== actor), circleValue(row) as T, Number(row.updated_at ?? 1), at);
@@ -109,6 +122,7 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
       }
       if (input.kind === "work_signal") {
         const sourceId = String(value.sourceId);
+        if (!["suggested_connections", "mutual_connections", "private"].includes(String(value.audience))) throw new Error("work_signal_public_forbidden");
         const policy = await first(DB, "SELECT access_mode FROM connected_app_preferences WHERE user_id=? AND app_id=? AND revoked_at IS NULL", actor, sourceId);
         if (!policy || ["never", "actions_only"].includes(String(policy.access_mode))) throw new Error("source_policy_denied");
         let approvalId: string | null = null;
@@ -153,25 +167,31 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         const profileId = canonicalId("profile", actor, "primary");
         const publishedAt = value.audience === "public" ? at : null;
         const statements = [
-          DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,project_or_interest=excluded.project_or_interest,portfolio_links_json=excluded.portfolio_links_json,audience=excluded.audience,allow_matching=excluded.allow_matching,acceptance_mode=excluded.acceptance_mode,indexable=excluded.indexable,published_at=excluded.published_at,updated_at=excluded.updated_at").bind(profileId, actor, value.displayName, value.builderSummary, value.projectOrInterest, JSON.stringify(value.portfolioLinks ?? []), value.audience, value.allowMatching ? 1 : 0, value.acceptanceMode, value.audience === "public" ? 1 : 0, publishedAt, at, at),
+            DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,coarse_location,location_map_opt_in,timezone,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,project_or_interest=excluded.project_or_interest,portfolio_links_json=excluded.portfolio_links_json,audience=excluded.audience,allow_matching=excluded.allow_matching,acceptance_mode=excluded.acceptance_mode,indexable=excluded.indexable,coarse_location=excluded.coarse_location,location_map_opt_in=excluded.location_map_opt_in,timezone=excluded.timezone,published_at=excluded.published_at,updated_at=excluded.updated_at").bind(profileId, actor, value.displayName, value.builderSummary, value.projectOrInterest, JSON.stringify(value.portfolioLinks ?? []), value.audience, value.allowMatching ? 1 : 0, value.acceptanceMode, value.audience === "public" ? 1 : 0, value.coarseLocation || null, value.locationMapOptIn ? 1 : 0, value.timezone || null, publishedAt, at, at),
           DB.prepare("INSERT INTO handles (user_id,handle,normalized_handle,created_at) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET handle=excluded.handle,normalized_handle=excluded.normalized_handle").bind(actor, value.handle, String(value.handle).toLowerCase(), at),
         ];
         if (Array.isArray(value.statistics)) {
           statements.push(DB.prepare("DELETE FROM profile_statistics WHERE profile_id=?").bind(profileId));
           for (const statistic of value.statistics as Row[]) statements.push(DB.prepare("INSERT INTO profile_statistics (profile_id,stat_key,label,value,provenance,audience,updated_at) VALUES (?,?,?,?,?,?,?)").bind(profileId, statistic.key, statistic.label, statistic.value, statistic.provenance, statistic.audience, at));
-        }
-        await DB.batch(statements);
-        return (await readCanonical<T>(input.kind, profileId, actor))!;
+          }
+          await DB.batch(statements);
+          const surfaceId = `surface_profile_${profileId}`;
+          if (!await first(DB, "SELECT id FROM surfaces WHERE id=?", surfaceId)) {
+            await domain.surfaces.createSurface({ actorId: asUserId(actor), id: surfaceId, ownerUserId: asUserId(actor), kind: "profile", subjectId: profileId, at: new Date(at) });
+          }
+          return (await readCanonical<T>(input.kind, profileId, actor))!;
       }
       if (input.kind === "invite") {
         const token = randomBytes(24).toString("base64url");
-        await run(DB, "INSERT INTO invite_links (id,creator_user_id,kind,token_hash,target_id,maximum_uses,use_count,expires_at,created_at) VALUES (?,?,?,?,NULL,?,0,?,?)", id, actor, value.kind, createHash("sha256").update(token).digest("hex"), value.maximumUses, Date.parse(String(value.expiresAt)), at);
+        await assertInviteTarget(DB,actor,String(value.kind),value.targetId==null?null:String(value.targetId));
+        await run(DB, "INSERT INTO invite_links (id,creator_user_id,kind,token_hash,headline,target_id,maximum_uses,use_count,expires_at,created_at) VALUES (?,?,?,?,?,?,?,0,?,?)", id, actor, value.kind, createHash("sha256").update(token).digest("hex"), value.headline, value.targetId??null, value.maximumUses, Date.parse(String(value.expiresAt)), at);
         const saved = (await readCanonical<T>(input.kind, input.id, actor))!;
         saved.value = { ...(saved.value as Row), token } as T;
         return saved;
       }
       if (input.kind === "follow_watch") {
         const enabled = value.enabled === true;
+        if(enabled)await assertFollowWatchTarget(DB,actor,String(value.relation),String(value.targetKind),String(value.targetId));
         if (value.relation === "follow") await run(DB, "INSERT INTO follows (follower_user_id,target_kind,target_id,created_at,revoked_at) VALUES (?,?,?,?,?) ON CONFLICT(follower_user_id,target_kind,target_id) DO UPDATE SET revoked_at=excluded.revoked_at", actor, value.targetKind, value.targetId, at, enabled ? null : at);
         else await run(DB, "INSERT INTO watches (id,user_id,kind,target_id,created_at,revoked_at) VALUES (?,?,?,?,?,?) ON CONFLICT(user_id,kind,target_id) DO UPDATE SET revoked_at=excluded.revoked_at", canonicalId("watch", actor, `${value.targetKind}:${value.targetId}`), actor, value.targetKind, value.targetId, at, enabled ? null : at);
         const relationId = canonicalFollowWatchId(String(value.relation), String(value.targetKind), String(value.targetId));
@@ -194,7 +214,10 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         const side = (value.sides as Row)?.[actor] as Row | undefined;
         const acknowledgedAt = side?.renewedRelevanceAcknowledgedAt == null ? null : Date.parse(String(side.renewedRelevanceAcknowledgedAt));
         const statements = [DB.prepare("INSERT INTO connection_sides (connection_id,user_id,muted,renewed_relevance_enabled,renewed_relevance_acknowledged_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(connection_id,user_id) DO UPDATE SET muted=excluded.muted,renewed_relevance_enabled=excluded.renewed_relevance_enabled,renewed_relevance_acknowledged_at=excluded.renewed_relevance_acknowledged_at,updated_at=excluded.updated_at").bind(input.id, actor, side?.muted ? 1 : 0, side?.renewedRelevanceEnabled === false ? 0 : 1, acknowledgedAt, at, at)];
-        if (value.state === "ended") statements.push(DB.prepare("UPDATE connections SET state='ended',ended_by_user_id=?,ended_at=?,updated_at=? WHERE id=?").bind(actor, at, at, input.id));
+        if (value.state === "ended") {
+          statements.push(DB.prepare("UPDATE connections SET state='ended',ended_by_user_id=?,ended_at=?,updated_at=? WHERE id=? AND state='active'").bind(actor, at, at, input.id));
+          statements.push(DB.prepare("UPDATE rooms SET status='ended',updated_at=? WHERE connection_id=? AND status='active'").bind(at, input.id));
+        }
         await DB.batch(statements);
         return (await readCanonical<T>(input.kind, input.id, actor))!;
       }
@@ -310,8 +333,19 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         return (await readCanonical<T>(input.kind, input.id, actor))!;
       }
       if (input.kind === "automation_checkpoint") {
-        const kind = String(value.kind);
-        await run(DB, "INSERT INTO automation_checkpoints (id,user_id,kind,cursor,last_success_at,next_run_at,state_json,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id,kind) DO UPDATE SET cursor=excluded.cursor,last_success_at=excluded.last_success_at,next_run_at=excluded.next_run_at,state_json=excluded.state_json,updated_at=excluded.updated_at", canonicalId("automation", actor, kind), actor, kind, value.cursor ?? null, value.state === "succeeded" ? at : null, value.nextRunAt ? Date.parse(String(value.nextRunAt)) : null, JSON.stringify({ state: value.state, lastOutcome: value.lastOutcome, configured: value.state !== "disabled", enabled: value.enabled ?? value.state !== "disabled", cadence: value.cadence ?? null }), at);
+        const kind = "buildmates";
+        const previous = await first(DB, "SELECT state_json FROM automation_checkpoints WHERE user_id=? AND kind='buildmates'", actor);
+        const previousState = previous?.state_json ? JSON.parse(String(previous.state_json)) as Row : {};
+        const nextState = {
+          ...previousState,
+          state: value.state,
+          lastOutcome: value.lastOutcome,
+          configured: value.state !== "disabled",
+          enabled: value.enabled ?? value.state !== "disabled",
+          cadence: value.cadence ?? previousState.cadence ?? null,
+          sourceLivenessReviewed: value.sourceLivenessReviewed ?? previousState.sourceLivenessReviewed ?? false,
+        };
+        await run(DB, "INSERT INTO automation_checkpoints (id,user_id,kind,cursor,last_success_at,next_run_at,state_json,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id,kind) DO UPDATE SET cursor=excluded.cursor,last_success_at=excluded.last_success_at,next_run_at=excluded.next_run_at,state_json=excluded.state_json,updated_at=excluded.updated_at", canonicalId("automation", actor, kind), actor, kind, value.cursor ?? null, value.state === "succeeded" ? at : null, value.nextRunAt ? Date.parse(String(value.nextRunAt)) : null, JSON.stringify(nextState), at);
         return (await readCanonical<T>(input.kind, `${actor}:${kind}`, actor))!;
       }
       throw new Error("unsupported_canonical_write");
@@ -397,7 +431,7 @@ async function listCanonicalPage<T>(DB: Database, kind: string, actor: string, o
     rows = await all(DB, "SELECT r.*,r.id AS record_id FROM room_memberships rm JOIN rooms r ON r.id=rm.room_id WHERE rm.user_id=? AND rm.left_at IS NULL AND r.id>? ORDER BY r.id LIMIT ?", actor, cursor, take);
     mapRow = (row) => record(kind, String(row.record_id), actor, [], roomValue(row) as T, Number(row.updated_at ?? 1), at);
   } else if (kind === "circle") {
-    rows = await all(DB, "SELECT c.*,c.id AS record_id FROM circle_memberships cm JOIN circles c ON c.id=cm.circle_id WHERE cm.user_id=? AND cm.status='active' AND c.id>? ORDER BY c.id LIMIT ?", actor, cursor, take);
+    rows = await all(DB, "SELECT c.*,c.id AS record_id,(SELECT s.id FROM surfaces s WHERE s.kind='circle' AND s.subject_id=c.id LIMIT 1) AS surface_id FROM circle_memberships cm JOIN circles c ON c.id=cm.circle_id WHERE cm.user_id=? AND cm.status='active' AND c.id>? ORDER BY c.id LIMIT ?", actor, cursor, take);
     mapRow = (row) => record(kind, String(row.record_id), actor, [], circleValue(row) as T, Number(row.updated_at ?? 1), at);
   } else if (kind === "automation_checkpoint") {
     rows = await all(DB, "SELECT *,user_id||':'||kind AS record_id FROM automation_checkpoints WHERE user_id=? AND (user_id||':'||kind)>? ORDER BY record_id LIMIT ?", actor, cursor, take);
@@ -420,7 +454,8 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     return record("surface", id, String(base.owner_user_id), [], {
       kind: "profile", subjectId: base.subject_id, publishedRevisionId: base.published_revision_id, governanceVersion: base.governance_version,
       allowedModules: ["profile.identity", "profile.current_work", "profile.projects"],
-      authorizedBindings: ["profile.displayName", "profile.builderSummary", "profile.projectOrInterest", "profile.portfolioLinks", "profile.publicProjects"],
+      authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"],
+      authorizedBindingTypes: { "profile.displayName": "text", "profile.summary": "text", "profile.facts": "facts", "profile.projects": "projects" },
       trustedComponents: [...designPolicy.trustedComponents],
       governance: { mode: "owner", ownerUserId: base.owner_user_id, requiredApproverIds: approvers, governanceVersion: base.governance_version },
     } as T, Number(base.governance_version), new Date(Number(base.updated_at)).toISOString());
@@ -548,12 +583,16 @@ async function all(DB: Database, sql: string, ...values: unknown[]) { return (aw
 function rowValue(row: Row) { return row; }
 function workSignalValue(row: Row) { return { signalId: row.id, sourceId: row.source_app_id, taxonomyVersion: row.taxonomy_version_id, summary: row.free_text_summary, canonicalTopicIds: JSON.parse(String(row.canonical_topic_ids_json)), canonicalToolIds: JSON.parse(String(row.canonical_tool_ids_json)), canonicalDomainIds: JSON.parse(String(row.canonical_domain_ids_json)), canonicalStageIds: JSON.parse(String(row.canonical_stage_ids_json ?? "[]")), canonicalCollaborationIntentIds: JSON.parse(String(row.canonical_collaboration_intent_ids_json ?? "[]")), audience: row.audience, allowMatching: Boolean(row.allow_matching), expiresAt: new Date(Number(row.expires_at)).toISOString(), approved: true }; }
 function pulseValue(row: Row) { const controls = JSON.parse(String(row.controls_json ?? "{}")); return { pulseId: row.id, intentSummary: row.intent_summary, builderSimilarity: Number(row.similar_adjacent) < 34 ? "similar" : Number(row.similar_adjacent) > 66 ? "adjacent" : "balanced", geography: Number(row.local_global) < 34 ? "local" : Number(row.local_global) > 66 ? "global" : "balanced", maximumIntroductionsPerWeek: controls.maximumIntroductionsPerWeek, serendipity: row.serendipity, timezone: controls.timezone, quietHours: controls.quietHours ?? [], snoozedUntil: controls.snoozedUntil ?? null, exclusions: controls.exclusions ?? [], startsAt: new Date(Number(row.starts_at)).toISOString(), expiresAt: new Date(Number(row.expires_at)).toISOString() }; }
-function profileValue(row: Row) { return { profileId: row.id, handle: row.handle, displayName: row.display_name, builderSummary: row.summary, projectOrInterest: row.project_or_interest, portfolioLinks: JSON.parse(String(row.portfolio_links_json ?? "[]")), audience: row.audience, allowMatching: Boolean(row.allow_matching), acceptanceMode: row.acceptance_mode, publishedAt: row.published_at ? new Date(Number(row.published_at)).toISOString() : null }; }
-function inviteValue(row: Row) { return { inviteId: row.id, kind: row.kind, maximumUses: row.maximum_uses, uses: row.use_count, expiresAt: new Date(Number(row.expires_at)).toISOString(), status: row.revoked_at ? "revoked" : "active" }; }
+function profileValue(row: Row) { return { profileId: row.id, surfaceId: `surface_profile_${row.id}`, handle: row.handle, displayName: row.display_name, builderSummary: row.summary, projectOrInterest: row.project_or_interest, portfolioLinks: JSON.parse(String(row.portfolio_links_json ?? "[]")), audience: row.audience, allowMatching: Boolean(row.allow_matching), acceptanceMode: row.acceptance_mode, coarseLocation: row.coarse_location ?? undefined, locationMapOptIn: Boolean(row.location_map_opt_in), timezone: row.timezone ?? undefined, publishedAt: row.published_at ? new Date(Number(row.published_at)).toISOString() : null }; }
+function inviteValue(row: Row) { return { inviteId: row.id, kind: row.kind, headline: row.headline, targetId: row.target_id, maximumUses: row.maximum_uses, uses: row.use_count, expiresAt: new Date(Number(row.expires_at)).toISOString(), status: row.revoked_at ? "revoked" : "active" }; }
+
+async function assertInviteTarget(DB:Database,actor:string,kind:string,targetId:string|null){if(kind==="personal"){if(targetId)throw new Error("invalid_invite_target");return}if(!targetId)throw new Error("invalid_invite_target");const row=kind==="builder"?await first(DB,"SELECT 1 AS ok FROM profiles WHERE id=? AND user_id=?",targetId,actor):kind==="connection_card"?await first(DB,"SELECT 1 AS ok FROM projects WHERE id=? AND owner_user_id=? AND status<>'deleted'",targetId,actor):null;if(!row)throw new Error("object_not_found_or_not_authorized")}
+async function assertFollowWatchTarget(DB:Database,actor:string,relation:string,targetKind:string,targetId:string){if(relation==="watch"){if(targetKind!=="relevant_builder"||targetId!=="network")throw new Error("invalid_follow_watch_target");return}if(relation!=="follow")throw new Error("invalid_follow_watch_target");let row:Row|null=null;if(targetKind==="profile")row=await visibleProfileTarget(DB,actor,targetId);else if(targetKind==="project")row=await first(DB,"SELECT 1 AS ok FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id JOIN users u ON u.id=x.owner_user_id WHERE x.id=? AND x.owner_user_id<>? AND u.status='active' AND p.published_at IS NOT NULL AND x.status='active' AND x.published_at IS NOT NULL AND x.audience IN ('public','signed_in') AND NOT EXISTS (SELECT 1 FROM blocks b WHERE b.revoked_at IS NULL AND ((b.blocker_user_id=? AND b.blocked_user_id=x.owner_user_id) OR (b.blocked_user_id=? AND b.blocker_user_id=x.owner_user_id)))",targetId,actor,actor,actor);else if(targetKind==="topic")row=await first(DB,"SELECT 1 AS ok FROM topics t JOIN taxonomy_versions v ON v.id=t.taxonomy_version_id WHERE t.id=? AND v.status='active'",targetId);if(!row)throw new Error("object_not_found_or_not_authorized")}
+async function visibleProfileTarget(DB:Database,actor:string,targetId:string){return first(DB,"SELECT 1 AS ok FROM profiles p JOIN users u ON u.id=p.user_id WHERE p.user_id=? AND p.user_id<>? AND u.status='active' AND p.published_at IS NOT NULL AND p.audience IN ('public','signed_in') AND NOT EXISTS (SELECT 1 FROM blocks b WHERE b.revoked_at IS NULL AND ((b.blocker_user_id=? AND b.blocked_user_id=p.user_id) OR (b.blocked_user_id=? AND b.blocker_user_id=p.user_id)))",targetId,actor,actor,actor)}
 function candidateBatchValue(row: Row) { return { batchId: row.id, indexVersion: row.index_version, taxonomyVersion: row.taxonomy_version, candidateIds: JSON.parse(String(row.candidate_ids_json ?? "[]")), expiresAt: new Date(Number(row.expires_at)).toISOString() }; }
 function connectionNoteValue(row: Row) { return { connectionId: row.connection_id, body: row.body, createdAt: new Date(Number(row.created_at)).toISOString(), updatedAt: new Date(Number(row.updated_at)).toISOString() }; }
 function connectionReminderValue(row: Row) { return { connectionId: row.connection_id, remindAt: new Date(Number(row.remind_at)).toISOString(), status: row.status }; }
 function roomValue(row: Row) { return { roomId: row.id, status: row.status, themeTopicId: row.theme_topic_id ?? null }; }
-function circleValue(row: Row) { return { circleId: row.id, name: row.name, purpose: row.purpose, status: row.status, governanceMode: row.governance_mode, governanceVersion: row.governance_version }; }
+function circleValue(row: Row) { return { circleId: row.id, surfaceId: row.surface_id ?? null, name: row.name, purpose: row.purpose, status: row.status, governanceMode: row.governance_mode, governanceVersion: row.governance_version }; }
 function calendarValue(row: Row) { return { roomId: row.room_id, meetingProposalId: row.meeting_proposal_id, provider: row.provider, providerEventId: row.provider_event_id, startsAt: new Date(Number(row.starts_at)).toISOString(), endsAt: new Date(Number(row.ends_at)).toISOString(), participantLabels: JSON.parse(String(row.participant_labels_json)), status: row.status }; }
-function automationValue(row: Row) { const state = JSON.parse(String(row.state_json)); return { kind: row.kind, cursor: row.cursor, state: state.state, lastOutcome: state.lastOutcome, enabled: state.enabled ?? state.state !== "disabled", cadence: state.cadence ?? null, nextRunAt: row.next_run_at ? new Date(Number(row.next_run_at)).toISOString() : null }; }
+function automationValue(row: Row) { const state = JSON.parse(String(row.state_json)); return { ...state, kind: row.kind, cursor: row.cursor, state: state.state, lastOutcome: state.lastOutcome, enabled: state.enabled ?? state.state !== "disabled", cadence: state.cadence ?? null, sourceLivenessReviewed: state.sourceLivenessReviewed ?? false, nextRunAt: row.next_run_at ? new Date(Number(row.next_run_at)).toISOString() : null }; }

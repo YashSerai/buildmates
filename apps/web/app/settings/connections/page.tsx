@@ -4,6 +4,7 @@ import { getPlatformBindings } from "@/src/platform/bindings";
 import { getIdentityConnectionStatus } from "@/src/platform/identity-connections";
 import { ConnectionsClient } from "./ConnectionsClient";
 import { SignOutButton } from "@/components/auth/SignOutButton";
+import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "./connections.module.css";
 
 export const metadata: Metadata = {
@@ -22,18 +23,13 @@ export default async function ConnectionsPage() {
   );
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <a className={styles.wordmark} href="/" aria-label="Buildmates home">
-          Buildmates
-        </a>
+    <><ProductHeader signedIn/><main className={styles.page}>
         <div className={styles.account}>
           <span className={styles.accountName}>
             {user.identity.displayName ?? "Signed in with GitHub"}
           </span>
           <SignOutButton className={styles.signOut} />
         </div>
-      </header>
 
       <section className={styles.intro} aria-labelledby="connections-title">
         <p className={styles.sectionName}>Account connection</p>
@@ -54,6 +50,6 @@ export default async function ConnectionsPage() {
           calendar, email, or connector credentials.
         </p>
       </aside>
-    </main>
+    </main></>
   );
 }

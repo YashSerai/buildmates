@@ -19,7 +19,7 @@ export function WorkSignalReview({
       <div className={styles.emptyState}>
         <strong>No Work Signals yet</strong>
         <p>
-          You can finish a basic profile now. A later Work Pulse can add
+          You can finish a basic profile now. A later automation run can add
           approved summaries without exposing raw source content.
         </p>
       </div>
@@ -73,7 +73,7 @@ function SignalEditor({
       </label>
       <div className={styles.twoColumns}>
         <label>
-          Visibility
+          Matching audience
           <select
             value={draft.audience}
             onChange={(event) => {
@@ -83,12 +83,11 @@ function SignalEditor({
               });
             }}
           >
-            <option value="public">Show on profile</option>
-            <option value="signed_in">Signed-in builders</option>
             <option value="suggested_connections">Suggested connections</option>
             <option value="mutual_connections">Mutual connections</option>
-            <option value="private">Private</option>
+            <option value="private">Only me</option>
           </select>
+          <span>Work Signals are private matching context. They never appear on your public profile or in public discovery.</span>
         </label>
         <label className={styles.checkLabel}>
           <input

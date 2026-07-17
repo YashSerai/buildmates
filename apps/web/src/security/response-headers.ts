@@ -8,7 +8,7 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  "connect-src 'self' https://tiles.openfreemap.org",
   "frame-src 'self' blob:",
   "media-src 'self' blob:",
   "worker-src 'self' blob:",
@@ -18,13 +18,17 @@ const CONTENT_SECURITY_POLICY = [
 
 export function withSecurityHeaders(response: Response, requestId: string): Response {
   const headers = new Headers(response.headers);
-  headers.set("content-security-policy", CONTENT_SECURITY_POLICY);
-  headers.set("cross-origin-opener-policy", "same-origin");
-  headers.set("cross-origin-resource-policy", "same-origin");
-  headers.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
-  headers.set("referrer-policy", "strict-origin-when-cross-origin");
-  headers.set("x-content-type-options", "nosniff");
-  headers.set("x-frame-options", "DENY");
+  // Route handlers may deliberately return a policy that is stricter than the
+  // document default. Surface assets, for example, are inert raster responses
+  // with `default-src 'none'; sandbox` and `no-referrer`. Never weaken those
+  // headers at the Worker boundary.
+  setDefault(headers, "content-security-policy", CONTENT_SECURITY_POLICY);
+  setDefault(headers, "cross-origin-opener-policy", "same-origin");
+  setDefault(headers, "cross-origin-resource-policy", "same-origin");
+  setDefault(headers, "permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+  setDefault(headers, "referrer-policy", "strict-origin-when-cross-origin");
+  setDefault(headers, "x-content-type-options", "nosniff");
+  setDefault(headers, "x-frame-options", "DENY");
   headers.set("x-request-id", requestId);
 
   return new Response(response.body, {
@@ -32,4 +36,8 @@ export function withSecurityHeaders(response: Response, requestId: string): Resp
     statusText: response.statusText,
     headers,
   });
+}
+
+function setDefault(headers: Headers, name: string, value: string): void {
+  if (!headers.has(name)) headers.set(name, value);
 }

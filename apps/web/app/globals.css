@@ -3,9 +3,9 @@
 :root {
   --background: #f3f0e7; --foreground: #181b17;
   --paper: #f3f0e7; --paper-raised: #fffdf7; --ink: #181b17; --ink-soft: #51574e;
-  --night: #1b211b; --moss: #244f39; --leaf: #a9bc91; --signal: #e87543;
+  --night: #1b211b; --moss: #244f39; --leaf: #a9bc91; --signal: #b9481f;
   --rule: #b9b9ab; --rule-dark: #667063;
-  --font-display: "Aptos Display", "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --font-body: Aptos, "Segoe UI Variable Text", "Segoe UI", sans-serif;
   --font-code: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   color-scheme: light;
@@ -34,5 +34,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 h1, h2, h3 { font-family: var(--font-display) !important; }
 button, input, select, textarea { border-radius: 0; }
 :focus-visible { outline: 3px solid var(--signal); outline-offset: 3px; }
+.skip-link { position: fixed; z-index: 10000; top: .5rem; left: .5rem; transform: translateY(-160%); background: #fffdf7; color: #181b17; border: 2px solid #181b17; padding: .75rem 1rem; font-weight: 750; }
+.skip-link:focus { transform: translateY(0); }
 ::selection { background: var(--leaf); color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }

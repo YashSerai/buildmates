@@ -114,6 +114,7 @@ export function createMemoryMcpProductRepository(): McpProductRepository {
       }
       if (input.kind === "work_signal") {
         const signal = nextValue as Record<string, unknown>;
+        if (!["suggested_connections", "mutual_connections", "private"].includes(String(signal.audience))) throw new Error("work_signal_public_forbidden");
         const source = findAuthorized("source_policy", String(signal.sourceId ?? ""), actor);
         const policy = (source?.value as Record<string, unknown> | undefined)?.policy;
         if (!source || policy === "never" || policy === "actions_only") throw new Error("source_policy_denied");

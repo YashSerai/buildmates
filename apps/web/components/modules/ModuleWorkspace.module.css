@@ -1,0 +1,19 @@
+.workspace { display: grid; gap: 1rem; }
+.module { border: 1px solid var(--line, #c8c7bc); background: var(--paper, #fffdf8); padding: 1rem; display: grid; gap: .9rem; }
+.moduleHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
+.moduleHeader h3, .moduleHeader p { margin: 0; }
+.moduleHeader p { color: #62645d; font-size: .85rem; }
+.entries { display: grid; gap: .65rem; }
+.entry { border-left: 3px solid #566b42; padding: .65rem .75rem; background: #f5f1e8; }
+.entry h4, .entry p { margin: 0; }
+.entry dl { display: grid; grid-template-columns: minmax(6rem, auto) 1fr; gap: .25rem .75rem; margin: .6rem 0; }
+.entry dt { color: #66685f; }
+.entry dd { margin: 0; overflow-wrap: anywhere; }
+.entryActions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .65rem; align-items: end; }
+.form label { display: grid; gap: .3rem; font-size: .88rem; }
+.form input, .form select, .form textarea { width: 100%; padding: .65rem; border: 1px solid #aaa99f; background: #fff; color: #20211e; font: inherit; }
+.form textarea { min-height: 5rem; resize: vertical; }
+.form button, .entryActions button { width: fit-content; }
+.empty { margin: 0; color: #66685f; }
+@media (max-width: 620px) { .moduleHeader { align-items: flex-start; flex-direction: column; } .entry dl { grid-template-columns: 1fr; } }

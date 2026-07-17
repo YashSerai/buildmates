@@ -1,3 +1,5 @@
+import { resolveCanonicalCity } from "@buildmates/domain";
+
 export type Audience = "public" | "signed_in" | "suggested_connections" | "mutual_connections" | "private";
 export const AUDIENCES: Audience[] = ["public", "signed_in", "suggested_connections", "mutual_connections", "private"];
 export const PROFILE_FIELD_KEYS = ["current_work", "previous_work", "interests", "ambitions", "stage", "exploring", "offers", "needs", "networking_intent", "cohorts"] as const;
@@ -7,6 +9,7 @@ type Viewer = string | null;
 type ProfileFieldInput = { key: typeof PROFILE_FIELD_KEYS[number]; value: string | string[]; audience: Audience; allowMatching?: boolean; sourceStatus?: "generated" | "confirmed"; provenance?: "self_reported" | "codex_summary" | "connected_app" | "system" };
 export type ProfileInput = { handle: string; displayName: string; summary: string; audience: Audience; indexable: boolean; allowMatching: boolean; acceptanceMode: "manual" | "full_autopilot"; coarseLocation?: string; locationMapOptIn?: boolean; timezone?: string; projectOrInterest?: string; portfolioLinks?: string[]; fields: ProfileFieldInput[]; statistics?: {key:string;label:string;value:string;provenance:"self_reported"|"connected_app"|"system";audience:Audience}[] };
 export type ProjectInput = { slug: string; title: string; summary: string; audience: Audience; allowMatching: boolean; indexable: boolean; stage: string; status: "draft" | "active" | "archived"; links?: { label: string; url: string }[]; taxonomy?: { kind: "topic" | "tool" | "domain"; id: string }[] };
+export type ProjectTaxonomyChoices={topics:{id:string;label:string}[];tools:{id:string;label:string}[];domains:{id:string;label:string}[]};
 type ProfileRow={id:string;userId:string;handle:string;displayName:string;summary:string;audience:Audience;indexable:number;allowMatching:number;acceptanceMode:"manual"|"full_autopilot";coarseLocation:string|null;locationMapOptIn:number;timezone:string|null;publishedAt:number|null};
 type FieldRow={key:string;valueJson:string;audience:Audience;allowMatching:number;sourceStatus:string;provenance:string};
 type ProjectSummaryRow={id:string;slug:string;title:string;summary:string;stage:string;status:string;audience:Audience;indexable:number};
@@ -27,6 +30,7 @@ export async function saveProfile(db: D1Database, userId: string, input: Profile
   if(!Array.isArray(input.statistics??[])||(input.statistics??[]).length>MAX_PROFILE_STATISTICS)throw new Error("invalid_statistics");
   const fieldKeys=new Set<string>(),statisticKeys=new Set<string>();
   if(input.coarseLocation!==undefined&&input.coarseLocation.trim().length>120)throw new Error("invalid_location");
+  if(input.locationMapOptIn&&!resolveCanonicalCity(input.coarseLocation))throw new Error("map_city_required");
   if(input.timezone!==undefined&&input.timezone.trim().length>80)throw new Error("invalid_timezone");
   if(input.projectOrInterest!==undefined&&input.projectOrInterest.trim().length>240)throw new Error("invalid_project_or_interest");
   const handle = normalizeHandle(input.handle); assertAudience(input.audience);
@@ -69,7 +73,7 @@ export async function getProfileByHandle(db: D1Database, handleInput: string, vi
   const fields = (await db.prepare(`SELECT field_key AS key,value_json AS valueJson,audience,allow_matching AS allowMatching,source_status AS sourceStatus,provenance FROM profile_fields f WHERE f.profile_id=? AND ${audiencePredicate("f", "(SELECT user_id FROM profiles WHERE id=f.profile_id)")} ORDER BY field_key`).bind(profile.id,...audienceBindings(viewerId)).all<FieldRow>()).results.map(({valueJson,...row}) => ({ ...row, value: JSON.parse(valueJson) as unknown, allowMatching: Boolean(row.allowMatching) }));
   const projects = (await db.prepare(`SELECT id,slug,title,summary,stage,status,audience,indexable FROM projects x WHERE x.owner_user_id=? AND x.status='active' AND ${audiencePredicate("x", "owner_user_id")} ORDER BY updated_at DESC`).bind(profile.userId,...audienceBindings(viewerId)).all<ProjectSummaryRow>()).results;
   const statistics=(await db.prepare(`SELECT stat_key AS key,label,value,provenance,audience FROM profile_statistics s WHERE s.profile_id=? AND ${audienceWithoutCohort("s","(SELECT user_id FROM profiles WHERE id=s.profile_id)")} ORDER BY stat_key`).bind(profile.id,...audienceBindings(viewerId).filter((_,index)=>index!==3)).all<{key:string;label:string;value:string;provenance:string;audience:Audience}>()).results;
-  const workSignals=(await db.prepare(`SELECT w.id,w.free_text_summary AS summary,w.audience,w.expires_at AS expiresAt FROM work_signals w WHERE w.user_id=? AND w.approved_at IS NOT NULL AND w.revoked_at IS NULL AND w.expires_at>? AND ${audiencePredicate("w")} ORDER BY w.updated_at DESC LIMIT 20`).bind(profile.userId,Date.now(),...audienceBindings(viewerId)).all<{id:string;summary:string;audience:Audience;expiresAt:number}>()).results;
+  const workSignals=viewerId===profile.userId?(await db.prepare(`SELECT w.id,w.free_text_summary AS summary,w.audience,w.expires_at AS expiresAt FROM work_signals w WHERE w.user_id=? AND w.approved_at IS NOT NULL AND w.revoked_at IS NULL AND w.expires_at>? ORDER BY w.updated_at DESC LIMIT 20`).bind(profile.userId,Date.now()).all<{id:string;summary:string;audience:Audience;expiresAt:number}>()).results:[];
   return { ...profile, indexable: Boolean(profile.indexable), locationMapOptIn: Boolean(profile.locationMapOptIn), allowMatching: Boolean(profile.allowMatching), fields, statistics, projects, workSignals };
 }
 
@@ -81,6 +85,7 @@ export async function saveProject(db: D1Database, userId: string, input: Project
   const linkKeys=new Set<string>(),taxonomyKeys=new Set<string>();
   for (const link of input.links ?? []) { if(!link||typeof link!=="object")throw new Error("invalid_link");bounded(link.label, 40, "invalid_link_label");link.url=httpUrl(link.url,"invalid_link_url");const key=`${link.label.trim()}\0${link.url}`;if(linkKeys.has(key))throw new Error("duplicate_link");linkKeys.add(key); }
   for(const item of input.taxonomy??[]){if(!item||typeof item!=="object"||!["topic","tool","domain"].includes(item.kind)||typeof item.id!=="string"||!/^[a-z0-9][a-z0-9_.:-]{0,79}$/.test(item.id))throw new Error("invalid_taxonomy_item");const key=`${item.kind}:${item.id}`;if(taxonomyKeys.has(key))throw new Error("duplicate_taxonomy_item");taxonomyKeys.add(key)}
+  await assertApprovedProjectTaxonomy(db,input.taxonomy??[]);
   const current = existingSlug ? await db.prepare("SELECT id FROM projects WHERE slug=? AND owner_user_id=? AND status<>'deleted'").bind(normalizeSlug(existingSlug), userId).first<{id:string}>() : null;
   const id = current?.id ?? uid("project");
   const statements = [db.prepare("INSERT OR IGNORE INTO users (id,status,operator_role,created_at,updated_at) VALUES (?,'active','none',?,?)").bind(userId,now,now), db.prepare("INSERT INTO projects (id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET slug=excluded.slug,title=excluded.title,summary=excluded.summary,audience=excluded.audience,allow_matching=excluded.allow_matching,status=excluded.status,stage=excluded.stage,indexable=excluded.indexable,published_at=excluded.published_at,deleted_at=NULL,updated_at=excluded.updated_at").bind(id,userId,slug,input.title.trim(),input.summary.trim(),input.audience,input.allowMatching?1:0,input.status,input.stage.trim(),input.indexable?1:0,input.status==='active'?now:null,now,now), db.prepare("DELETE FROM project_links WHERE project_id=?").bind(id), db.prepare("DELETE FROM project_taxonomy_items WHERE project_id=?").bind(id)];
@@ -90,9 +95,24 @@ export async function saveProject(db: D1Database, userId: string, input: Project
   const results=await db.batch(statements); if(results.some((result)=>!result.success)) throw new Error("project_save_failed"); return {id,slug};
 }
 
+export async function listProjectTaxonomyChoices(db:D1Database):Promise<ProjectTaxonomyChoices>{
+  const version=await db.prepare("SELECT id FROM taxonomy_versions WHERE status='active' ORDER BY version DESC LIMIT 1").first<{id:string}>();
+  if(!version)return{topics:[],tools:[],domains:[]};
+  const [topics,tools,domains]=await Promise.all([
+    db.prepare("SELECT id,label FROM topics WHERE taxonomy_version_id=? ORDER BY label,id LIMIT 200").bind(version.id).all<{id:string;label:string}>(),
+    db.prepare("SELECT id,label FROM tools WHERE taxonomy_version_id=? ORDER BY label,id LIMIT 200").bind(version.id).all<{id:string;label:string}>(),
+    db.prepare("SELECT id,label FROM domains WHERE taxonomy_version_id=? ORDER BY label,id LIMIT 200").bind(version.id).all<{id:string;label:string}>(),
+  ]);
+  return{topics:topics.results,tools:tools.results,domains:domains.results};
+}
+
+async function assertApprovedProjectTaxonomy(db:D1Database,items:NonNullable<ProjectInput["taxonomy"]>){
+  for(const item of items){const table=item.kind==="topic"?"topics":item.kind==="tool"?"tools":"domains";const row=await db.prepare(`SELECT 1 AS ok FROM ${table} item JOIN taxonomy_versions version ON version.id=item.taxonomy_version_id WHERE item.id=? AND version.status='active' LIMIT 1`).bind(item.id).first();if(!row)throw new Error("taxonomy_item_not_approved")}
+}
+
 export async function getProjectBySlug(db: D1Database, slugInput: string, viewerId: Viewer) {
   const slug=normalizeSlug(slugInput); const row=await db.prepare(`SELECT x.id,x.owner_user_id AS ownerUserId,x.slug,x.title,x.summary,x.audience,x.allow_matching,x.status,x.stage,x.indexable,h.handle,p.display_name AS ownerDisplayName FROM projects x JOIN handles h ON h.user_id=x.owner_user_id JOIN profiles p ON p.user_id=x.owner_user_id WHERE x.slug=? AND x.status<>'deleted' AND ((x.owner_user_id=? OR EXISTS (SELECT 1 FROM project_collaborators pc WHERE pc.project_id=x.id AND pc.user_id=? AND pc.approved_at IS NOT NULL)) OR (x.status='active' AND ${audiencePredicate("x", "owner_user_id")})) LIMIT 1`).bind(slug,viewerId??"",viewerId??"",...audienceBindings(viewerId)).first<ProjectDetailRow>();
-  if(!row)return null; const links=(await db.prepare("SELECT label,url FROM project_links WHERE project_id=? ORDER BY position").bind(row.id).all<{label:string;url:string}>()).results; const taxonomy=(await db.prepare("SELECT kind,taxonomy_item_id AS id FROM project_taxonomy_items WHERE project_id=? ORDER BY kind,taxonomy_item_id").bind(row.id).all<{kind:string;id:string}>()).results; const updates=(await db.prepare("SELECT id,body,created_at AS createdAt FROM project_updates WHERE project_id=? AND (author_user_id=? OR audience='public' OR (audience='signed_in' AND ?<>'')) ORDER BY created_at DESC LIMIT 20").bind(row.id,viewerId??'',viewerId??'').all<{id:string;body:string;createdAt:number}>()).results; return {...row,indexable:Boolean(row.indexable),allow_matching:Boolean(row.allow_matching),links,taxonomy,updates};
+  if(!row)return null; const links=(await db.prepare("SELECT label,url FROM project_links WHERE project_id=? ORDER BY position").bind(row.id).all<{label:string;url:string}>()).results; const taxonomy=(await db.prepare(`SELECT item.kind,item.taxonomy_item_id AS id,COALESCE(topic.label,tool.label,domain.label,item.taxonomy_item_id) AS label FROM project_taxonomy_items item LEFT JOIN topics topic ON item.kind='topic' AND topic.id=item.taxonomy_item_id LEFT JOIN tools tool ON item.kind='tool' AND tool.id=item.taxonomy_item_id LEFT JOIN domains domain ON item.kind='domain' AND domain.id=item.taxonomy_item_id WHERE item.project_id=? ORDER BY item.kind,label,item.taxonomy_item_id`).bind(row.id).all<{kind:string;id:string;label:string}>()).results; const updates=(await db.prepare("SELECT id,body,created_at AS createdAt FROM project_updates WHERE project_id=? AND (author_user_id=? OR audience='public' OR (audience='signed_in' AND ?<>'')) ORDER BY created_at DESC LIMIT 20").bind(row.id,viewerId??'',viewerId??'').all<{id:string;body:string;createdAt:number}>()).results; return {...row,indexable:Boolean(row.indexable),allow_matching:Boolean(row.allow_matching),links,taxonomy,updates};
 }
 
 export async function changeProjectLifecycle(db:D1Database,userId:string,slugInput:string,action:"archive"|"restore"|"delete") { const slug=normalizeSlug(slugInput); const now=Date.now(); const status=action==='archive'?'archived':action==='restore'?'active':'deleted'; const results=await db.batch([db.prepare("UPDATE projects SET status=?,published_at=CASE WHEN ?='active' THEN COALESCE(published_at,?) ELSE published_at END,deleted_at=CASE WHEN ?='deleted' THEN ? ELSE NULL END,updated_at=? WHERE slug=? AND owner_user_id=? AND status<>'deleted'").bind(status,status,now,status,now,now,slug,userId),...matchingInvalidationStatements(db,userId,now)]); if(!results[0].meta?.changes)throw new Error("project_not_found"); }

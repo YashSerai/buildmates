@@ -3,6 +3,7 @@ import { requireUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { getOnboardingSnapshot } from "@/src/platform/onboarding-data";
 import { OnboardingClient } from "../OnboardingClient";
+import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "../onboarding.module.css";
 
 export const metadata: Metadata = {
@@ -17,20 +18,13 @@ export default async function ManualOnboardingPage() {
   const snapshot = await getOnboardingSnapshot(DB, user.id, user.identity.displayName);
 
   return (
-    <main className={styles.page}>
-      <header className={styles.header}>
-        <a className={styles.wordmark} href="/">Buildmates</a>
-        <nav aria-label="Setup">
-          <a href="/onboarding">Back to Codex setup</a>
-          <a href="/settings/privacy">Privacy</a>
-        </nav>
-      </header>
+    <><ProductHeader signedIn/><main className={styles.page}>
       <section className={styles.intro}>
-        <p className={styles.eyebrow}>Manual fallback</p>
-        <h1>Set up Buildmates on the website</h1>
-        <p>This updates the same profile and progress used by Codex. Use it when the Buildmates app is unavailable or when you prefer a form.</p>
+        <p className={styles.eyebrow}>Website fallback</p>
+        <h1>Continue setup without Codex</h1>
+        <p>These forms update the same profile and setup progress used by Codex. You can return to the guided Codex flow at any time.</p>
       </section>
       <OnboardingClient initialSnapshot={snapshot} defaultDisplayName={user.identity.displayName ?? "Builder"} />
-    </main>
+    </main></>
   );
 }

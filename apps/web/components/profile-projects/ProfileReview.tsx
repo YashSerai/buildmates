@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { CANONICAL_CITIES } from "@buildmates/domain";
+import { userFacingError } from "../../src/client/user-facing-error";
 import styles from "./ProductForms.module.css";
 const audiences = [
   "public",
@@ -9,6 +11,18 @@ const audiences = [
   "mutual_connections",
   "private",
 ];
+const audienceLabels: Readonly<Record<string, string>> = {
+  public: "Anyone with the link",
+  signed_in: "Signed-in builders",
+  suggested_connections: "Builders suggested to you",
+  mutual_connections: "Your connections",
+  private: "Only you",
+  manual: "Ask me before each introduction",
+  full_autopilot: "Let Codex accept strong matches for me",
+};
+function defaultFieldAudience(key: string) {
+  return key === "current_work" || key === "networking_intent" ? "suggested_connections" : "public";
+}
 
 export function ProfileReview({
   defaultHandle = "",
@@ -47,7 +61,7 @@ export function ProfileReview({
       .map((key) => ({
         key,
         value: String(formData.get(key) ?? "").trim(),
-        audience: String(formData.get(`${key}_audience`) ?? "public"),
+        audience: String(formData.get(`${key}_audience`) ?? defaultFieldAudience(key)),
       }))
       .filter((field) => field.value);
     const body = {
@@ -77,7 +91,7 @@ export function ProfileReview({
     );
     const data = (await response.json()) as { error?: string; handle: string };
     if (!response.ok) {
-      setError(data.error ?? "Profile could not be saved.");
+      setError(userFacingError(data.error, "Profile could not be saved."));
       setBusy(false);
       return;
     }
@@ -90,7 +104,7 @@ export function ProfileReview({
         <p className={styles.eyebrow}>Profile review</p>
         <h1>Choose what other builders can know.</h1>
         <p>
-          Your profile starts structured so privacy, discovery, and generated
+          Your profile starts structured so privacy, matching, and generated
           designs stay reliable. You can revise it with Codex later.
         </p>
       </header>
@@ -118,7 +132,7 @@ export function ProfileReview({
           Short introduction
           <textarea name="summary" defaultValue={initial?.summary} required maxLength={600} rows={4} />
         </label>
-        <Field name="coarseLocation" label="Location (city or region)" defaultValue={initial?.coarseLocation} />
+        <label>City for the aggregate map<select name="coarseLocation" defaultValue={initial?.coarseLocation ?? ""}><option value="">Not shared</option>{CANONICAL_CITIES.map((city)=><option key={city.id} value={city.label}>{city.label}, {city.country}</option>)}</select></label>
         <Select name="audience" label="Profile visibility" values={audiences} defaultValue={initial?.audience} />
         <Select
           name="acceptanceMode"
@@ -144,7 +158,7 @@ export function ProfileReview({
             name={`${name}_audience`}
             label="Who can see this?"
             values={audiences}
-            defaultValue={initialFields.get(name)?.audience}
+            defaultValue={initialFields.get(name)?.audience ?? defaultFieldAudience(name)}
           />
         </div>
       ))}
@@ -199,7 +213,7 @@ function Select({
       <select name={name} defaultValue={defaultValue}>
         {values.map((value) => (
           <option key={value} value={value}>
-            {value.replaceAll("_", " ")}
+            {audienceLabels[value] ?? value.replaceAll("_", " ")}
           </option>
         ))}
       </select>

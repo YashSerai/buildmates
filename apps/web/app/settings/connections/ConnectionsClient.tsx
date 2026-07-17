@@ -120,7 +120,7 @@ export function ConnectionsClient({ initialStatus }: { initialStatus: IdentityCo
         {status.connected ? (
           <div className={styles.connectedActions}>
             <p>
-              The Buildmates plugin can now use this account when you ask it to.
+              The Buildmates plugin can now use this account when you ask it to or when your approved Work Pulse runs.
               {status.linkedAt ? <> Linked <time dateTime={status.linkedAt}>{formatLinkedDate(status.linkedAt)}</time>.</> : null}
             </p>
             <button className={styles.dangerButton} type="button" onClick={disconnect} disabled={!hydrated || requestState === "working"}>

@@ -55,14 +55,14 @@ export async function finishGithubLogin(input: { code: string; state: string; st
   if (!profileResponse.ok || !Number.isSafeInteger(rawProfile.id) || Number(rawProfile.id) <= 0 || typeof rawProfile.login !== "string") throw new Error("github_identity_invalid");
   const profile: GithubProfile = { id: Number(rawProfile.id), login: rawProfile.login, name: typeof rawProfile.name === "string" ? rawProfile.name : null };
   const session = await establishGithubSession(DB, profile, now);
-  return { ...session, returnTo: safeReturnPath(attempt.returnTo), profile };
+  return { ...session, returnTo: session.accountStatus === "suspended" ? "/account/appeal" : safeReturnPath(attempt.returnTo), profile };
 }
 
 export async function establishGithubSession(DB: D1Database, profile: GithubProfile, now: number) {
   const subject = String(profile.id);
   const existing = await DB.prepare("SELECT p.id AS principalId,p.revoked_at AS principalRevokedAt,l.user_id AS userId,l.revoked_at AS linkRevokedAt,u.status FROM identity_principals p LEFT JOIN identity_links l ON l.principal_id=p.id LEFT JOIN users u ON u.id=l.user_id WHERE p.channel='web' AND p.issuer='github.com' AND p.subject=? AND p.workspace_scope='global' LIMIT 1")
     .bind(subject).first<{ principalId: string; principalRevokedAt: number | null; userId: string | null; linkRevokedAt: number | null; status: string | null }>();
-  if (existing && (existing.principalRevokedAt !== null || existing.linkRevokedAt !== null || existing.status !== "active" || !existing.userId)) throw new Error("account_unavailable");
+  if (existing && (existing.principalRevokedAt !== null || existing.linkRevokedAt !== null || !["active", "suspended"].includes(existing.status ?? "") || !existing.userId)) throw new Error("account_unavailable");
 
   const userId = existing?.userId ?? crypto.randomUUID();
   const principalId = existing?.principalId ?? crypto.randomUUID();
@@ -84,13 +84,13 @@ export async function establishGithubSession(DB: D1Database, profile: GithubProf
     } catch {
       const winner = await DB.prepare("SELECT l.user_id AS userId,p.id AS principalId,u.status,p.revoked_at AS principalRevokedAt,l.revoked_at AS linkRevokedAt FROM identity_principals p JOIN identity_links l ON l.principal_id=p.id JOIN users u ON u.id=l.user_id WHERE p.channel='web' AND p.issuer='github.com' AND p.subject=? AND p.workspace_scope='global' LIMIT 1")
         .bind(subject).first<{ userId: string; principalId: string; status: string; principalRevokedAt: number | null; linkRevokedAt: number | null }>();
-      if (!winner || winner.status !== "active" || winner.principalRevokedAt !== null || winner.linkRevokedAt !== null) throw new Error("account_unavailable");
+      if (!winner || !["active", "suspended"].includes(winner.status) || winner.principalRevokedAt !== null || winner.linkRevokedAt !== null) throw new Error("account_unavailable");
       await DB.prepare("INSERT INTO web_sessions (id,user_id,principal_id,token_hash,expires_at,last_seen_at,revoked_at,created_at) VALUES (?,?,?,?,?,?,NULL,?)")
         .bind(sessionId, winner.userId, winner.principalId, tokenHash, expiresAt, now, now).run();
-      return { userId: winner.userId, cookieValue: `${sessionId}.${sessionSecret}`, expiresAt };
+      return { userId: winner.userId, cookieValue: `${sessionId}.${sessionSecret}`, expiresAt, accountStatus: winner.status as "active" | "suspended" };
     }
   }
-  return { userId, cookieValue: `${sessionId}.${sessionSecret}`, expiresAt };
+  return { userId, cookieValue: `${sessionId}.${sessionSecret}`, expiresAt, accountStatus: (existing?.status ?? "active") as "active" | "suspended" };
 }
 
 export function sessionCookie(value: string, maxAge = Math.floor(SESSION_TTL_MS / 1000)): string {

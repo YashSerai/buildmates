@@ -20,20 +20,22 @@ export function ConnectionsClient({ initialConnections }: { initialConnections: 
   const [open, setOpen] = useState<string | null>(null);
   const [details, setDetails] = useState<Record<string, Detail>>({});
   const [notice, setNotice] = useState("");
+  const [loadErrors, setLoadErrors] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
 
   async function refresh(id: string) {
-    const response = await fetch(`/api/connections/${encodeURIComponent(id)}`, { cache: "no-store" });
-    if (response.ok) {
+    try { const response = await fetch(`/api/connections/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error();
       const detail = await response.json() as Detail;
       setDetails((current) => ({ ...current, [id]: detail }));
-    }
+      setLoadErrors((current)=>({...current,[id]:false}));
+    } catch { setLoadErrors((current)=>({...current,[id]:true})); }
   }
   async function toggle(id: string) {
     setOpen((current) => current === id ? null : id);
     if (!details[id]) await refresh(id);
   }
-  async function command(id: string, body: object) {
+  async function command(id: string, body: object, success = "Connection updated.") {
     setBusy(true);
     setNotice("");
     const response = await fetch(`/api/connections/${encodeURIComponent(id)}`, {
@@ -42,12 +44,12 @@ export function ConnectionsClient({ initialConnections }: { initialConnections: 
       body: JSON.stringify(body),
     });
     if (!response.ok) {
-      setNotice("That change could not be saved.");
+      setNotice("This Connection could not be updated. Check your connection and try again.");
       setBusy(false);
       return false;
     }
     await refresh(id);
-    setNotice("Saved.");
+    setNotice(success);
     setBusy(false);
     return true;
   }
@@ -65,7 +67,7 @@ export function ConnectionsClient({ initialConnections }: { initialConnections: 
     {connections.map((connection) => {
       const detail = details[connection.id];
       const state = detail?.state ?? connection.state;
-      return <article key={connection.id} className={styles.connection}>
+      return <article key={connection.id} id={connection.id} className={styles.connection}>
         <div className={styles.summary}>
           <div className={styles.avatar} aria-hidden="true">{connection.otherName.slice(0, 1).toUpperCase()}</div>
           <div>
@@ -73,7 +75,7 @@ export function ConnectionsClient({ initialConnections }: { initialConnections: 
             <p>{connection.otherSummary}</p>
             <p><strong>Why you met:</strong> {connection.connectionReason}</p>
             {connection.sharedContext.length > 0 && <ul>{connection.sharedContext.map((item) => <li key={item}>{item}</li>)}</ul>}
-            <span>Connected {new Date(connection.createdAt).toLocaleDateString()} · {state}{(detail?.muted ?? connection.muted) ? " · muted" : ""}</span>
+            <span>Connected {new Date(connection.createdAt).toLocaleDateString()} · {state === "active" ? "Active" : "Ended"}{(detail?.muted ?? connection.muted) ? " · Notifications muted" : ""}</span>
           </div>
           <div className={styles.actions}>
             {state === "active" && <a href={`/rooms/${connection.roomId}`}>Open room</a>}
@@ -82,23 +84,24 @@ export function ConnectionsClient({ initialConnections }: { initialConnections: 
         </div>
         {open === connection.id && <div className={styles.manage}>{detail ? <>
           <div className={styles.toggles}>
-            <label><input type="checkbox" checked={detail.muted} onChange={(event) => void command(connection.id, { action: "preference", kind: "muted", enabled: event.target.checked })} />Mute notifications</label>
-            <label><input type="checkbox" checked={detail.updatesEnabled} onChange={(event) => void command(connection.id, { action: "preference", kind: "updates", enabled: event.target.checked })} />Show public project updates</label>
-            <label><input type="checkbox" checked={detail.renewedRelevanceEnabled} onChange={(event) => void command(connection.id, { action: "preference", kind: "renewed_relevance", enabled: event.target.checked })} />Tell me when our work overlaps again</label>
+            <label><input type="checkbox" checked={detail.muted} onChange={(event) => void command(connection.id, { action: "preference", kind: "muted", enabled: event.target.checked }, event.target.checked ? "Notifications from this Connection are muted." : "Notifications from this Connection are on.")} />Mute notifications</label>
+            <label><input type="checkbox" checked={detail.updatesEnabled} onChange={(event) => void command(connection.id, { action: "preference", kind: "updates", enabled: event.target.checked }, event.target.checked ? "Public project updates are on." : "Public project updates are off.")} />Show public project updates</label>
+            <label><input type="checkbox" checked={detail.renewedRelevanceEnabled} onChange={(event) => void command(connection.id, { action: "preference", kind: "renewed_relevance", enabled: event.target.checked }, event.target.checked ? "Buildmates will tell you when your public work becomes relevant again." : "Renewed-relevance alerts are off.")} />Tell me when our work overlaps again</label>
           </div>
-          <NoteForm initial={detail.privateNote ?? ""} disabled={busy} onSave={(body) => command(connection.id, { action: "private_note", body })} />
-          <ReminderForm disabled={busy} onSave={(remindAt) => command(connection.id, { action: "reminder", remindAt })} />
-          <FeedbackForm disabled={busy} onSave={(value) => command(connection.id, { action: "feedback", ...value })} />
+          <NoteForm initial={detail.privateNote ?? ""} disabled={busy} onSave={(body) => command(connection.id, { action: "private_note", body }, "Private note saved. Only you can see it.")} />
+          <ReminderForm disabled={busy} onSave={(remindAt) => command(connection.id, { action: "reminder", remindAt }, "Private reconnect reminder set.")} />
+          {detail.reminders.length ? <div><strong>Upcoming reminders</strong><ul>{detail.reminders.map((reminder)=><li key={reminder.id}><time dateTime={new Date(reminder.remindAt).toISOString()}>{new Date(reminder.remindAt).toLocaleString()}</time><button type="button" disabled={busy} onClick={()=>void command(connection.id,{action:"dismiss_reminder",reminderId:reminder.id},"Reminder removed.")}>Remove</button></li>)}</ul></div> : null}
+          <FeedbackForm disabled={busy} onSave={(value) => command(connection.id, { action: "feedback", ...value }, "Private feedback saved. It will shape your future recommendations.")} />
           <div className={styles.lifecycle}>
             {detail.state === "active"
-              ? <button type="button" disabled={busy} onClick={() => window.confirm("End this connection? You can request to reconnect later.") && void command(connection.id, { action: "end" })}>End connection</button>
+              ? <button type="button" disabled={busy} onClick={() => window.confirm("End this Connection? Its room will close, and reconnecting will require a new request.") && void command(connection.id, { action: "end" }, "Connection ended. Its room is now closed.")}>End connection</button>
               : detail.reconnect && detail.reconnect.requesterUserId === detail.otherUserId
-                ? <button type="button" disabled={busy} onClick={() => void command(connection.id, { action: "respond_reconnect", requestId: detail.reconnect!.id, response: "accepted" })}>Accept reconnect</button>
-                : <button type="button" disabled={busy} onClick={() => void command(connection.id, { action: "reconnect" })}>Request to reconnect</button>}
+                ? <button type="button" disabled={busy} onClick={() => void command(connection.id, { action: "respond_reconnect", requestId: detail.reconnect!.id, response: "accepted" }, "Reconnect accepted. Your Connection and room are active again.")}>Accept reconnect</button>
+                : <button type="button" disabled={busy} onClick={() => void command(connection.id, { action: "reconnect" }, "Reconnect request sent. The other person must accept before the room reopens.")}>Request to reconnect</button>}
             <button type="button" onClick={() => void safety(connection, "report")}>Report</button>
             <button type="button" className={styles.danger} onClick={() => void safety(connection, "block")}>Block</button>
           </div>
-        </> : <p>Loading controls…</p>}</div>}
+        </> : loadErrors[connection.id] ? <div role="alert"><p>Connection controls could not load.</p><button type="button" onClick={()=>void refresh(connection.id)}>Try again</button></div> : <p role="status">Loading controls…</p>}</div>}
       </article>;
     })}
     <p className={styles.notice} role="status">{notice}</p>

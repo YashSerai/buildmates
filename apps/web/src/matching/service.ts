@@ -83,7 +83,7 @@ export async function saveCandidateBatch(DB: D1, viewerId: string, candidates: r
   return id;
 }
 
-export async function evaluateCandidate(DB: D1, input: { actorId: string; batchId:string; candidateUserId: string; decision: "approve" | "decline" | "defer"; reasonSummary: string; indexVersion: number; evidenceIds: string[]; now: number }) {
+export async function evaluateCandidate(DB: D1, input: { actorId: string; evaluationId?: string; batchId:string; candidateUserId: string; decision: "approve" | "decline" | "defer"; reasonSummary: string; indexVersion: number; evidenceIds: string[]; now: number }) {
   if (input.actorId === input.candidateUserId) throw new Error("candidate_invalid");
   const [userAId, userBId] = [input.actorId, input.candidateUserId].sort();
   const batch=await DB.prepare("SELECT 1 AS ok FROM candidate_batches cb JOIN builder_match_index self ON self.user_id=cb.user_id JOIN taxonomy_versions taxonomy ON taxonomy.id=self.taxonomy_version_id AND taxonomy.status='active' WHERE cb.id=? AND cb.user_id=? AND cb.expires_at>? AND cb.index_version=self.version AND cb.taxonomy_version=taxonomy.version AND EXISTS (SELECT 1 FROM json_each(cb.candidate_ids_json) WHERE value=?) LIMIT 1").bind(input.batchId,input.actorId,input.now,input.candidateUserId).first();
@@ -122,22 +122,25 @@ export async function evaluateCandidate(DB: D1, input: { actorId: string; batchI
   if (!isMember) throw new Error("proposal_forbidden");
   const allowedEvidence = new Set(authorizedEvidence(score.evidenceIdsJson, score.audienceDecisionsJson, input.actorId));
   await DB.prepare("INSERT INTO codex_evaluations (id,proposal_id,user_id,decision,reason_summary,evidence_ids_json,index_version,created_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(proposal_id,user_id) DO UPDATE SET decision=excluded.decision,reason_summary=excluded.reason_summary,evidence_ids_json=excluded.evidence_ids_json,index_version=excluded.index_version,created_at=excluded.created_at")
-    .bind(crypto.randomUUID(), proposal.id, input.actorId, input.decision, input.reasonSummary, JSON.stringify([...new Set(input.evidenceIds)].filter((id) => allowedEvidence.has(id)).slice(0, 50)), input.indexVersion, input.now).run();
+    .bind(input.evaluationId ?? crypto.randomUUID(), proposal.id, input.actorId, input.decision, input.reasonSummary, JSON.stringify([...new Set(input.evidenceIds)].filter((id) => allowedEvidence.has(id)).slice(0, 50)), input.indexVersion, input.now).run();
+  const evaluation = await DB.prepare("SELECT id FROM codex_evaluations WHERE proposal_id=? AND user_id=? LIMIT 1").bind(proposal.id, input.actorId).first<{ id: string }>();
+  if (!evaluation) throw new Error("evaluation_unavailable");
   if (input.decision === "decline") await DB.prepare("UPDATE match_proposals SET state='declined',terminal_at=? WHERE id=? AND state='pending'").bind(input.now, proposal.id).run();
   const opening = input.decision === "approve" ? await tryOpenProposal(DB, proposal.id, input.now) : null;
-  return { proposalId: proposal.id, state: opening?.state ?? (input.decision === "decline" ? "declined" : "pending"), connectionId: opening?.connectionId ?? null, roomId: opening?.roomId ?? null };
+  return { evaluationId: evaluation.id, proposalId: proposal.id, state: opening?.state ?? (input.decision === "decline" ? "declined" : "pending"), connectionId: opening?.connectionId ?? null, roomId: opening?.roomId ?? null };
 }
 
-export async function respondToProposal(DB: D1, input: { actorId: string; proposalId: string; response: "interested" | "decline" | "undo"; now: number }) {
+export async function respondToProposal(DB: D1, input: { actorId: string; responseId?: string; proposalId: string; response: "interested" | "decline" | "undo"; now: number }) {
   const membership = await DB.prepare("SELECT 1 AS ok FROM match_proposals p JOIN match_pairs mp ON mp.id=p.match_pair_id WHERE p.id=? AND p.state='pending' AND p.expires_at>? AND (mp.user_a_id=? OR mp.user_b_id=?)")
     .bind(input.proposalId, input.now, input.actorId, input.actorId).first();
   if (!membership) throw new Error("proposal_unavailable");
   if (input.response === "undo") await DB.prepare("DELETE FROM human_responses WHERE proposal_id=? AND user_id=?").bind(input.proposalId, input.actorId).run();
   else await DB.prepare("INSERT INTO human_responses (id,proposal_id,user_id,response,created_at) VALUES (?,?,?,?,?) ON CONFLICT(proposal_id,user_id) DO UPDATE SET response=excluded.response,created_at=excluded.created_at")
-    .bind(crypto.randomUUID(), input.proposalId, input.actorId, input.response, input.now).run();
+    .bind(input.responseId ?? crypto.randomUUID(), input.proposalId, input.actorId, input.response, input.now).run();
   if (input.response === "decline") await DB.prepare("UPDATE match_proposals SET state='declined',terminal_at=? WHERE id=? AND state='pending'").bind(input.now, input.proposalId).run();
   const opening = input.response === "interested" ? await tryOpenProposal(DB, input.proposalId, input.now) : null;
-  return opening ?? { state: input.response === "decline" ? "declined" : "pending", connectionId: null, roomId: null };
+  const response = input.response === "undo" ? null : await DB.prepare("SELECT id FROM human_responses WHERE proposal_id=? AND user_id=? LIMIT 1").bind(input.proposalId, input.actorId).first<{ id: string }>();
+  return { responseId: response?.id ?? input.responseId ?? "", ...(opening ?? { state: input.response === "decline" ? "declined" : "pending", connectionId: null, roomId: null }) };
 }
 
 export async function tryOpenProposal(DB: D1, proposalId: string, now: number) {

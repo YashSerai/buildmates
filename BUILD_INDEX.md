@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: production release candidate deployed; replacement Site and GitHub identity adapter in progress
+Status: functionality, security, copy/content-material, and screenshot-led UI/UX gates passed in source; deployment and production verification remain
 Last updated: 2026-07-16
 Product line: Meet people through what you build.
 
@@ -31,6 +31,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - Web and MCP identities never join by email/name. The only pre-link MCP write atomically consumes a short-lived code; external MCP requests delegate a signed OAuth subject, never a caller-supplied internal user ID.
 - A revoked or deleted ChatGPT principal cannot silently recreate or reactivate its former Buildmates account.
 - Raw prompts, full documents, private repositories, email bodies, and calendar contents are not persisted as Work Signals.
+- Work Signals are matching-private records only. They are never publicly searchable; public current-work sharing is a separate explicit profile or project-update publication.
 - Day-one server-side matching uses no paid model inference and requires no vector embeddings.
 - Work Signals use a versioned canonical taxonomy, and candidate retrieval reads a denormalized builder match index plus reproducible pair-score rows.
 - The deterministic backend supplies each automation only the top 20–30 viewer-authorized candidates; that user's Codex performs the private final evaluation and selection.
@@ -54,24 +55,24 @@ Buildmates is a Codex-native builder network that introduces people through curr
 
 | Area | Day-one behavior | Later expansion | Status |
 |---|---|---|---|
-| Landing and identity | Public explanation, GitHub OAuth, random internal Buildmates UUID, mobile web access, explicit ChatGPT/Codex connection | Organization identity | Public reachability verified; Sites SIWC capability/security gate failed; GitHub adapter and replacement Site in progress |
-| Agentic first run | Visible setup progress, rich/sparse context branches, privacy/profile preview, preferences, automation, first useful outcome | Smarter adaptive questioning | Implemented; integration review pending |
+| Landing and identity | Public explanation, GitHub OAuth, random internal Buildmates UUID, mobile web access, explicit ChatGPT/Codex connection | Organization identity | Source regression and build pass; current release production proof pending |
+| Agentic first run | Visible setup progress, rich/sparse context branches, privacy/profile preview, preferences, automation, first useful outcome | Smarter adaptive questioning | MCP pre-link setup routing and deterministic profile-surface creation repaired; source regression passed |
 | Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Implemented; live connector proof pending |
 | Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Implemented; unattended production proof pending |
 | Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Implemented; integration review pending |
-| Profiles | Profile review, field-level visibility, projects, generative responsive surface, optional connection/build stats | Broader module library and isolated custom code | Implemented; integration review pending |
+| Profiles | Profile review, field-level visibility, projects, generative responsive surface, optional connection/build stats, canonical share link | Broader module library and isolated custom code | End-to-end MCP surface reachability, binding parity, preview URL, publication, history and rollback implemented; rendered production proof pending |
 | Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Implemented in source; integrated review pending |
-| Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal and cohort invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
-| Discovery | Search, cohort pages, project/topic follows, build graph, privacy-thresholded coarse geographic map | Richer filters and graph exploration | Implemented with shared visual system; production smoke pending |
-| Matching | Deterministic shortlist, independent Codex evaluations, reciprocal handshake | Optional embeddings only after measured need | Implemented; final integrated review pending |
+| Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
+| Aggregate network views | No people/database search; MapLibre/OpenFreeMap city bubbles and public-project topic bubbles expose counts only, never rosters or drill-down | Richer aggregate filters after network density is proven | Implemented in source with canonical city aliases, five-builder threshold, honest counters and accessible aggregate fallbacks; production proof pending |
+| Matching | Deterministic shortlist, independent Codex evaluations, reciprocal handshake | Optional embeddings only after measured need | Implemented; integrated source regression passed |
 | Acceptance | Manual or Full Autopilot modes | Per-context acceptance rules | Implemented; live unattended capability proof pending |
 | Rooms | Mutual-interest lightweight chat themed around the connection reason | Consent-based room upgrade modules | Implemented in source; integrated review pending |
 | Connections | Persistent mutual relationship, why/when met, private notes, reminders, updates, mute/end | Longitudinal relationship intelligence | Implemented with shared visual system; production smoke pending |
 | Intro memory | Private structured feedback and match-preference learning | Longitudinal relationship health | Implemented; integrated review pending |
 | Scheduling | Calendar-aware suggestions through permitted apps and ICS fallback | More scheduling connectors | Implemented in source; live Calendar/deep-link proof pending |
-| Cohorts | Public/request/invite/private membership, owner/admin roles, invites, join approval, transfer, archive/delete | Organization tooling | Implemented in source; integrated review pending |
+| Cohorts | Deferred from the current product and navigation; dormant domain support remains isolated | Reconsider after Circles and network density are proven | Deferred by product decision |
 | Circles | Consent-gated triadic suggestions, group chat, creator-admin governance, roles, voting, Codex-generated shared surfaces, approved modules and member entries | Richer tracker templates and shipping-room analytics | Implemented in source; integrated review pending |
-| Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Implemented; room creation integration added |
+| Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Implemented; profile onboarding now creates/discovers its surface without website-first deadlock and rejects undeclared production profile bindings |
 | Privacy and safety | Canonical visibility, source ledger, block/shared-context redaction, immediate export, physical R2 deletion, rate limits and audit trail | Organization policy tooling | Implemented; production smoke pending |
 | Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
 | Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
@@ -97,6 +98,44 @@ These checks are part of one continuous implementation run. They produce evidenc
 14. Test Calendar capabilities and activate ICS fallback when unavailable.
 
 Every check records evidence. Failures trigger diagnosis, repair, or the documented adapter fallback, and implementation continues. Release waits until checks 1–12 pass under the selected production topology; deep-link and Calendar checks may resolve through their documented fallbacks. Only an irreducible human/account action may interrupt the run. Domain behavior must not silently fork across platforms.
+
+## Functionality findings repaired 2026-07-16
+
+All findings below were implemented and regression-tested. The integrated source gate passes lint, type checks, unit, integration, contract, security, rendered-output, plugin validation, and every workspace production build. Production remains the prior release until the later deploy gate.
+
+- **Repaired; focused contracts passing:** MCP candidate retrieval now creates or resumes an authorized bounded batch and returns safe evaluation context plus existing proposal identifiers.
+- **Repaired; focused contracts passing:** MCP evaluations and manual responses now invoke the canonical reciprocal state machine, including decline handling, Full Autopilot, budgets, notifications, and atomic Connection/room creation.
+- **Repaired; focused Circle suite passing:** new Circles create a governed Surface; design proposals create real private revisions and publish through stored admin/vote governance; approved module rules persist immutable version history.
+- **Repaired; focused Circle and room suites passing:** approved modules expose validated entry create/update/delete behavior with member, author, and admin authorization plus working room/Circle UI.
+- **Repaired; focused contracts passing:** project create/edit exposes active canonical topics, tools, and domains; the server rejects missing or retired taxonomy identifiers before they can affect matching or the Build Graph.
+- **Repaired; focused contracts passing:** builder/connection-card invites require and persist an owned target plus headline; follows validate visible, unblocked targets and the relevant-builder watch is honestly one global `network` watch.
+- **Repaired; focused contract passing:** ending a Connection through MCP now ends its active room in the same D1 batch as the Connection state change.
+- **Repaired; focused contract passing:** website and MCP use one `buildmates` automation checkpoint, preserve trusted capability evidence, and round-trip Automatic/manual cadence plus source-liveness review.
+- **Repaired; focused contract passing:** Calendar handoff now returns authorized room participants, time zones, real shared availability intersections, and a topic-aware agenda; ended rooms fail closed while Codex, copy, manual time, and ICS options remain available.
+- **Repaired; room suite passing:** ICS export requires an accepted proposal and active room membership; arbitrary timestamps cannot create calendar files. Accepted/provider-confirmed schedule state is visible in the room.
+- **Repaired; room suite passing:** Connection mute suppresses recipient message, meeting, upgrade, and reconnect alerts without blocking the underlying authorized actions; inbox per-item/mark-all controls report failures and link to stable destinations.
+- **Repaired; rendered UI passing:** personal invitations infer the sender from the authenticated Buildmates session and create a single-use link without asking for a username. Relevant-builder watches explicitly report through the next scheduled Work Pulse task result rather than implying an instant background notification.
+
+## Copy and UI/UX gate passed 2026-07-16
+
+- Product-wide copy was reviewed for user-facing language, truthful capability boundaries, consistent labels, empty/error/loading states, and removal of internal implementation phrasing.
+- The responsive product shell now exposes the core network surfaces consistently on desktop and phone. Every retained navigation item routes to implemented behavior.
+- The public landing page, aggregate MapLibre city view, Build Graph, onboarding, profile editing/design/publishing, matches, Connections, Circles, inbox, invitations, and privacy settings were rendered and inspected at phone and desktop sizes.
+- The final visual system uses warm paper, dark moss, leaf green, and orange with editorial type scale and the three-stage signal-to-room trail. Folk informed hierarchy and compactness without copying its identity.
+- Accessibility repairs include a skip link, visible focus treatment, semantic labels and live regions, full-opacity read notifications, non-color status cues, keyboard-operable menus, honest sparse states, and reduced-motion-safe content visibility.
+- Retained evidence is under `docs/evidence/ui-audit/2026-07-16/`. Source verification passes lint, all workspace typechecks, production build, rendered web 10/10, unit 80/80, integration 77/77 across the full run plus the isolated timeout rerun, contract 30/30, security 12/12, and `git diff --check`.
+
+## Security and privacy findings repaired 2026-07-16
+
+- MCP authorization assertions are bound to the initiating one-time handoff, and the short-lived authorization cookie is bound to the exact OAuth request; sensitive redirects are non-cacheable and emit no referrer.
+- Synthetic session and identity-link testing routes are limited to non-production loopback HTTP even when test bindings and headers are present.
+- Generated Surface revisions can reference only exact, undeleted R2 assets owned by that Surface owner; route-specific asset isolation headers cannot be weakened by Worker-wide defaults.
+- Profile generation briefs include only deliberately public profile fields and projects, preventing private or connection-scoped content from leaking into static generated copy.
+- Blocking fails closed across Circle metadata, chat, modules, design/governance actions, notifications, invitations, and invitation acceptance.
+- Aggregate privacy thresholds are enforced at the data boundary: Build Graph topics require at least two distinct builders, Map cities require five opt-ins, and mapped-user totals exclude hidden cities.
+- Account deletion removes or pseudonymizes residual inferred-work, identity-link, evaluation, response, idempotency, cross-user notification, relationship, collaborator, and audit payload data while preserving only necessary opaque integrity history.
+- Request observability redacts bearer invite tokens. The dependency toolchain has no high or critical advisories; the remaining moderate Next/PostCSS scanner finding is outside the vinext/Vite production compiler path and is tracked as an upstream transitive advisory.
+- Verification after repair: all workspace typechecks, security 12/12, focused auth/surface/observability tests, D1 Surface assets 7/7, D1 privacy/abuse suites 12/12, production build, and diff check pass.
 
 ## Execution lanes
 
@@ -141,8 +180,8 @@ These gates run in order and are part of launch readiness, not optional post-lau
 
 Anti-slop remains a global implementation rule throughout all five gates; it is not deferred to the final visual pass.
 
-The copy audit must cover projects, cohort/admin/invite flows, map and graph discovery, follows and watches, block/report/appeal, deletion, SurfaceSpec preview/approval/history/rollback, operator recovery, plugin and MCP manifests/tool errors, Codex first-run and automation prompts, match explanations and starters, digests, ICS/calendar text, metadata and social cards, alt text, and exports. The UI/UX evidence ledger must cross route, role/state, and viewport; include anonymous, sparse-onboarding, established, connected, owner/admin/member, operator/moderator, blocked, suspended, and revoked states; and retain screenshots, console/network logs, and interaction traces. Accessibility proof includes landmarks/headings, accessible names and instructions, screen-reader announcements, non-color cues, keyboard operation, and zoom/reflow.
+The copy audit must cover projects, Circle admin/invite flows, map and graph aggregate views, follows and watches, block/report/appeal, deletion, SurfaceSpec preview/approval/history/rollback, operator recovery, plugin and MCP manifests/tool errors, Codex first-run and automation prompts, match explanations and starters, digests, ICS/calendar text, metadata and social cards, alt text, and exports. The UI/UX evidence ledger must cross route, role/state, and viewport; include anonymous, sparse-onboarding, established, connected, owner/admin/member, operator/moderator, blocked, suspended, and revoked states; and retain screenshots, console/network logs, and interaction traces. Accessibility proof includes landmarks/headings, accessible names and instructions, screen-reader announcements, non-color cues, keyboard operation, and zoom/reflow.
 
 ## Current next action
 
-Create the replacement `https://buildmates.yashns.chatgpt.site` deployment and implement the approved GitHub identity adapter: server-side authorization-code exchange with state and PKCE, a verified numeric GitHub subject, random Buildmates UUID mapping, hashed app-owned sessions, revocation/deletion handling, and centralized protected-route resolution. Ignore all `oai-authenticated-*` headers for application authorization and preserve explicit single-use MCP linking so a signed-in website account can connect its ChatGPT/Codex MCP identity. Keep `buildmates-network` intact as rollback until the replacement's D1/R2 bindings, auth callback, MCP link, and production flows pass; only then delete it. Maintain the factual build-story record in `docs/devpost/build-story-ledger.md`. A second independent identity is required only for live object-isolation, reciprocal matching, Full Autopilot, shared-room, messaging, and joint-governance checks; automated multi-identity coverage remains required regardless. Runtime source commit `2fffa10`, Sites version 3, and the independently deployed MCP Worker remain the last production artifacts.
+Commit and push the exact verified source, deploy both the ChatGPT Site and external MCP Worker, run public and authenticated production smoke checks, then erase only the owner test account's product data for a clean 0/11 personal Codex onboarding run. Production remains the prior release until those deploy and live gates succeed.

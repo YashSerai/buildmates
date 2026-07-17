@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { userFacingError } from "@/src/client/user-facing-error";
 import styles from "./recovery.module.css";
 
 type Inspection = { id: string; actorUserId: string; operation: string; requestHash: string; status: string; expiresAt: number; createdAt: number; updatedAt: number; ageMs: number; hasResponse: boolean };
@@ -13,7 +14,7 @@ export default function RecoveryConsole() {
     const id = String(new FormData(event.currentTarget).get("id") ?? "");
     const response = await fetch(`/api/operator/idempotency-recovery?id=${encodeURIComponent(id)}`, { cache: "no-store" });
     const body = await response.json() as { inspection?: Inspection; error?: string };
-    setInspection(body.inspection ?? null); setMessage(body.error ?? "");
+    setInspection(body.inspection ?? null); setMessage(response.ok ? "" : userFacingError(body.error, "The row could not be inspected."));
   }
   async function recover(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!inspection) return;
@@ -21,7 +22,7 @@ export default function RecoveryConsole() {
     const effectKind = String(data.get("effectKind") ?? "").trim(); const effectId = String(data.get("effectId") ?? "").trim();
     const response = await fetch("/api/operator/idempotency-recovery", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: inspection.id, requestHash: inspection.requestHash, reason: data.get("reason"), disposition, effectLocator: disposition === "completed_effect" ? { kind: effectKind, id: effectId } : undefined }) });
     const body = await response.json() as { recovered?: boolean; error?: string };
-    setMessage(body.recovered ? "Recovery recorded. Inspect the row again before any further action." : body.error ?? "Recovery failed.");
+    setMessage(body.recovered ? "Recovery recorded. Inspect the row again before any further action." : userFacingError(body.error, "Recovery failed."));
     if (body.recovered) setInspection(null);
   }
   return <main className={styles.main}>

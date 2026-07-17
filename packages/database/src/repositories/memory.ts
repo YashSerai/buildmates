@@ -238,6 +238,12 @@ export function createMemoryRepositories(): BuildmatesRepositories {
     workSignals: {
       async create(value) {
         audienceSchema.parse(value.audience);
+        if (
+          !["suggested_connections", "mutual_connections", "private"].includes(
+            value.audience,
+          )
+        )
+          throw new Error("work_signal_public_forbidden");
         assertSelf(users, value.actorId, value.userId);
         if (!taxonomies.has(value.taxonomyVersionId))
           throw new Error("taxonomy_not_found");
@@ -667,6 +673,14 @@ export function createMemoryRepositories(): BuildmatesRepositories {
         if (!isSurfacePolicyCompatible(policy, { forRevisionCreation: true })) throw new Error("surface_revision_policy_mismatch");
         const parsedSpec = parseRevisionSpec(value.specJson, policy.version, true);
         if (parsedSpec.kind !== surface.kind || parsedSpec.designPolicyVersion !== policy.version || value.designPolicyVersion !== policy.version) throw new Error("surface_revision_policy_mismatch");
+        for (const approved of parsedSpec.approvedAssets) {
+          const stored = assets.get(approved.id) as { ownerUserId?: UserId; objectKey?: string } | undefined;
+          if (
+            !stored ||
+            stored.ownerUserId !== surface.ownerUserId ||
+            stored.objectKey !== approved.src.slice("/api/".length)
+          ) throw new Error("surface_asset_not_owned");
+        }
         const current = surface.publishedRevisionId
           ? (revisions.get(surface.publishedRevisionId)?.revisionNumber ?? null)
           : null;
@@ -1407,14 +1421,9 @@ export function createMemoryRepositories(): BuildmatesRepositories {
       (await repository.cohorts.getActiveRole(cohortScopeId, viewer)) &&
       (await repository.cohorts.getActiveRole(cohortScopeId, subject)),
     );
-    const suggestedConnection = Boolean(
-      viewer &&
-      [...pairs.values()].some(
-        (pair) =>
-          (pair.userAId === subject && pair.userBId === viewer) ||
-          (pair.userAId === viewer && pair.userBId === subject),
-      ),
-    );
+    // This aggregate adapter only records terminal matched proposals. It has no
+    // pending-proposal write path, so it must not grant suggested visibility.
+    const suggestedConnection = false;
     const mutualConnection = Boolean(
       viewer &&
       [...connectionMembers.entries()].some(

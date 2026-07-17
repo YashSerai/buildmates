@@ -36,7 +36,8 @@ describe("account deletion", () => {
       DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,created_at,updated_at,published_at) VALUES ('project-delete','delete-me','alex-project','Alex project','Secret summary','public',1,'active','building',1,?,?,?)").bind(now,now,now),
       DB.prepare("INSERT INTO project_links(id,project_id,label,url,position,created_at) VALUES ('project-link-delete','project-delete','Private demo','https://sentinel.example/private',0,?)").bind(now),
       DB.prepare("INSERT INTO taxonomy_versions(id,version,status,created_at,activated_at) VALUES ('tax-delete',1,'active',?,?)").bind(now,now),
-      DB.prepare("INSERT INTO work_signals(id,user_id,taxonomy_version_id,free_text_summary,audience,allow_matching,approved_at,expires_at,created_at,updated_at) VALUES ('signal-delete','delete-me','tax-delete','Sensitive work','public',1,?,?,?,?)").bind(now,now+86_400_000,now,now),
+      DB.prepare("INSERT INTO work_signals(id,user_id,taxonomy_version_id,free_text_summary,audience,allow_matching,approved_at,expires_at,created_at,updated_at) VALUES ('signal-delete','delete-me','tax-delete','Sensitive work','suggested_connections',1,?,?,?,?)").bind(now,now+86_400_000,now,now),
+      DB.prepare("UPDATE work_signals SET canonical_topic_ids_json='[\"topic-private\"]',canonical_tool_ids_json='[\"tool-private\"]',canonical_domain_ids_json='[\"domain-private\"]',canonical_stage_ids_json='[\"stage-private\"]',canonical_collaboration_intent_ids_json='[\"intent-private\"]' WHERE id='signal-delete'"),
       DB.prepare("INSERT INTO connected_app_preferences(id,user_id,app_id,display_name,category,access_mode,last_reviewed_at) VALUES ('app-delete','delete-me','github','GitHub','Projects and code','allow_approved_work_signals',?)").bind(now),
       DB.prepare("INSERT INTO identity_principals(id,channel,issuer,subject,workspace_scope,created_at) VALUES ('principal-delete','mcp','buildmates_mcp','delete-me','global',?)").bind(now),
       DB.prepare("INSERT INTO identity_links(id,user_id,principal_id,provider_channel,provider_issuer,provider_subject,workspace_scope,linked_at) VALUES ('link-delete','delete-me','principal-delete','mcp','buildmates_mcp','delete-me','global',?)").bind(now),
@@ -46,6 +47,8 @@ describe("account deletion", () => {
       DB.prepare("INSERT INTO surface_revisions(id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,design_policy_version,visibility,spec_json,status,created_at) VALUES ('revision-delete','surface-delete',1,NULL,'delete-me','policy-delete','test-delete','private_preview','{\"sentinel\":\"private generated profile\"}','published',?)").bind(now),
       DB.prepare("UPDATE surfaces SET published_revision_id='revision-delete' WHERE id='surface-delete'"),
       DB.prepare("INSERT INTO personal_surface_views(id,surface_id,user_id,revision_id,created_at,updated_at) VALUES ('personal-view-delete','surface-delete','delete-me','revision-delete',?,?)").bind(now,now),
+      DB.prepare("INSERT INTO idempotency_keys(id,actor_user_id,operation,key_hash,request_hash,response_json,status,expires_at,created_at,updated_at) VALUES ('idem-delete','delete-me','profile.update','key','request','{\"private\":true}','completed',?,?,?)").bind(now+60_000,now,now),
+      DB.prepare("INSERT INTO audit_events(id,actor_user_id,action,object_kind,object_id,metadata_json,idempotency_key,created_at) VALUES ('audit-delete','delete-me','profile.updated','profile','alex-private-profile','{\"method\":\"private\"}','private-audit-key',?)").bind(now),
     ]);
 
     const result = await runPrivacyCommand(DB,"delete-me",{command:"request_deletion",confirmation:"DELETE BUILDMATES"},assets);
@@ -56,9 +59,13 @@ describe("account deletion", () => {
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM project_links WHERE project_id='project-delete'").first()).toMatchObject({count:0});
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM surfaces WHERE owner_user_id='delete-me'").first()).toMatchObject({count:0});
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM surface_revisions WHERE spec_json LIKE '%private generated profile%'").first()).toMatchObject({count:0});
-    expect(await DB.prepare("SELECT free_text_summary AS summary,audience,allow_matching AS allowMatching FROM work_signals WHERE id='signal-delete'").first()).toMatchObject({summary:"",audience:"private",allowMatching:0});
+    expect(await DB.prepare("SELECT free_text_summary AS summary,canonical_topic_ids_json AS topics,canonical_tool_ids_json AS tools,canonical_domain_ids_json AS domains,canonical_stage_ids_json AS stages,canonical_collaboration_intent_ids_json AS intents,audience,allow_matching AS allowMatching FROM work_signals WHERE id='signal-delete'").first()).toMatchObject({summary:"",topics:"[]",tools:"[]",domains:"[]",stages:"[]",intents:"[]",audience:"private",allowMatching:0});
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM handles WHERE user_id='delete-me'").first()).toMatchObject({count:0});
     expect(await DB.prepare("SELECT revoked_at AS revokedAt FROM identity_links WHERE id='link-delete'").first<{revokedAt:number|null}>()).toMatchObject({revokedAt:expect.any(Number)});
+    expect(await DB.prepare("SELECT provider_subject AS subject FROM identity_links WHERE id='link-delete'").first()).toEqual({subject:"deleted:link-delete"});
+    expect(await DB.prepare("SELECT subject FROM identity_principals WHERE id='principal-delete'").first()).toEqual({subject:"deleted:principal-delete"});
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE actor_user_id='delete-me'").first()).toEqual({count:0});
+    expect(await DB.prepare("SELECT object_id AS objectId,metadata_json AS metadata,idempotency_key AS idempotencyKey FROM audit_events WHERE id='audit-delete'").first()).toEqual({objectId:"deleted",metadata:"{}",idempotencyKey:null});
     expect(await DB.prepare("SELECT deleted_at AS deletedAt FROM surface_assets WHERE id='asset-delete'").first<{deletedAt:number|null}>()).toMatchObject({deletedAt:expect.any(Number)});
     expect(storedObjects.has("profiles/delete-me/avatar.png")).toBe(false);
     expect(await DB.prepare("SELECT status FROM deletion_jobs WHERE id=?").bind(result.jobId).first()).toMatchObject({status:"complete"});
@@ -79,7 +86,7 @@ describe("account deletion", () => {
     expect(await DB.prepare("SELECT status FROM users WHERE id='delete-pending'").first()).toEqual({status:"deleting"});
     expect(await DB.prepare("SELECT status FROM deletion_jobs WHERE id=?").bind(result.jobId).first()).toEqual({status:"deleting"});
     expect(await DB.prepare("SELECT revoked_at AS revokedAt FROM identity_links WHERE id='pending-link'").first<{revokedAt:number|null}>()).toMatchObject({revokedAt:expect.any(Number)});
-    expect(await DB.prepare("SELECT expires_at AS expiresAt FROM identity_link_codes WHERE id='pending-code'").first<{expiresAt:number}>()).toEqual({expiresAt:expect.any(Number)});
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM identity_link_codes WHERE id='pending-code'").first()).toEqual({count:0});
     expect(await DB.prepare("SELECT deleted_at AS deletedAt FROM surface_assets WHERE id='pending-asset'").first<{deletedAt:number|null}>()).toMatchObject({deletedAt:expect.any(Number)});
     const recoveredAssets:R2Like={async put(key){storedObjects.add(key)},async get(key){return storedObjects.has(key)?{async text(){return "asset"}}:null},async delete(key){storedObjects.delete(key)}};
     const [first,second]=await Promise.all([resumeAccountDeletion(DB,recoveredAssets,result.jobId!),resumeAccountDeletion(DB,recoveredAssets,result.jobId!)]);

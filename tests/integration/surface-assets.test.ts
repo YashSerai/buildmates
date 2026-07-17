@@ -90,6 +90,27 @@ describe("protected surface asset API service", () => {
     await expect(uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: "missing", bytes: png, claimedContentType: "image/png" })).rejects.toThrow(/owner/);
   }, 15_000);
 
+  it("rejects a generated revision that claims another builder's asset", async () => {
+    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).buffer;
+    const aliceAsset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
+    const repositories = createD1Repositories(db as unknown as RepositoryD1);
+    await repositories.profiles.create({ actorId: charlie, id: "profile-asset-owner-charlie" as ProfileId, userId: charlie, handle: "asset-owner-charlie", displayName: "Charlie", summary: "Own surface", audience: "public", cohortScopeId: null, allowMatching: true, acceptanceMode: "manual" });
+    await repositories.surfaces.createSurface({ actorId: charlie, id: "asset-owner-surface", ownerUserId: charlie, kind: "profile", subjectId: "profile-asset-owner-charlie", at: new Date() });
+
+    await expect(repositories.surfaces.createRevision({
+      actorId: charlie,
+      id: "asset-owner-forged-revision",
+      surfaceId: "asset-owner-surface",
+      authorUserId: charlie,
+      revisionNumber: 1,
+      baseRevisionNumber: null,
+      designPolicyId: DESIGN_POLICY_ID,
+      designPolicyVersion: DESIGN_POLICY_VERSION,
+      specJson: assetSpecJson("profile", aliceAsset),
+      createdAt: new Date(),
+    })).rejects.toThrow("surface_asset_not_owned");
+  }, 15_000);
+
   it("serves a raster referenced by a published historical-policy profile after the active policy is seeded", async () => {
     const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]).buffer;
     const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
@@ -127,6 +148,10 @@ describe("protected surface asset API service", () => {
     const existing = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
     const filename = existing.src.split("/").at(-1)!;
     const objectKey = `surface-assets/${alice}/${filename}`;
+    // Preserve the already-written content-addressed object while removing its
+    // metadata so this retry reaches the intercepted INSERT instead of taking
+    // the idempotent existing-row return path.
+    await db.prepare("DELETE FROM surface_assets WHERE id=?").bind(existing.id).run();
     let deleteCalls = 0;
     const guardedBucket: R2Like = {
       put: (key, value, options) => bucket.put(key, value, options),

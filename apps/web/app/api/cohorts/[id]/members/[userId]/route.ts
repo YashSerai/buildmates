@@ -1,6 +1,0 @@
-import { isAuthResponse,requireApiUser } from "../../../../../../src/auth/require-user";
-import { manageCohortMember } from "../../../../../../src/discovery/service";
-import { getPlatformBindings } from "../../../../../../src/platform/bindings";
-import { requireSameOriginMutation } from "../../../../../../src/platform/same-origin";
-const actions=new Set(["approve","decline","remove","promote","demote","transfer"]);
-export async function POST(request:Request,{params}:{params:Promise<{id:string;userId:string}>}){const origin=requireSameOriginMutation(request);if(origin)return origin;const actor=await requireApiUser();if(isAuthResponse(actor))return actor;try{const[{id,userId},body]=await Promise.all([params,request.json() as Promise<{action:string}>]);if(!actions.has(body.action))throw new Error("invalid_action");const{DB}=await getPlatformBindings();return Response.json(await manageCohortMember(DB,actor.id,id,userId,body.action as "approve"|"decline"|"remove"|"promote"|"demote"|"transfer"))}catch(error){const message=error instanceof Error?error.message:"member_update_failed";return Response.json({error:message},{status:message.includes("required")||message==="forbidden"?403:400})}}

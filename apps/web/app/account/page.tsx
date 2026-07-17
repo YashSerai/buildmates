@@ -18,14 +18,14 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       .bind(user.id).first<{ handle: string; displayName: string }>() ?? null;
   }
   return <main className={styles.page}><ProductHeader signedIn={Boolean(user)} /><article className={styles.article}>
-    <h1>{user ? "Your Buildmates account" : "Enter the builder network."}</h1>
+    <h1>{user ? "Your Buildmates account" : "Sign in to Buildmates."}</h1>
     {user ? <>
       <p className={styles.lead}>Signed in as {profile?.displayName ?? "a Buildmates member"}.</p>
       <div className={styles.status}><strong>{profile ? `@${profile.handle}` : "Profile setup is not finished"}</strong><span>{profile ? "Your profile and network controls are ready." : "Complete onboarding to publish a builder profile."}</span></div>
-      <Link className={styles.action} href={profile ? `/builders/${profile.handle}` : "/onboarding"}>{profile ? "View your profile" : "Finish onboarding"}</Link>
+      <Link className={styles.action} href={profile ? `/@${profile.handle}` : "/onboarding"}>{profile ? "View your profile" : "Finish onboarding"}</Link>
       <SignOutButton className={styles.secondary} />
     </> : <>
-      <p className={styles.lead}>Sign in with GitHub to create your Buildmates account. You can then connect Buildmates in Codex without sharing GitHub credentials or repository access.</p>
+      <p className={styles.lead}>Sign in with GitHub to create your Buildmates website account. Buildmates uses your GitHub account ID for sign-in only; it does not request repository access. You can then link this account to Buildmates in Codex with a separate one-time approval.</p>
       {query.auth_error ? <p role="alert">GitHub sign-in did not finish. Please try again.</p> : null}
       <Link className={styles.action} href="/api/auth/github/start?return_to=%2Faccount">Continue with GitHub</Link>
     </>}

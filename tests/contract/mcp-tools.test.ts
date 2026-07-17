@@ -10,6 +10,7 @@ import {
   createD1McpProductRepository,
   createMemoryMcpProductRepository,
   executeBuildmatesTool,
+  shouldExecuteRemoteTool,
   type BuildmatesToolServices,
 } from "@buildmates/mcp-core";
 import { fieldNotesRoomSpec } from "../../apps/web/app/surface-lab/fixtures";
@@ -37,6 +38,9 @@ function fixture() {
     resolveLinkedUser: async ({ mcpSubject }) => links.has(mcpSubject) ? { userId: links.get(mcpSubject)! } : null,
     validateTaxonomy: async ({ taxonomyVersion, topicIds }) => taxonomyVersion === "1" && topicIds.every((id) => id === "topic-matching"),
     recordAutomationCapabilityProof: async ({ now }) => ({ capability: "available", checkedAt: now, expiresAt: new Date(Date.parse(now) + 8 * 86_400_000).toISOString() }),
+    getCandidateShortlist: async ({ batchId }) => ({ batchId: batchId ?? "batch-generated", expiresAt: "2026-07-15T12:30:00.000Z", candidates: [{ userId: "user_bob", displayName: "Bob", summary: "Building retrieval tools", indexVersion: 4, taxonomyVersion: 1, visibleReasons: ["Shared retrieval work"], visibleEvidenceIds: ["signal-public"], proposalId: null }] }),
+    recordCandidateEvaluation: async ({ evaluationId }) => ({ evaluationId, proposalId: "proposal-generated", state: "pending", connectionId: null, roomId: null }),
+    recordManualMatchResponse: async ({ responseId }) => ({ responseId, state: "pending", connectionId: null, roomId: null }),
     completeIdentityLink: async ({ mcpSubject, code }) => {
       const entry = codes.get(code);
       if (!entry || entry.used || entry.expiresAt <= Date.parse("2026-07-15T12:00:00.000Z")) return { linked: false, reason: "invalid_or_expired" };
@@ -72,17 +76,25 @@ describe("Buildmates MCP contract", () => {
     expect(listed.tools.find((tool) => tool.name === "prepare_calendar_handoff")?.annotations?.readOnlyHint).toBe(true);
     expect(listed.tools.find((tool) => tool.name === "attach_calendar_event")?.annotations?.readOnlyHint).toBe(false);
     expect(listed.tools.find((tool) => tool.name === "rollback_surface")?.annotations?.destructiveHint).toBe(true);
-    expect(buildmatesToolRegistry.filter((tool) => tool.preLink).map((tool) => tool.name)).toEqual(["get_link_url", "complete_identity_link"]);
+    expect(buildmatesToolRegistry.filter((tool) => tool.preLink).map((tool) => tool.name)).toEqual(["get_link_url", "complete_identity_link", "get_setup_state"]);
     const strict = await client.callTool({ name: "get_link_url", arguments: { unexpected: true } });
     expect(strict.isError).toBe(true);
     await client.close();
     await server.close();
   });
 
-  it("rejects unauthenticated and unlinked principals while allowing only the two pre-link operations", async () => {
+  it("delegates setup-state reads to the website in the external MCP topology", async () => {
+    const { services } = fixture();
+    services.executeRemoteTool = async () => ({ completedCount: 0, totalSteps: 11, nextStep: "identity_link" });
+    expect(shouldExecuteRemoteTool("get_setup_state", services)).toBe(true);
+    expect(shouldExecuteRemoteTool("get_link_url", services)).toBe(false);
+    expect(shouldExecuteRemoteTool("complete_identity_link", services)).toBe(false);
+  });
+
+  it("rejects unauthenticated principals and exposes only safe setup/link operations before linking", async () => {
     const { services } = fixture();
     await expect(executeBuildmatesTool("get_link_url", {}, undefined, services)).rejects.toThrow("oauth_required");
-    await expect(invoke(services, "get_setup_state", {})).rejects.toThrow("identity_link_required");
+    await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ completedCount: 0, totalSteps: 11, nextStep: "identity_link" });
     await expect(invoke(services, "get_link_url", {})).resolves.toEqual({ url: "https://buildmates.example/settings/connections", workspaceScope: "global" });
     await expect(invoke(services, "get_link_url", { workspaceScope: "tenant-acme" })).rejects.toThrow("invalid_workspace_scope");
     for (const definition of buildmatesToolRegistry.filter((tool) => !tool.preLink)) {
@@ -161,20 +173,23 @@ describe("Buildmates MCP contract", () => {
     expect(enabled.result.id).toBe("follow:topic:topic-matching");
     await expect(repository.readForMember("follow_watch", enabled.result.id, "user_alice")).resolves.toMatchObject({ value: { enabled: true } });
     await expect(repository.listPageForMember("follow_watch", "user_alice", { limit: 20 })).resolves.toMatchObject({ records: [{ id: enabled.result.id }], nextCursor: null });
+    await expect(invoke(services, "get_follows_and_watches", {})).resolves.toMatchObject({ choices: [{ relation: "follow", targetKind: "topic", targetId: "topic-matching", enabled: true }], nextCursor: null });
     await invoke(services, "set_follow_or_watch", { relationId: "different-caller-choice", relation: "follow", targetKind: "topic", targetId: "topic-matching", enabled: false, idempotencyKey: "memory-follow-off" });
     await expect(repository.readForMember("follow_watch", enabled.result.id, "user_alice")).resolves.toBeNull();
     await expect(repository.listPageForMember("follow_watch", "user_alice", { limit: 20 })).resolves.toMatchObject({ records: [], nextCursor: null });
   });
 
-  it("paginates list tools with bounded cursors and rejects oversized pages", async () => {
-    const { services, links, repository } = fixture();
+  it("creates a bounded authorized shortlist and routes matching writes through canonical services", async () => {
+    const { services, links } = fixture();
     links.set(SUBJECT_A, "user_alice");
-    for (const id of ["batch-a", "batch-b", "batch-c"]) await repository.write({ kind: "candidate_batch", id, ownerUserId: "user_alice", value: { candidates: [id] }, now: "2026-07-15T12:00:00.000Z" });
-    const first = await invoke(services, "get_candidate_shortlist", { limit: 2 }) as { batches: unknown[]; nextCursor: string };
-    expect(first.batches).toHaveLength(2);
-    expect(first.nextCursor).toBe("batch-b");
-    await expect(invoke(services, "get_candidate_shortlist", { cursor: first.nextCursor, limit: 2 })).resolves.toMatchObject({ batches: [{ candidates: ["batch-c"] }], nextCursor: null });
+    await expect(invoke(services, "get_candidate_shortlist", { limit: 2 })).resolves.toMatchObject({
+      batchId: "batch-generated",
+      candidates: [{ userId: "user_bob", displayName: "Bob", visibleReasons: ["Shared retrieval work"], visibleEvidenceIds: ["signal-public"], proposalId: null }],
+    });
+    await expect(invoke(services, "record_candidate_evaluation", { evaluationId: "evaluation-alice", batchId: "batch-generated", candidateUserId: "user_bob", decision: "approve", reasonSummary: "Relevant current work", evidenceIds: ["signal-public"], indexVersion: 4, confirmation: "confirmed", idempotencyKey: "evaluate-alice-01" })).resolves.toMatchObject({ result: { evaluationId: "evaluation-alice", proposalId: "proposal-generated", state: "pending" } });
+    await expect(invoke(services, "record_manual_match_response", { responseId: "response-alice", proposalId: "proposal-generated", response: "interested", confirmation: "confirmed", idempotencyKey: "response-alice-01" })).resolves.toMatchObject({ result: { responseId: "response-alice", state: "pending" } });
     await expect(invoke(services, "get_candidate_shortlist", { limit: 51 })).rejects.toMatchObject({ issues: [expect.objectContaining({ path: ["limit"] })] });
+    await expect(invoke(services, "get_candidate_shortlist", { cursor: "legacy-cursor" })).rejects.toMatchObject({ issues: [expect.objectContaining({ path: [] })] });
   });
 
   it("keeps memory personal views author-only and authorizes shared approvals through the parent surface", async () => {
@@ -232,20 +247,20 @@ describe("Buildmates MCP contract", () => {
     if (mode === "rich") await invoke(services, "submit_work_signal", { signal: validSignal() });
     await setup({ step: "signal_privacy_review", reviewedSignalIds: mode === "rich" ? ["signal-1"] : [], acknowledged: true }, `${mode}-step-05`);
     await invoke(services, "update_profile_model", { profile: validProfile(`${mode}-profile`) });
-    await setup({ step: "basic_profile", handle: `${mode}-profile`, displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching" }, `${mode}-step-06`);
+    await setup({ step: "basic_profile", handle: `${mode}_profile`, displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching" }, `${mode}-step-06`);
     await repository.write({ kind: "surface", id: `${mode}-surface`, ownerUserId: "user_alice", value: { kind: "profile", subjectId: `${mode}-profile`, publishedRevisionId: `${mode}-surface-revision` }, now: "2026-07-15T12:00:00.000Z" });
     await repository.write({ kind: "surface_revision", id: `${mode}-surface-revision`, ownerUserId: "user_alice", value: { surfaceId: `${mode}-surface`, status: "published" }, now: "2026-07-15T12:00:00.000Z" });
     await setup({ step: "page_preview", surfaceRevisionId: `${mode}-surface-revision`, approved: true }, `${mode}-step-07`);
     await invoke(services, "update_networking_pulse", { pulse: validPulse(`${mode}-pulse`) });
     await setup({ step: "networking_pulse", pulseId: `${mode}-pulse` }, `${mode}-step-08`);
     await setup({ step: "acceptance_mode", mode: mode === "rich" ? "full_autopilot" : "manual" }, `${mode}-step-09`);
-    await invoke(services, "update_automation_checkpoint", { checkpointId: `${mode}-checkpoint`, kind: "work_pulse", cursor: null, state: "configured", lastOutcome: "Setup complete", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: `${mode}-automation-01` });
+    await invoke(services, "update_automation_checkpoint", { checkpointId: `${mode}-checkpoint`, cursor: null, state: "configured", lastOutcome: "Setup complete", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: `${mode}-automation-01` });
     await setup({ step: "automation", enabled: true, cadence: "weekly", sourceLivenessReviewed: true }, `${mode}-step-10`);
-    await invoke(services, "create_invite_link", { inviteId: `${mode}-invite`, kind: "builder", headline: "Find builders working on matching", expiresAt: "2026-08-01T00:00:00.000Z", maximumUses: 20, idempotencyKey: `${mode}-invite-01` });
+    await invoke(services, "create_invite_link", { inviteId: `${mode}-invite`, kind: "builder", targetId: `${mode}-profile`, headline: "Find builders working on matching", expiresAt: "2026-08-01T00:00:00.000Z", maximumUses: 20, idempotencyKey: `${mode}-invite-01` });
     await setup({ step: "first_useful_outcome", kind: "invite", objectId: `${mode}-invite` }, `${mode}-step-11`);
     await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 11, nextStep: null });
     await expect(invoke(services, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ audience: "public" }] });
-    await expect(invoke(services, "get_automation_checkpoint", { kind: "work_pulse" })).resolves.toMatchObject({ checkpoint: { state: "configured" } });
+    await expect(invoke(services, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { state: "configured", kind: "buildmates" } });
   });
 });
 
@@ -254,7 +269,7 @@ function validSignal() {
 }
 
 function validProfile(profileId: string) {
-  return { profileId, handle: profileId, displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching", portfolioLinks: [], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: `${profileId}-key` };
+  return { profileId, handle: profileId.replaceAll("-", "_"), displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching", portfolioLinks: [], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: `${profileId}-key` };
 }
 
 

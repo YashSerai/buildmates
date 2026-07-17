@@ -23,8 +23,9 @@ export function recordRequestEvent(event: RequestEvent): void {
 export function safeRoute(pathname: string): string {
   return pathname
     .split("/")
-    .map((part) => {
+    .map((part, index, parts) => {
       if (!part) return part;
+      if (parts[index - 1] === "i") return ":token";
       if (/^[0-9a-f-]{20,}$/i.test(part)) return ":id";
       if (/^(room|connection|circle|project|profile|user|cohort|invite|export|deletion)_[a-z0-9_.:-]+$/i.test(part)) return ":id";
       return part.length > 80 ? ":value" : part;

@@ -44,7 +44,7 @@ async function authorize(request: Request, runtime: ExternalMcpRuntime): Promise
   const redirect = new URL(auth.redirect_uri);
   redirect.searchParams.set("code", code);
   redirect.searchParams.set("state", auth.state);
-  return Response.redirect(redirect.toString(), 302);
+  return redirectNoStore(redirect.toString());
 }
 
 async function token(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
@@ -98,6 +98,10 @@ function field(form: FormData, key: string): string {
 
 function json(body: unknown, status = 200, headers: HeadersInit = {}): Response {
   return Response.json(body, { status, headers: { "content-type": "application/json", ...headers } });
+}
+
+function redirectNoStore(location: string): Response {
+  return new Response(null, { status: 302, headers: { location, "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" } });
 }
 
 function oauthError(error: unknown): { code: "invalid_request" | "server_error"; status: 400 | 500 } {

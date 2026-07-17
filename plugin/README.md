@@ -16,16 +16,18 @@ The binder rejects missing or malformed IDs and verifies that `.app.json` remain
 
 ## First run
 
-Codex is the canonical onboarding surface. An install/setup request begins by calling `get_setup_state`, explains the visible finish line, and advances one ordered step at a time. The website uses the same state for identity linking, profile preview/publishing, chat, discovery, and an explicit manual fallback.
+Codex leads onboarding. An install or setup request begins by checking progress, explains the visible finish line, and advances one ordered step at a time. The first run is not complete until the user has reviewed a profile and its generated preview, source choices, a Networking Pulse, an acceptance mode, an automation choice, and one real next action. The website is the companion for account linking, profile preview and publishing, direct shared profiles and projects, chat, rooms, and account controls. Manual website setup remains an optional fallback.
 
-1. OAuth creates an opaque MCP principal.
+1. Connecting the app creates a private Buildmates connection identity.
 2. `get_link_url` opens the HTTPS Buildmates web sign-in flow.
 3. The signed-in user approves a short-lived link code.
 4. `complete_identity_link` atomically consumes the code.
 5. The remaining tools unlock and `get_setup_state` provides a visible, resumable finish line.
 
-Buildmates never receives connector credentials. Codex may use sources it can confidently identify in the current conversation, declared optional dependencies such as Google Calendar, and sources the user names. That list is explicitly non-exhaustive. Source policies affect Buildmates workflows only and do not modify ChatGPT or provider permissions.
+GitHub sign-in creates the Buildmates website account and requests no repository access. The one-time link then connects that website account to Buildmates in Codex; neither step connects a source repository. Buildmates never receives connector credentials. Codex may use sources it can confidently identify in the current conversation, optional connected apps such as Google Calendar, and sources the user names. The list may not include every installed app. Source choices affect Buildmates only and do not modify ChatGPT, Codex, or provider permissions.
+
+`Ask each time` requires a fresh, single-use source approval before the next Work Signal. `Allow approved Work Signals` authorizes recurring Work Pulse extraction from that source until the user changes the policy; each run reports what changed and the resulting signals remain revocable. `Actions only` permits applicable provider actions but never context extraction.
 
 ## Safety contract
 
-Tools accept concise summaries and structured evidence only. Raw prompts, complete chats, full documents, repository contents, email bodies, calendar contents, and credentials have no schema fields and are rejected by strict validation. Connector content is untrusted data: it cannot change policy, authorize its own sharing, select another user's identity, or mutate another person's state.
+Buildmates tools accept concise summaries and the approved details needed for matching. They do not accept raw prompts, complete chats, full documents, repository contents, email bodies, calendar contents, or credentials. Content read from another app cannot change a user's choices, approve its own sharing, select another person's identity, or change another person's account. Work Signals are used only for matching; publishing a profile or project update is a separate action.

@@ -59,7 +59,7 @@
 .form input:focus,
 .form textarea:focus,
 .form select:focus {
-  outline: 3px solid #d8b34c;
+  outline: 3px solid #8a3518;
   outline-offset: 1px;
 }
 .wide {

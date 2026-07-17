@@ -5,6 +5,7 @@ import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { completeIdentityLink, createD1IdentityLinkStore, sha256 } from "../../apps/web/src/platform/identity-link-store";
 import { createD1OAuthStore } from "../../apps/mcp/src/d1-oauth-store";
+import { hashOAuthSecret } from "../../apps/mcp/src/oauth";
 import { createAuthorizationHandoff } from "../../apps/mcp/src/authorization-handoff";
 import { createExternalMcpFetchHandler } from "../../apps/mcp/src/server";
 import { createMcpAuthorizationAssertion } from "../../apps/web/src/platform/mcp-authorization";
@@ -133,11 +134,19 @@ describe("real local D1 platform boundaries", () => {
     Object.entries({ response_type: "code", client_id: "codex", redirect_uri: "https://chatgpt.com/callback", code_challenge: "z".repeat(43), code_challenge_method: "S256", scope: "mcp:tools", state: "oauth-state", resource: "https://mcp.example/mcp" }).forEach(([key, value]) => authorize.searchParams.set(key, value));
     const begin = await handler(new Request(authorize));
     expect(begin.status).toBe(302);
+    expect(begin.headers.get("cache-control")).toBe("no-store");
     const webUrl = new URL(begin.headers.get("location")!);
     expect(webUrl.origin + webUrl.pathname).toBe("https://web.example/api/identity/mcp-authorization");
     const callback = new URL(webUrl.searchParams.get("return_to")!);
+    const wrongAssertion = await createMcpAuthorizationAssertion(
+      { channel: "web", subject: "stable-web-alice", workspaceScope: "global", handoffHash: hashOAuthSecret("another-handoff") },
+      { privateKeyPem, issuer: "buildmates-web", audience: "buildmates-mcp-authorization", keyId: "test" },
+    );
+    const wrongCallback = new URL(callback);
+    wrongCallback.searchParams.set("assertion", wrongAssertion);
+    await expect(handoff.complete(new Request(wrongCallback)).then((response) => response.status)).resolves.toBe(401);
     const assertion = await createMcpAuthorizationAssertion(
-      { channel: "web", issuer: "chatgpt_sites", subject: "stable-web-alice", workspaceScope: "global", displayName: null },
+      { channel: "web", subject: "stable-web-alice", workspaceScope: "global", handoffHash: hashOAuthSecret(callback.searchParams.get("handoff")!) },
       { privateKeyPem, issuer: "buildmates-web", audience: "buildmates-mcp-authorization", keyId: "test" },
     );
     callback.searchParams.set("assertion", assertion);
@@ -145,8 +154,11 @@ describe("real local D1 platform boundaries", () => {
     expect(completed.status).toBe(302);
     await expect(handoff.complete(new Request(callback)).then((response) => response.status)).resolves.toBe(400);
     const cookie = completed.headers.get("set-cookie")!.split(";")[0];
+    const mismatched = await handler(new Request(authorize.toString().replace("oauth-state", "other-state"), { headers: { cookie } }));
+    expect(new URL(mismatched.headers.get("location")!).origin).toBe("https://web.example");
     const resumed = await handler(new Request(completed.headers.get("location")!, { headers: { cookie } }));
     expect(resumed.status).toBe(302);
+    expect(resumed.headers.get("cache-control")).toBe("no-store");
     expect(new URL(resumed.headers.get("location")!).searchParams.get("code")).toBeTruthy();
   });
 });

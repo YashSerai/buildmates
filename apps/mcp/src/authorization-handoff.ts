@@ -23,7 +23,7 @@ export function createAuthorizationHandoff(config: AuthorizationHandoffConfig) {
       callback.searchParams.set("handoff", state);
       const web = new URL("/api/identity/mcp-authorization", config.webBaseUrl);
       web.searchParams.set("return_to", callback.toString());
-      return Response.redirect(web.toString(), 302);
+      return new Response(null, { status: 302, headers: { location: web.toString(), "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" } });
     },
 
     async complete(request: Request): Promise<Response> {
@@ -35,7 +35,7 @@ export function createAuthorizationHandoff(config: AuthorizationHandoffConfig) {
       const { payload } = await jwtVerify(assertion, key, {
         issuer: config.issuer, audience: config.audience, algorithms: ["RS256"], maxTokenAge: "2m",
       });
-      if (typeof payload.sub !== "string" || typeof payload.jti !== "string" || payload.channel !== "web") return Response.json({ error: "invalid_web_identity_assertion" }, { status: 401 });
+      if (typeof payload.sub !== "string" || typeof payload.jti !== "string" || payload.channel !== "web" || payload.handoff_hash !== hashOAuthSecret(state)) return Response.json({ error: "invalid_web_identity_assertion" }, { status: 401 });
       const stateHash = hashOAuthSecret(state);
       const row = await config.DB.prepare("SELECT request_uri AS requestUri FROM oauth_authorization_handoffs WHERE state_hash = ? AND consumed_at IS NULL AND expires_at > ? LIMIT 1")
         .bind(stateHash, Date.now()).first<{ requestUri: string }>();
@@ -53,7 +53,7 @@ export function createAuthorizationHandoff(config: AuthorizationHandoffConfig) {
         status: 302,
         headers: {
           location: row.requestUri,
-          "set-cookie": `bm_web_authorization=${encodeURIComponent(assertion)}; Max-Age=120; Path=/oauth; HttpOnly; Secure; SameSite=Lax`,
+          "set-cookie": `bm_web_authorization=${encodeURIComponent(assertion)}~${hashOAuthSecret(row.requestUri)}; Max-Age=120; Path=/oauth; HttpOnly; Secure; SameSite=Lax`,
           "cache-control": "no-store", "referrer-policy": "no-referrer",
         },
       });
@@ -63,8 +63,11 @@ export function createAuthorizationHandoff(config: AuthorizationHandoffConfig) {
       const cookie = request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith("bm_web_authorization="))?.slice("bm_web_authorization=".length);
       if (!cookie) return null;
       try {
+        const separator = cookie.lastIndexOf("~");
+        if (separator < 1 || cookie.slice(separator + 1) !== hashOAuthSecret(request.url)) return null;
+        const assertion = decodeURIComponent(cookie.slice(0, separator));
         const key = await importSPKI(config.publicKeyPem, "RS256");
-        const { payload } = await jwtVerify(decodeURIComponent(cookie), key, { issuer: config.issuer, audience: config.audience, algorithms: ["RS256"], maxTokenAge: "2m" });
+        const { payload } = await jwtVerify(assertion, key, { issuer: config.issuer, audience: config.audience, algorithms: ["RS256"], maxTokenAge: "2m" });
         return typeof payload.sub === "string" && payload.channel === "web" ? { issuer: config.issuer, subject: payload.sub } : null;
       } catch { return null; }
     },

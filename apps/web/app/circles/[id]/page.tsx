@@ -33,18 +33,20 @@ export default async function CirclePage({ params }: { params: Promise<{ id: str
   const bindings = {
     "circle.name": circle.name,
     "circle.purpose": circle.purpose,
-    "circle.members": circle.members.map((member) => ({ label: member.displayName, value: member.role })),
-    "circle.modules": circle.modules.filter((module) => module.active).map((module) => ({ label: String(module.config.title ?? module.kind.replaceAll("_", " ")), value: module.kind.replaceAll("_", " ") })),
+    "circle.members": circle.members.map((member) => ({ label: member.displayName, value: member.role === "owner" ? "Owner" : member.role === "admin" ? "Admin" : "Member" })),
+    "circle.modules": circle.modules.filter((module) => module.active).map((module) => ({ label: String(module.config.title ?? toolLabel(module.kind)), value: toolLabel(module.kind) })),
     "circle.metrics": [
       { label: "Members", value: String(circle.members.filter((member) => member.status === "active").length) },
-      { label: "Active modules", value: String(circle.modules.filter((module) => module.active).length) },
+      { label: "Shared tools", value: String(circle.modules.filter((module) => module.active).length) },
     ],
   };
   return <main className={styles.page}>
     <header><a href="/circles">← Circles</a><a href="/">Buildmates</a><a href="/inbox">Inbox</a></header>
     {surfaceSpec
       ? <SurfaceRenderer spec={surfaceSpec} bindings={bindings} />
-      : <section className={styles.intro}><p>{circle.governanceMode} governance</p><h1>{circle.name}</h1><span>{circle.purpose}</span></section>}
+      : <section className={styles.intro}><p>{circle.governanceMode === "vote" ? "Members approve changes by vote" : "Admins publish approved changes"}</p><h1>{circle.name}</h1><span>{circle.purpose}</span></section>}
     <CircleClient initialCircle={circle} initialMessages={messages} initialEntries={entries} />
   </main>;
 }
+
+function toolLabel(value: string) { return ({resource_shelf:"Resource shelf",experiment_tracker:"Experiment tracker",decision_log:"Decision log",feedback_queue:"Feedback queue",milestone_tracker:"Milestone tracker",scoreboard:"Scoreboard"} as Record<string,string>)[value] ?? "Shared tool"; }

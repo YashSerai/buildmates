@@ -2,6 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { evaluateCandidate, listCandidateRows, respondToProposal } from "../../apps/web/src/matching/service";
+import { getMcpCandidateShortlist, recordMcpCandidateEvaluation, recordMcpManualMatchResponse } from "../../apps/web/src/matching/mcp-adapter";
 import {listConnections} from "../../apps/web/src/rooms/service";
 
 describe("D1 reciprocal matching", () => {
@@ -26,6 +27,25 @@ describe("D1 reciprocal matching", () => {
   it("returns only current viewer-authorized evidence", async () => {
     const result=await listCandidateRows(DB,"alice",now,30);
     expect(result).toEqual([expect.objectContaining({userId:"bob",visibleReasons:[],visibleEvidenceIds:["signal-b"]})]);
+  });
+
+  it("routes MCP shortlist, reciprocal evaluation, consent, and room opening through the canonical state machine", async () => {
+    const aliceShortlist = await getMcpCandidateShortlist(DB, { userId: "alice", limit: 20, now: new Date(now).toISOString() });
+    expect(aliceShortlist).toMatchObject({
+      batchId: expect.any(String),
+      expiresAt: new Date(now + 30 * 60_000).toISOString(),
+      candidates: [{ userId: "bob", displayName: "Bob", summary: "Hybrid search", indexVersion: 4, visibleEvidenceIds: ["signal-b"], proposalId: null }],
+    });
+    const alice = await recordMcpCandidateEvaluation(DB, { userId: "alice", evaluationId: "mcp-evaluation-alice", batchId: aliceShortlist.batchId!, candidateUserId: "bob", decision: "approve", reasonSummary: "Relevant retrieval work", evidenceIds: ["signal-b"], indexVersion: 2, now: new Date(now).toISOString() });
+    expect(alice).toMatchObject({ evaluationId: "mcp-evaluation-alice", proposalId: expect.any(String), state: "pending" });
+
+    const bobShortlist = await getMcpCandidateShortlist(DB, { userId: "bob", limit: 20, now: new Date(now + 1).toISOString() });
+    expect(bobShortlist.candidates[0]).toMatchObject({ userId: "alice", proposalId: alice.proposalId });
+    await recordMcpCandidateEvaluation(DB, { userId: "bob", evaluationId: "mcp-evaluation-bob", batchId: bobShortlist.batchId!, candidateUserId: "alice", decision: "approve", reasonSummary: "Useful evaluation overlap", evidenceIds: [], indexVersion: 4, now: new Date(now + 1).toISOString() });
+    const opened = await recordMcpManualMatchResponse(DB, { userId: "alice", responseId: "mcp-response-alice", proposalId: alice.proposalId, response: "interested", now: new Date(now + 2).toISOString() });
+    expect(opened).toMatchObject({ responseId: "mcp-response-alice", state: "matched", connectionId: expect.any(String), roomId: expect.any(String) });
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM notifications").first()).toEqual({ count: 2 });
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM rooms").first()).toEqual({ count: 1 });
   });
 
   it("enforces quiet hours and repeated-cluster diversity before returning candidates",async()=>{

@@ -19,7 +19,10 @@ import {
 import { WorkSignalReview } from "@/components/onboarding/WorkSignalReview";
 import { AcceptanceMode } from "@/components/onboarding/AcceptanceMode";
 import { AutomationCadence } from "@/components/onboarding/AutomationCadence";
+import { userFacingError } from "@/src/client/user-facing-error";
 import styles from "./onboarding.module.css";
+
+class RequestError extends Error {}
 
 export function OnboardingClient({
   initialSnapshot,
@@ -71,14 +74,12 @@ export function OnboardingClient({
       const payload = (await response.json()) as
         OnboardingSnapshot | { error: string };
       if (!response.ok)
-        throw new Error(
-          "error" in payload ? payload.error : "Could not save this step.",
-        );
+        throw new RequestError(userFacingError("error" in payload ? payload.error : undefined, "Could not save this step."));
       setSnapshot(payload as OnboardingSnapshot);
       setMessage("Saved. Your setup progress is up to date.");
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not save this step.",
+        error instanceof RequestError ? error.message : "Could not save this step. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -102,7 +103,7 @@ export function OnboardingClient({
         error?: string;
       };
       if (!response.ok)
-        throw new Error(payload.error || "Could not save source policies.");
+        throw new RequestError(userFacingError(payload.error, "Could not save source policies."));
       const refreshed = await fetch("/api/onboarding", { cache: "no-store" });
       setSnapshot((await refreshed.json()) as OnboardingSnapshot);
       setMessage(
@@ -112,9 +113,9 @@ export function OnboardingClient({
       );
     } catch (error) {
       setMessage(
-        error instanceof Error
+        error instanceof RequestError
           ? error.message
-          : "Could not save source policies.",
+          : "Could not save source policies. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -137,7 +138,7 @@ export function OnboardingClient({
         error?: string;
       };
       if (!response.ok)
-        throw new Error(payload.error || "Could not update the signal.");
+        throw new RequestError(userFacingError(payload.error, "Could not update the signal."));
       setSnapshot((current) => ({
         ...current,
         signals: payload.signals ?? current.signals,
@@ -149,7 +150,7 @@ export function OnboardingClient({
       );
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not update the signal.",
+        error instanceof RequestError ? error.message : "Could not update the signal. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -173,7 +174,7 @@ export function OnboardingClient({
           </span>
         </div>
         {step === "identity_link" && (
-          <Step title="Connect Buildmates in Codex" description="Your website account is ready. The Codex first run begins only after an active Buildmates MCP identity link is confirmed.">
+          <Step title="Connect Buildmates in Codex" description="Your website account is ready. The guided first run begins after Codex confirms the secure account link.">
             <div className={styles.completion}>
               <strong>Connection required</strong>
               <p>Generate a single-use linking code, then complete the Buildmates connection from Codex. This website cannot mark the connection complete on its own.</p>
@@ -222,7 +223,7 @@ export function OnboardingClient({
         {step === "source_selection" && (
           <Step
             title="Choose each source individually"
-            description="This is not a list of every app installed in ChatGPT. Add only sources Codex identified in this conversation or sources you name yourself."
+            description="Codex shows the connected sources it can identify in this conversation. You can also name a source yourself."
           >
             <div className={styles.stack}>
               {sources.map((source, index) => (
@@ -382,7 +383,7 @@ export function OnboardingClient({
         {step === "automation" && (
           <Step
             title="Configure one Buildmates automation"
-            description="One resumable run can refresh signals, evaluate a small shortlist, request feedback, and prepare permitted scheduling actions."
+            description="Your Buildmates automation can refresh approved signals, evaluate a small shortlist, request feedback, and prepare scheduling actions you allow."
           >
             <AutomationCadence value={cadence} onChange={setCadence} />
             <label className={styles.checkLabel}>
@@ -409,14 +410,13 @@ export function OnboardingClient({
         )}
         {step === "first_useful_outcome" && (
           <FirstOutcome
-            initial={snapshot.profile?.projectOrInterest ?? "builders"}
             busy={busy}
             onSubmit={onboarding}
           />
         )}
         {!step && (
           <Step
-            title="Your Buildmates foundation is ready"
+            title="Buildmates setup is complete"
             description="Your profile, privacy choices, Networking Pulse, and automation settings are saved."
           >
             <div className={styles.completion}>
@@ -748,32 +748,22 @@ function NetworkingStep({
   );
 }
 function FirstOutcome({
-  initial,
   busy,
   onSubmit,
 }: {
-  initial: string;
   busy: boolean;
   onSubmit: (body: Record<string, unknown>) => Promise<void>;
 }) {
-  const [target, setTarget] = useState(initial.slice(0, 120));
   return (
     <Step
-      title="Leave setup with something useful"
-      description="Watch a topic now. Buildmates can notify you later when a relevant builder joins—even when the network is still sparse."
+      title="Keep watch for a relevant builder"
+      description="During each scheduled Buildmates automation, Codex checks for someone who fits your profile and current Networking Pulse. If it finds a strong possibility, the automation result will tell you."
     >
-      <label>
-        Topic to watch
-        <input
-          value={target}
-          onChange={(event) => setTarget(event.target.value)}
-        />
-      </label>
       <button
-        onClick={() => onSubmit({ action: "complete_outcome", target })}
+        onClick={() => onSubmit({ action: "complete_outcome" })}
         disabled={busy}
       >
-        Watch topic and finish
+        Turn on relevance watch and finish
       </button>
     </Step>
   );

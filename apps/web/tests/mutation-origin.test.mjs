@@ -17,8 +17,14 @@ test("cookie-authenticated browser mutations enforce exact same-origin requests"
 });
 
 test("the synthetic identity route cannot mint sessions in production", async () => {
-  const source = await readFile(new URL("../app/api/testing/session/route.ts", import.meta.url), "utf8");
-  assert.match(source, /process\.env\.NODE_ENV === "production"/);
+  const [route, guard] = await Promise.all([
+    readFile(new URL("../app/api/testing/session/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/security/testing-route.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(route, /allowLocalTestingRoute\(request, BUILDMATES_E2E\)/);
+  assert.match(guard, /process\.env\.NODE_ENV === "production"/);
+  assert.match(guard, /protocol === "http:"/);
+  assert.match(guard, /hostname === "127\.0\.0\.1"/);
 });
 
 test("viewer-dependent profile and project reads are never shared-cacheable", async () => {

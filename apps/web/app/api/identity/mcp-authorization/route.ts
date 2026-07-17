@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/src/auth/require-user";
 import { createMcpAuthorizationAssertion } from "@/src/platform/mcp-authorization";
+import { sha256 } from "@/src/auth/github-oauth";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -13,13 +14,15 @@ export async function GET(request: Request) {
   const returnTo = new URL(request.url).searchParams.get("return_to");
   if (!returnTo || !isAllowedMcpCallback(returnTo, mcpBaseUrl)) return Response.json({ error: "invalid_return_to" }, { status: 400 });
 
-  const assertion = await createMcpAuthorizationAssertion({ channel: "web", subject: user.id, workspaceScope: "global" }, {
+  const callback = new URL(returnTo);
+  const handoff = callback.searchParams.get("handoff");
+  if (!handoff) return Response.json({ error: "invalid_return_to" }, { status: 400 });
+  const assertion = await createMcpAuthorizationAssertion({ channel: "web", subject: user.id, workspaceScope: "global", handoffHash: await sha256(handoff) }, {
     privateKeyPem,
     issuer: process.env.MCP_WEB_AUTHORIZATION_ISSUER || "buildmates-web",
     audience: process.env.MCP_WEB_AUTHORIZATION_AUDIENCE || "buildmates-mcp-authorization",
     keyId: process.env.MCP_WEB_AUTHORIZATION_KEY_ID || "web-current",
   });
-  const callback = new URL(returnTo);
   callback.searchParams.set("assertion", assertion);
   return new Response(null, {
     status: 302,

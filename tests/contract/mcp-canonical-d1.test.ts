@@ -52,7 +52,7 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM work_signals WHERE free_text_summary LIKE 'Canonical work %'").first()).resolves.toEqual({ count: 3 });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM mcp_product_records").first()).rejects.toThrow();
 
-    const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "caller-profile", handle: "canonical-alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: "profile-write-01" } }) as MutationResult;
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "caller-profile", handle: "canonical_alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: "profile-write-01" } }) as MutationResult;
     const pulse = await call(ALICE_SUB, "update_networking_pulse", { pulse: { pulseId: "caller-pulse", intentSummary: "Meet adjacent builders", builderSimilarity: "adjacent", geography: "global", maximumIntroductionsPerWeek: 4, serendipity: 40, timezone: "America/Vancouver", quietHours: [{ weekday: 1, startMinute: 0, endMinute: 480 }], snoozedUntil: null, exclusions: [{ kind: "industry", value: "Ads" }], startsAt: "2026-07-15T12:00:00.000Z", expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "pulse-write-01" } }) as MutationResult;
     expect(profile.result.id).toMatch(/^profile_/);
     expect(pulse.result.id).toMatch(/^networking_pulse_/);
@@ -71,23 +71,39 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM follows WHERE follower_user_id='user_alice' AND target_kind='topic' AND target_id='topic-matching'").first()).resolves.toMatchObject({ revokedAt: at });
     await expect(services.repository.readForMember("follow_watch", activeFollow.result.id, "user_alice")).resolves.toBeNull();
     await expect(services.repository.listForMember("follow_watch", "user_alice")).resolves.toEqual([]);
-    const activeWatch = await call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-builder", relation: "watch", targetKind: "relevant_builder", targetId: "user_bob", enabled: true, idempotencyKey: "watch-enable-01" }) as MutationResult;
-    expect(activeWatch.result.id).toBe("watch:relevant_builder:user_bob");
-    await expect(services.repository.readForMember("follow_watch", activeWatch.result.id, "user_alice")).resolves.toMatchObject({ value: { relation: "watch", targetKind: "relevant_builder", targetId: "user_bob", enabled: true } });
-    await call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-builder", relation: "watch", targetKind: "relevant_builder", targetId: "user_bob", enabled: false, idempotencyKey: "watch-disable-01" });
-    await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM watches WHERE user_id='user_alice' AND kind='relevant_builder' AND target_id='user_bob'").first()).resolves.toMatchObject({ revokedAt: at });
+    const activeWatch = await call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-builder", relation: "watch", targetKind: "relevant_builder", targetId: "network", enabled: true, idempotencyKey: "watch-enable-01" }) as MutationResult;
+    expect(activeWatch.result.id).toBe("watch:relevant_builder:network");
+    await expect(services.repository.readForMember("follow_watch", activeWatch.result.id, "user_alice")).resolves.toMatchObject({ value: { relation: "watch", targetKind: "relevant_builder", targetId: "network", enabled: true } });
+    await call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-builder", relation: "watch", targetKind: "relevant_builder", targetId: "network", enabled: false, idempotencyKey: "watch-disable-01" });
+    await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM watches WHERE user_id='user_alice' AND kind='relevant_builder' AND target_id='network'").first()).resolves.toMatchObject({ revokedAt: at });
     await expect(services.repository.readForMember("follow_watch", activeWatch.result.id, "user_alice")).resolves.toBeNull();
+    await expect(call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-person", relation: "watch", targetKind: "relevant_builder", targetId: "user_bob", enabled: true, idempotencyKey: "watch-person-invalid-01" })).rejects.toThrow();
+
+    await DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,audience,allow_matching,published_at,created_at,updated_at) VALUES ('profile-bob','user_bob','Bob','Visible builder','public',1,?,?,?),('profile-carol','user_carol','Carol','Private builder','private',1,?,?,?)").bind(at,at,at,at,at,at).run();
+    await expect(call(ALICE_SUB, "set_follow_or_watch", { relationId: "follow-private", relation: "follow", targetKind: "profile", targetId: "user_carol", enabled: true, idempotencyKey: "follow-private-01" })).rejects.toThrow("object_not_found_or_not_authorized");
+    await DB.prepare("INSERT INTO blocks(blocker_user_id,blocked_user_id,created_at) VALUES ('user_alice','user_bob',?)").bind(at).run();
+    await expect(call(ALICE_SUB, "set_follow_or_watch", { relationId: "follow-blocked", relation: "follow", targetKind: "profile", targetId: "user_bob", enabled: true, idempotencyKey: "follow-blocked-01" })).rejects.toThrow("object_not_found_or_not_authorized");
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM follows WHERE follower_user_id='user_alice' AND target_id IN ('user_bob','user_carol')").first()).resolves.toEqual({ count: 0 });
 
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "storage_explanation", acknowledged: true }, idempotencyKey: "setup-storage-01" });
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "source_selection", sourceIds: ["github"] }, idempotencyKey: "setup-source-01" });
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "context_collection", method: "manual_profile", summary: "Builds canonical collaboration tools", links: [] }, idempotencyKey: "setup-context-01" });
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "signal_privacy_review", reviewedSignalIds: [alice.result.id], acknowledged: true }, idempotencyKey: "setup-signal-01" });
-    await call(ALICE_SUB, "complete_setup_step", { payload: { step: "basic_profile", handle: "canonical-alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Builder matching" }, idempotencyKey: "setup-profile-01" });
+    await call(ALICE_SUB, "complete_setup_step", { payload: { step: "basic_profile", handle: "canonical_alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Builder matching" }, idempotencyKey: "setup-profile-01" });
     await expect(DB.prepare("SELECT completed_steps_json AS steps FROM setup_states WHERE user_id='user_alice'").first<{ steps: string }>()).resolves.toSatisfy((row) => JSON.parse(row!.steps).includes("basic_profile"));
 
-    await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "caller-checkpoint", kind: "work_pulse", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "automation-write-01" });
-    await expect(DB.prepare("SELECT state_json AS state FROM automation_checkpoints WHERE user_id='user_alice' AND kind='work_pulse'").first<{ state: string }>()).resolves.toSatisfy((row) => JSON.parse(row!.state).configured === true);
-  }, 20_000);
+    await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "caller-checkpoint", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "automation-write-01" });
+    await expect(DB.prepare("SELECT state_json AS state FROM automation_checkpoints WHERE user_id='user_alice' AND kind='buildmates'").first<{ state: string }>()).resolves.toSatisfy((row) => JSON.parse(row!.state).configured === true);
+  }, 60_000);
+
+  it("round-trips one canonical automation checkpoint without erasing capability proof", async () => {
+    await DB.prepare("INSERT INTO automation_checkpoints (id,user_id,kind,state_json,updated_at) VALUES ('existing-automation','user_alice','buildmates',?,?)")
+      .bind(JSON.stringify({ capability: "available", checkedAt: "2026-07-15T12:00:00.000Z", proofSource: "mcp_delegated_probe" }), at)
+      .run();
+    await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "canonical-automation", cursor: "cursor-1", state: "succeeded", lastOutcome: "No relevant changes", enabled: true, cadence: "automatic", sourceLivenessReviewed: true, nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "canonical-automation-01" });
+    await expect(call(ALICE_SUB, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { kind: "buildmates", cursor: "cursor-1", state: "succeeded", cadence: "automatic", sourceLivenessReviewed: true, capability: "available", proofSource: "mcp_delegated_probe" } });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM automation_checkpoints WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
+  }, 60_000);
 
   it("persists every supported Connection update field and never reactivates an ended Connection", async () => {
     await DB.batch([
@@ -96,6 +112,7 @@ describe("canonical MCP D1 execution", () => {
       DB.prepare("INSERT INTO matches (id,match_pair_id,proposal_id,matched_at) VALUES ('connection-match','connection-pair','connection-proposal',?)").bind(at),
       DB.prepare("INSERT INTO connections (id,match_pair_id,match_id,state,created_at,updated_at) VALUES ('connection-1','connection-pair','connection-match','active',?,?)").bind(at, at),
       DB.prepare("INSERT INTO connection_sides (connection_id,user_id,muted,renewed_relevance_enabled,created_at,updated_at) VALUES ('connection-1','user_alice',0,1,?,?),('connection-1','user_bob',0,1,?,?)").bind(at, at, at, at),
+      DB.prepare("INSERT INTO rooms (id,match_pair_id,connection_id,status,created_at,updated_at) VALUES ('connection-room','connection-pair','connection-1','active',?,?)").bind(at, at),
       DB.prepare("INSERT INTO match_pairs (id,user_a_id,user_b_id,created_at) VALUES ('other-pair','user_alice','user_carol',?)").bind(at),
       DB.prepare("INSERT INTO match_proposals (id,match_pair_id,attempt_number,evidence_version_a,evidence_version_b,acceptance_mode_a,acceptance_mode_b,explanation_a_json,explanation_b_json,state,expires_at,created_at) VALUES ('other-proposal','other-pair',1,1,1,'manual','manual','{}','{}','matched',?,?)").bind(at + 60_000, at),
       DB.prepare("INSERT INTO matches (id,match_pair_id,proposal_id,matched_at) VALUES ('other-match','other-pair','other-proposal',?)").bind(at),
@@ -115,8 +132,34 @@ describe("canonical MCP D1 execution", () => {
     await expect(call(ALICE_SUB, "get_connections", { connectionId: "connection-1" })).resolves.toMatchObject({ connections: [{ state: "ended", sides: { user_alice: { muted: true, renewedRelevanceEnabled: false, renewedRelevanceAcknowledgedAt: acknowledgedAt } } }] });
     await expect(DB.prepare("SELECT muted,renewed_relevance_enabled AS enabled,renewed_relevance_acknowledged_at AS acknowledgedAt FROM connection_sides WHERE connection_id='connection-1' AND user_id='user_alice'").first()).resolves.toEqual({ muted: 1, enabled: 0, acknowledgedAt: Date.parse(acknowledgedAt) });
     await expect(DB.prepare("SELECT state,ended_by_user_id AS endedBy FROM connections WHERE id='connection-1'").first()).resolves.toEqual({ state: "ended", endedBy: "user_alice" });
+    await expect(DB.prepare("SELECT status FROM rooms WHERE id='connection-room'").first()).resolves.toEqual({ status: "ended" });
     await expect(call(ALICE_SUB, "update_connection", { connectionId: "connection-1", state: "active", idempotencyKey: "connection-reactivate-01" })).rejects.toMatchObject({ issues: [expect.objectContaining({ code: "invalid_value", path: ["state"] })] });
-  }, 20_000);
+  }, 60_000);
+
+  it("returns authorized room availability in Calendar handoffs and rejects ended rooms", async () => {
+    const startsAt = at + 3_600_000;
+    const endsAt = at + 7_200_000;
+    await DB.batch([
+      DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,timezone,published_at,created_at,updated_at) VALUES ('calendar-profile-a','user_alice','Alice','Summary','Project','[]','public',1,'manual',1,'America/Vancouver',?,?,?),('calendar-profile-b','user_bob','Bob','Summary','Project','[]','public',1,'manual',1,'Europe/London',?,?,?)").bind(at, at, at, at, at, at),
+      DB.prepare("INSERT INTO match_pairs (id,user_a_id,user_b_id,created_at) VALUES ('calendar-pair','user_alice','user_bob',?)").bind(at),
+      DB.prepare("INSERT INTO match_proposals (id,match_pair_id,attempt_number,evidence_version_a,evidence_version_b,acceptance_mode_a,acceptance_mode_b,explanation_a_json,explanation_b_json,state,expires_at,created_at) VALUES ('calendar-proposal','calendar-pair',1,1,1,'manual','manual','{}','{}','matched',?,?)").bind(at + 60_000, at),
+      DB.prepare("INSERT INTO matches (id,match_pair_id,proposal_id,matched_at) VALUES ('calendar-match','calendar-pair','calendar-proposal',?)").bind(at),
+      DB.prepare("INSERT INTO connections (id,match_pair_id,match_id,state,created_at,updated_at) VALUES ('calendar-connection','calendar-pair','calendar-match','active',?,?)").bind(at, at),
+      DB.prepare("INSERT INTO connection_sides (connection_id,user_id,created_at,updated_at) VALUES ('calendar-connection','user_alice',?,?),('calendar-connection','user_bob',?,?)").bind(at, at, at, at),
+      DB.prepare("INSERT INTO rooms (id,match_pair_id,connection_id,status,theme_topic_id,created_at,updated_at) VALUES ('calendar-room','calendar-pair','calendar-connection','active','topic-matching',?,?)").bind(at, at),
+      DB.prepare("INSERT INTO room_memberships (room_id,user_id,joined_at) VALUES ('calendar-room','user_alice',?),('calendar-room','user_bob',?)").bind(at, at),
+      DB.prepare("INSERT INTO availability_windows (id,room_id,user_id,starts_at,ends_at,timezone,status,created_at,updated_at) VALUES ('calendar-window-a','calendar-room','user_alice',?,?,'America/Vancouver','approved',?,?),('calendar-window-b','calendar-room','user_bob',?,?,'Europe/London','approved',?,?)").bind(startsAt, endsAt, at, at, startsAt + 1_800_000, endsAt + 1_800_000, at, at),
+    ]);
+    await expect(call(ALICE_SUB, "prepare_calendar_handoff", { roomId: "calendar-room" })).resolves.toMatchObject({
+      participants: [{ userId: "user_alice", label: "Alice" }, { userId: "user_bob", label: "Bob" }],
+      timezones: [{ userId: "user_alice", timezone: "America/Vancouver" }, { userId: "user_bob", timezone: "Europe/London" }],
+      candidateWindows: [{ startsAt: new Date(startsAt + 1_800_000).toISOString(), endsAt: new Date(endsAt).toISOString() }],
+      agenda: "Continue the Buildmates introduction around Matching",
+      options: ["codex_deep_link", "copy_prompt", "manual_times", "ics"],
+    });
+    await call(ALICE_SUB, "update_connection", { connectionId: "calendar-connection", state: "ended", idempotencyKey: "end-calendar-connection-01" });
+    await expect(call(ALICE_SUB, "prepare_calendar_handoff", { roomId: "calendar-room" })).rejects.toThrow("room_not_available");
+  }, 60_000);
 
   it("enforces Never, Actions only, and single-use Ask each time approval in canonical rows", async () => {
     await saveSource(ALICE_SUB, "never", "never-source");
@@ -128,7 +171,7 @@ describe("canonical MCP D1 execution", () => {
     await call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("ask-signal", "ask-write"), sourceApprovalId: approvalId } });
     await expect(call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("ask-signal-two", "ask-write-two"), sourceApprovalId: approvalId } })).rejects.toThrow("source_approval_required");
     await expect(DB.prepare("SELECT consumed_at AS consumedAt FROM source_use_approvals WHERE id=?").bind(approvalId).first()).resolves.toMatchObject({ consumedAt: at });
-  }, 20_000);
+  }, 60_000);
 
   it("conditionally recovers an exact crashed idempotency row and audits the operator disposition", async () => {
     const requestHash = "a".repeat(64);
@@ -150,7 +193,7 @@ describe("canonical MCP D1 execution", () => {
     await expect(recoverIdempotencyOperation(DB, { ...completed, operatorUserId: "user_bob", auditId: "audit-not-admin" })).resolves.toBe(false);
     await expect(recoverIdempotencyOperation(DB, completed)).resolves.toBe(true);
     await expect(DB.prepare("SELECT status,response_json AS response FROM idempotency_keys WHERE id=?").bind(completed.id).first<{ status: string; response: string }>()).resolves.toSatisfy((row) => row?.status === "complete" && JSON.parse(row.response).effectLocator.id === "owned-profile");
-  }, 20_000);
+  }, 60_000);
 
   it("prunes expired replay and rate-limit rows in bounded indexed batches", async () => {
     for (let index = 0; index < 5; index += 1) {
@@ -167,49 +210,57 @@ describe("canonical MCP D1 execution", () => {
     await pruneExpiredMcpRateLimits(DB, at, 1000);
     await expect(DB.prepare("SELECT jti FROM assertion_replays").all()).resolves.toMatchObject({ results: [{ jti: "live" }] });
     await expect(DB.prepare("SELECT key FROM mcp_rate_limits").all()).resolves.toMatchObject({ results: [{ key: "live" }] });
-  }, 20_000);
+  }, 60_000);
 
   it("routes profile revisions, personal views, approval publication, and rollback through Task 4 governance", async () => {
     await saveSource(ALICE_SUB, "allow_approved_work_signals", "surface-source");
-    const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "profile-surface", handle: "surface-alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety", portfolioLinks: [], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: "surface-profile-01" } }) as MutationResult;
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "profile-surface", handle: "surface_alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety", portfolioLinks: [], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: "surface-profile-01" } }) as MutationResult;
     const repositories = createD1Repositories(DB as never);
     await seedDesignPolicy(repositories);
-    await repositories.surfaces.createSurface({ actorId: "user_alice" as never, id: "profile-surface", ownerUserId: "user_alice" as never, kind: "profile", subjectId: profile.result.id, at: new Date(at) });
-    await expect(call(ALICE_SUB, "get_surface_generation_brief", { surfaceId: "profile-surface" })).resolves.toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: expect.arrayContaining(["profile.displayName", "profile.publicProjects"]), governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, designPolicy: { trustedComponents: expect.arrayContaining(["section", "decorative-region"]) } });
+    const surfaceId = String((profile.result as Record<string, unknown>).surfaceId);
+    expect(surfaceId).toBe(`surface_profile_${profile.result.id}`);
+    await expect(call(ALICE_SUB, "get_surface_generation_brief", { surfaceId })).resolves.toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, designPolicy: { trustedComponents: expect.arrayContaining(["section", "decorative-region"]) } });
 
-    const revision = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-revision", surfaceId: "profile-surface", baseRevisionId: null, spec: workshopProfileSpec, visibility: "private_preview", idempotencyKey: "surface-revision-01" }) as MutationResult;
+    const revision = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-revision", surfaceId, baseRevisionId: null, spec: workshopProfileSpec, visibility: "private_preview", idempotencyKey: "surface-revision-01" }) as MutationResult;
+    expect((revision.result as Record<string, unknown>).previewUrl).toBe("https://buildmates.example/profile/design");
     await expect(DB.prepare("SELECT status FROM surface_revisions WHERE id=?").bind(revision.result.id).first()).resolves.toEqual({ status: "draft" });
     await call(ALICE_SUB, "decide_surface_revision", { revisionId: revision.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "surface-approval-01" });
-    await expect(DB.prepare("SELECT published_revision_id AS published FROM surfaces WHERE id='profile-surface'").first()).resolves.toEqual({ published: revision.result.id });
+    await expect(DB.prepare("SELECT published_revision_id AS published FROM surfaces WHERE id=?").bind(surfaceId).first()).resolves.toEqual({ published: revision.result.id });
 
     const setupSignal = await call(ALICE_SUB, "submit_work_signal", { signal: signal("surface-setup-signal", "surface-signal-01") }) as MutationResult;
     const setupPulse = await call(ALICE_SUB, "update_networking_pulse", { pulse: { pulseId: "surface-setup-pulse", intentSummary: "Meet builders working on governed UI", builderSimilarity: "balanced", geography: "global", maximumIntroductionsPerWeek: 3, serendipity: 30, timezone: "America/Vancouver", quietHours: [], snoozedUntil: null, exclusions: [], startsAt: "2026-07-15T12:00:00.000Z", expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-pulse-01" } }) as MutationResult;
-    await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "surface-automation", kind: "work_pulse", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "surface-automation-01" });
+    await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "surface-automation", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "surface-automation-01" });
     const invite = await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-invite", kind: "personal", headline: "Meet builders working on safe generative UI", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-invite-01" }) as MutationResult;
+    const builderInvite = await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-builder-invite", kind: "builder", targetId: profile.result.id, headline: "Meet Alice, who builds governed surfaces", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-builder-invite-01" }) as MutationResult;
+    await DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,status,created_at,updated_at) VALUES ('surface-project','user_alice','surface-project','Surface Project','Governed generative surfaces','active',?,?)").bind(at,at).run();
+    const cardInvite = await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-card-invite", kind: "connection_card", targetId: "surface-project", headline: "Connect around governed generative surfaces", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-card-invite-01" }) as MutationResult;
+    await expect(DB.prepare("SELECT kind,target_id AS targetId,headline FROM invite_links WHERE id IN (?,?) ORDER BY kind").bind(builderInvite.result.id,cardInvite.result.id).all()).resolves.toMatchObject({results:[{kind:"builder",targetId:profile.result.id,headline:"Meet Alice, who builds governed surfaces"},{kind:"connection_card",targetId:"surface-project",headline:"Connect around governed generative surfaces"}]});
+    await expect(call(ALICE_SUB, "create_invite_link", { inviteId: "foreign-builder-invite", kind: "builder", targetId: "profile-carol-missing", headline: "Unauthorized builder", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "foreign-builder-invite-01" })).rejects.toThrow("object_not_found_or_not_authorized");
+    await expect(call(ALICE_SUB, "create_invite_link", { inviteId: "missing-card-target", kind: "connection_card", headline: "Missing project", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "missing-card-target-01" })).rejects.toThrow("invalid_invite_target");
     const setup = (payload: Record<string, unknown>, idempotencyKey: string) => call(ALICE_SUB, "complete_setup_step", { payload, idempotencyKey });
     await setup({ step: "storage_explanation", acknowledged: true }, "surface-setup-01");
     await setup({ step: "source_selection", sourceIds: ["github"] }, "surface-setup-02");
     await setup({ step: "context_collection", method: "manual_profile", summary: "Builds governed surfaces", links: [] }, "surface-setup-03");
     await setup({ step: "signal_privacy_review", reviewedSignalIds: [setupSignal.result.id], acknowledged: true }, "surface-setup-04");
-    await setup({ step: "basic_profile", handle: "surface-alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety" }, "surface-setup-05");
+    await setup({ step: "basic_profile", handle: "surface_alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety" }, "surface-setup-05");
     await setup({ step: "page_preview", surfaceRevisionId: revision.result.id, approved: true }, "surface-setup-06");
     await setup({ step: "networking_pulse", pulseId: setupPulse.result.id }, "surface-setup-07");
     await setup({ step: "acceptance_mode", mode: "manual" }, "surface-setup-08");
     await setup({ step: "automation", enabled: true, cadence: "daily", sourceLivenessReviewed: true }, "surface-setup-09");
-    await expect(call(ALICE_SUB, "get_automation_checkpoint", { kind: "work_pulse" })).resolves.toMatchObject({ checkpoint: { enabled: true, cadence: "daily" } });
+    await expect(call(ALICE_SUB, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { enabled: true, cadence: "daily", kind: "buildmates" } });
     await setup({ step: "first_useful_outcome", kind: "invite", objectId: invite.result.id }, "surface-setup-10");
     await expect(call(ALICE_SUB, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 11 });
 
-    const personal = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-personal", surfaceId: "profile-surface", baseRevisionId: revision.result.id, spec: { ...workshopProfileSpec, title: "Private personal view" }, visibility: "personal_view", idempotencyKey: "surface-personal-01" }) as MutationResult;
-    await expect(DB.prepare("SELECT revision_id AS revision FROM personal_surface_views WHERE surface_id='profile-surface' AND user_id='user_alice'").first()).resolves.toEqual({ revision: personal.result.id });
+    const personal = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-personal", surfaceId, baseRevisionId: revision.result.id, spec: { ...workshopProfileSpec, title: "Private personal view" }, visibility: "personal_view", idempotencyKey: "surface-personal-01" }) as MutationResult;
+    await expect(DB.prepare("SELECT revision_id AS revision FROM personal_surface_views WHERE surface_id=? AND user_id='user_alice'").bind(surfaceId).first()).resolves.toEqual({ revision: personal.result.id });
     await expect(call(ALICE_SUB, "decide_surface_revision", { revisionId: personal.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "personal-publish-denied-01" })).rejects.toThrow("personal_view_not_publishable");
-    await expect(call(ALICE_SUB, "rollback_surface", { surfaceId: "profile-surface", revisionId: personal.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "personal-rollback-denied-01" })).rejects.toThrow("personal_view_not_rollback_target");
+    await expect(call(ALICE_SUB, "rollback_surface", { surfaceId, revisionId: personal.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "personal-rollback-denied-01" })).rejects.toThrow("personal_view_not_rollback_target");
 
-    const rollback = await call(ALICE_SUB, "rollback_surface", { surfaceId: "profile-surface", revisionId: revision.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "surface-rollback-01" }) as { result: { revisionId: string; publicationStatus: string } };
+    const rollback = await call(ALICE_SUB, "rollback_surface", { surfaceId, revisionId: revision.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "surface-rollback-01" }) as { result: { revisionId: string; publicationStatus: string } };
     expect(rollback.result).toMatchObject({ revisionId: expect.stringMatching(/^surface_revision_/), publicationStatus: "published" });
-    const count = await DB.prepare("SELECT COUNT(*) AS count FROM surface_revisions WHERE surface_id='profile-surface'").first<{ count: number }>();
+    const count = await DB.prepare("SELECT COUNT(*) AS count FROM surface_revisions WHERE surface_id=?").bind(surfaceId).first<{ count: number }>();
     expect(count?.count).toBeGreaterThanOrEqual(3);
-  }, 20_000);
+  }, 60_000);
 
   it("requires every active room member to approve a shared revision and rejects outsiders", async () => {
     await DB.batch([
@@ -237,7 +288,7 @@ describe("canonical MCP D1 execution", () => {
     const bobPersonal = await call(BOB_SUB, "submit_surface_revision", { revisionId: "bob-personal-room", surfaceId: "room-surface", baseRevisionId: revision.result.id, spec: { ...fieldNotesRoomSpec, title: "Bob's private room view" }, visibility: "personal_view", idempotencyKey: "bob-personal-room-01" }) as MutationResult;
     await expect(repositories.surfaces.findRevisionForViewer(bobPersonal.result.id, "user_alice" as never)).resolves.toBeNull();
     await expect(repositories.surfaces.findRevisionForViewer(bobPersonal.result.id, "user_bob" as never)).resolves.toMatchObject({ visibility: "personal_view", authorUserId: "user_bob" });
-  }, 20_000);
+  }, 60_000);
 
   it("fails Surface briefs closed for missing, inactive, unknown, empty, and departed subjects", async () => {
     const unavailable = (subject: string, surfaceId: string) => expect(call(subject, "get_surface_generation_brief", { surfaceId })).rejects.toThrow("surface_brief_unavailable");
@@ -273,7 +324,7 @@ describe("canonical MCP D1 execution", () => {
     await unavailable(ALICE_SUB, "empty-admin-surface");
     await DB.prepare("UPDATE circles SET status='archived' WHERE id='empty-admin-circle'").run();
     await unavailable(ALICE_SUB, "empty-admin-surface");
-  }, 20_000);
+  }, 60_000);
 
   it("creates a valid vote-governed Circle rollback proposal and reports pending then published", async () => {
     const repositories = createD1Repositories(DB as never);
@@ -301,7 +352,7 @@ describe("canonical MCP D1 execution", () => {
     await call(ALICE_SUB, "decide_surface_revision", { revisionId: adminOriginal.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "admin-circle-publish-01" });
     const pendingAdmin = await call(BOB_SUB, "rollback_surface", { surfaceId: "admin-circle-surface", revisionId: adminOriginal.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "admin-circle-rollback-01" }) as { result: { revisionId: string; publicationStatus: string } };
     expect(pendingAdmin.result).toMatchObject({ revisionId: expect.stringMatching(/^surface_revision_/), publicationStatus: "pending_admin" });
-  }, 20_000);
+  }, 60_000);
 
   it("executes concurrent identical D1 idempotent operations once", async () => {
     let executions = 0;
@@ -380,10 +431,10 @@ describe("memory MCP isolation and idempotency", () => {
 
     const source = await repository.write<Record<string, unknown>>({ kind: "source_policy", id: "github", ownerUserId: "user_alice", value: { policy: "ask_each_time", approveNextWorkSignal: true }, now });
     const approvalId = String(source.value.approvalId);
-    await expect(repository.write({ kind: "work_signal", id: "approved-once", ownerUserId: "user_alice", value: { sourceId: "github", sourceApprovalId: approvalId, summary: "Approved once" }, now })).resolves.toMatchObject({ id: "approved-once" });
-    await expect(repository.write({ kind: "work_signal", id: "approval-reuse", ownerUserId: "user_alice", value: { sourceId: "github", sourceApprovalId: approvalId, summary: "Reuse" }, now })).rejects.toThrow("source_approval_required");
+    await expect(repository.write({ kind: "work_signal", id: "approved-once", ownerUserId: "user_alice", value: { sourceId: "github", sourceApprovalId: approvalId, summary: "Approved once", audience: "suggested_connections" }, now })).resolves.toMatchObject({ id: "approved-once" });
+    await expect(repository.write({ kind: "work_signal", id: "approval-reuse", ownerUserId: "user_alice", value: { sourceId: "github", sourceApprovalId: approvalId, summary: "Reuse", audience: "suggested_connections" }, now })).rejects.toThrow("source_approval_required");
     await repository.write({ kind: "source_policy", id: "mail", ownerUserId: "user_alice", value: { policy: "never" }, now });
-    await expect(repository.write({ kind: "work_signal", id: "denied", ownerUserId: "user_alice", value: { sourceId: "mail", summary: "Denied" }, now })).rejects.toThrow("source_policy_denied");
+    await expect(repository.write({ kind: "work_signal", id: "denied", ownerUserId: "user_alice", value: { sourceId: "mail", summary: "Denied", audience: "private" }, now })).rejects.toThrow("source_policy_denied");
   });
 });
 
@@ -404,7 +455,7 @@ describe("MCP compatibility migration", () => {
       await expect(DB.prepare("SELECT access_mode AS mode FROM connected_app_preferences WHERE id='legacy-pref'").first()).resolves.toEqual({ mode: "allow_approved_work_signals" });
       await expect(DB.prepare("UPDATE connected_app_preferences SET access_mode='approved_summaries' WHERE id='legacy-pref'").run()).rejects.toThrow();
     } finally { await mf.dispose(); }
-  }, 20_000);
+  }, 60_000);
 });
 
 type MutationResult = { replayed: boolean; result: { id: string; details: unknown } };

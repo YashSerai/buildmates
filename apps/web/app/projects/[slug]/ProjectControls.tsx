@@ -29,9 +29,9 @@ export function ProjectControls({ slug, status, isOwner, canEdit }: { slug: stri
     if (response.ok) { event.currentTarget.reset(); await loadCollaborators(); }
   }
   async function lifecycle(action: "archive" | "restore" | "delete") {
-    if (action === "delete" && !window.confirm("Delete this project? This removes it from profiles, discovery, and matching.")) return;
+    if (action === "delete" && !window.confirm("Delete this project? This removes it from your profile, shared links, and matching.")) return;
     const response = await fetch(endpoint, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
-    if (!response.ok) { setNotice("Project state could not be changed."); return; }
+    if (!response.ok) { setNotice("Project status could not be changed."); return; }
     if (action === "delete") router.push("/profile");
     else router.refresh();
   }

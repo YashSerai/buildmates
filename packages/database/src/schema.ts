@@ -572,6 +572,7 @@ export const inviteLinks = sqliteTable(
       enum: ["personal", "cohort_admin", "builder", "connection_card"],
     }).notNull(),
     tokenHash: text("token_hash").notNull(),
+    headline: text("headline"),
     targetId: text("target_id"),
     recipientUserId: text("recipient_user_id").references(() => users.id),
     maximumUses: integer("maximum_uses").notNull().default(1),
@@ -1230,6 +1231,19 @@ export const roomModules = sqliteTable(
     index("room_module_room_idx").on(t.roomId, t.active),
   ],
 );
+export const roomModuleEntries = sqliteTable(
+  "room_module_entries",
+  {
+    id: text("id").primaryKey(),
+    moduleId: text("module_id").notNull().references(() => roomModules.id),
+    authorUserId: userRef("author_user_id"),
+    payloadJson: text("payload_json").notNull(),
+    createdAt: created(),
+    updatedAt: updated(),
+    deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("room_module_entry_module_time_idx").on(t.moduleId, t.deletedAt, t.createdAt)],
+);
 export const meetingProposals = sqliteTable(
   "meeting_proposals",
   {
@@ -1381,7 +1395,23 @@ export const circleModuleEntries = sqliteTable("circle_module_entries", {
   payloadJson: text("payload_json").notNull(),
   createdAt: created(),
   updatedAt: updated(),
+  deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
 });
+export const circleModuleRuleVersions = sqliteTable(
+  "circle_module_rule_versions",
+  {
+    moduleId: text("module_id").notNull().references(() => circleModules.id),
+    version: integer("version").notNull(),
+    proposalId: text("proposal_id").notNull().references(() => circleProposals.id),
+    rulesJson: text("rules_json").notNull(),
+    approvedByUserId: userRef("approved_by_user_id"),
+    createdAt: created(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.moduleId, t.version] }),
+    uniqueIndex("circle_module_rule_proposal_unique").on(t.proposalId),
+  ],
+);
 export const circleMetrics = sqliteTable("circle_metrics", {
   id: text("id").primaryKey(),
   circleId: text("circle_id")

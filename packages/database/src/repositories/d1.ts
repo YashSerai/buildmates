@@ -172,6 +172,12 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
     workSignals: {
       async create(value) {
         audienceSchema.parse(value.audience);
+        if (
+          !["suggested_connections", "mutual_connections", "private"].includes(
+            value.audience,
+          )
+        )
+          throw new Error("work_signal_public_forbidden");
         await assertSelfD1(value.actorId, value.userId);
         await run(
           DB,
@@ -710,14 +716,22 @@ export function createD1Repositories(DB: RepositoryD1): BuildmatesRepositories {
           !(await surfaceAuthority(value.surfaceId, value.actorId, "member"))
         )
           throw new Error("forbidden");
-        const dependency = await first<{ kind: "profile" | "room" | "circle"; policyId: string; policyVersion: string; policySourceHash: string; policyJson: string; activatedAt: number }>(DB,
-          "SELECT s.kind,p.id AS policyId,p.version AS policyVersion,p.source_hash AS policySourceHash,p.policy_json AS policyJson,p.activated_at AS activatedAt FROM surfaces s JOIN design_policies p ON p.id=? WHERE s.id=?",
+        const dependency = await first<{ kind: "profile" | "room" | "circle"; ownerUserId: string; policyId: string; policyVersion: string; policySourceHash: string; policyJson: string; activatedAt: number }>(DB,
+          "SELECT s.kind,s.owner_user_id AS ownerUserId,p.id AS policyId,p.version AS policyVersion,p.source_hash AS policySourceHash,p.policy_json AS policyJson,p.activated_at AS activatedAt FROM surfaces s JOIN design_policies p ON p.id=? WHERE s.id=?",
           value.designPolicyId, value.surfaceId,
         );
         if (!dependency || dependency.activatedAt > ms(value.createdAt)) throw new Error("surface_dependency_missing");
         if (!isSurfacePolicyCompatible({ id: dependency.policyId, version: dependency.policyVersion, sourceHash: dependency.policySourceHash, policyJson: dependency.policyJson }, { forRevisionCreation: true })) throw new Error("surface_revision_policy_mismatch");
         const parsedSpec = parseRevisionSpec(value.specJson, dependency.policyVersion, true);
         if (parsedSpec.kind !== dependency.kind || parsedSpec.designPolicyVersion !== dependency.policyVersion || value.designPolicyVersion !== dependency.policyVersion) throw new Error("surface_revision_policy_mismatch");
+        for (const asset of parsedSpec.approvedAssets) {
+          const objectKey = asset.src.slice("/api/".length);
+          const owned = await first(DB,
+            "SELECT 1 AS ok FROM surface_assets WHERE id=? AND owner_user_id=? AND object_key=? AND deleted_at IS NULL",
+            asset.id, dependency.ownerUserId, objectKey,
+          );
+          if (!owned) throw new Error("surface_asset_not_owned");
+        }
         const current = await currentSurfaceRevisionNumber(value.surfaceId);
         if (value.baseRevisionNumber !== current)
           throw new Error("stale_surface_base");

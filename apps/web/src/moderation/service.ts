@@ -1,5 +1,6 @@
 export type ModerationCaseView={caseId:string;reportId:string;reporterUserId:string;targetKind:string;targetId:string;reasonCode:string;details:string|null;reportStatus:string;caseStatus:string;assignedOperatorId:string|null;createdAt:number;targetUserId:string|null};
 export type ReporterStatus={reportId:string;targetKind:string;targetId:string;reasonCode:string;status:string;createdAt:number};
+export type AppealableOutcome={caseId:string;action:string;reasonCode:string;caseStatus:string;createdAt:number;appealStatus:string|null};
 
 export async function listModerationCases(DB:D1Database,status="open"):Promise<ModerationCaseView[]>{
   const allowed=new Set(["open","reviewing","actioned","closed","appealed"]);const selected=allowed.has(status)?status:"open";
@@ -7,6 +8,16 @@ export async function listModerationCases(DB:D1Database,status="open"):Promise<M
   return Promise.all(rows.results.map(async row=>({...row,targetUserId:await resolveTargetUser(DB,row.targetKind,row.targetId)})));
 }
 export async function listReporterStatus(DB:D1Database,userId:string):Promise<ReporterStatus[]>{const rows=await DB.prepare("SELECT id AS reportId,target_kind AS targetKind,target_id AS targetId,reason_code AS reasonCode,status,created_at AS createdAt FROM reports WHERE reporter_user_id=? ORDER BY created_at DESC LIMIT 100").bind(userId).all<ReporterStatus>();return rows.results}
+
+export async function listAppealableOutcomes(DB:D1Database,userId:string):Promise<AppealableOutcome[]>{
+  const rows=await DB.prepare(`SELECT c.id AS caseId,c.status AS caseStatus,r.target_kind AS targetKind,r.target_id AS targetId,a.action,a.reason_code AS reasonCode,a.created_at AS createdAt,
+    (SELECT status FROM moderation_appeals appeal WHERE appeal.case_id=c.id AND appeal.appellant_user_id=? ORDER BY appeal.created_at DESC LIMIT 1) AS appealStatus
+    FROM moderation_cases c JOIN reports r ON r.id=c.report_id JOIN moderation_actions a ON a.case_id=c.id
+    WHERE c.status IN ('actioned','appealed') ORDER BY a.created_at DESC LIMIT 100`).bind(userId).all<AppealableOutcome & {targetKind:string;targetId:string}>();
+  const outcomes:AppealableOutcome[]=[];
+  for(const row of rows.results)if(await resolveTargetUser(DB,row.targetKind,row.targetId)===userId)outcomes.push({caseId:row.caseId,action:row.action,reasonCode:row.reasonCode,caseStatus:row.caseStatus,createdAt:row.createdAt,appealStatus:row.appealStatus});
+  return outcomes;
+}
 
 export async function moderateCase(DB:D1Database,input:{operatorId:string;caseId:string;action:"review"|"dismiss"|"warn"|"restrict_matching"|"suspend_account";reasonCode:string;now:number}){
   const row=await DB.prepare("SELECT c.status,r.target_kind AS targetKind,r.target_id AS targetId FROM moderation_cases c JOIN reports r ON r.id=c.report_id WHERE c.id=?").bind(input.caseId).first<{status:string;targetKind:string;targetId:string}>();

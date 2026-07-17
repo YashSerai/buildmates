@@ -1,5 +1,6 @@
 const MODULE_KINDS = ["resource_shelf", "experiment_tracker", "decision_log", "feedback_queue", "milestone_tracker"] as const;
 export type RoomModuleKind = (typeof MODULE_KINDS)[number];
+export type RoomModuleEntry = {id:string;moduleId:string;authorUserId:string;authorName:string;payload:Record<string,string>;createdAt:number;updatedAt:number};
 function parseJson<T>(value:unknown,fallback:T):T{if(typeof value!=="string")return fallback;try{return JSON.parse(value) as T}catch{return fallback}}
 
 type ConnectionContext = {
@@ -129,7 +130,7 @@ export async function requestReconnect(DB:D1Database,input:{connectionId:string;
   const id=await stableLifecycleId("reconnect",input.connectionId,input.userId);
   await DB.batch([
     DB.prepare("INSERT OR IGNORE INTO reconnect_requests (id,connection_id,requester_user_id,response,created_at) VALUES (?,?,?,'pending',?)").bind(id,input.connectionId,input.userId,input.now),
-    DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'reconnect_requested','immediate',?,? WHERE EXISTS (SELECT 1 FROM reconnect_requests WHERE id=? AND connection_id=? AND requester_user_id=? AND response='pending')").bind(`reconnect-requested:${id}`,context.otherUserId,JSON.stringify({connectionId:input.connectionId,requestId:id}),input.now,id,input.connectionId,input.userId),
+    DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'reconnect_requested','immediate',?,? WHERE EXISTS (SELECT 1 FROM reconnect_requests WHERE id=? AND connection_id=? AND requester_user_id=? AND response='pending') AND EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(`reconnect-requested:${id}`,context.otherUserId,JSON.stringify({connectionId:input.connectionId,requestId:id}),input.now,id,input.connectionId,input.userId,input.connectionId,context.otherUserId),
   ]);
   const pending=await DB.prepare("SELECT id,requester_user_id AS requesterUserId FROM reconnect_requests WHERE connection_id=? AND response='pending' LIMIT 1").bind(input.connectionId).first<{id:string;requesterUserId:string}>();
   if(!pending)throw new Error("reconnect_conflict");
@@ -172,11 +173,15 @@ async function roomContext(DB:D1Database,roomId:string,userId:string){
 
 export async function listRoomEnhancements(DB:D1Database,roomId:string,userId:string){
   const context=await roomContext(DB,roomId,userId);
-  const [upgrades,modules,meetings,receipts,myAvailability,intersections]=await Promise.all([
+  const [upgrades,modules,entries,meetings,receipts,myAvailability,intersections,positiveFeedback]=await Promise.all([
     DB.prepare(`SELECT p.id,p.proposer_user_id AS proposerUserId,p.modules_json AS modulesJson,p.explanation,p.status,p.created_at AS createdAt,
       SUM(CASE WHEN r.response='accepted' THEN 1 ELSE 0 END) AS acceptCount
       FROM room_upgrade_proposals p LEFT JOIN room_upgrade_responses r ON r.proposal_id=p.id WHERE p.room_id=? GROUP BY p.id ORDER BY p.created_at DESC LIMIT 20`).bind(roomId).all(),
     DB.prepare("SELECT id,kind,config_json AS configJson,active,created_at AS createdAt FROM room_modules WHERE room_id=? AND active=1 ORDER BY created_at").bind(roomId).all(),
+    DB.prepare(`SELECT entry.id,entry.module_id AS moduleId,entry.author_user_id AS authorUserId,profile.display_name AS authorName,
+      entry.payload_json AS payloadJson,entry.created_at AS createdAt,entry.updated_at AS updatedAt
+      FROM room_module_entries entry JOIN room_modules module ON module.id=entry.module_id AND module.room_id=? AND module.active=1
+      JOIN profiles profile ON profile.user_id=entry.author_user_id WHERE entry.deleted_at IS NULL ORDER BY entry.created_at DESC LIMIT 200`).bind(roomId).all(),
     DB.prepare("SELECT id,proposer_user_id AS proposerUserId,parent_proposal_id AS parentProposalId,starts_at AS startsAt,ends_at AS endsAt,timezone,note,status,created_at AS createdAt FROM meeting_proposals WHERE room_id=? ORDER BY created_at DESC LIMIT 20").bind(roomId).all(),
     DB.prepare("SELECT id,provider,provider_event_id AS providerEventId,starts_at AS startsAt,ends_at AS endsAt,status,created_at AS createdAt FROM calendar_event_receipts WHERE room_id=? ORDER BY created_at DESC LIMIT 20").bind(roomId).all(),
     DB.prepare("SELECT id,starts_at AS startsAt,ends_at AS endsAt,timezone,status FROM availability_windows WHERE room_id=? AND user_id=? AND status='approved' ORDER BY starts_at LIMIT 20").bind(roomId,userId).all(),
@@ -184,8 +189,35 @@ export async function listRoomEnhancements(DB:D1Database,roomId:string,userId:st
       FROM availability_windows mine JOIN availability_windows theirs ON theirs.room_id=mine.room_id AND theirs.user_id=? AND theirs.status='approved'
       WHERE mine.room_id=? AND mine.user_id=? AND mine.status='approved' AND MAX(mine.starts_at,theirs.starts_at)<MIN(mine.ends_at,theirs.ends_at)
       ORDER BY startsAt LIMIT 20`).bind(context.otherUserId,roomId,userId).all(),
+    DB.prepare("SELECT 1 AS positive FROM introduction_feedback WHERE connection_id=? AND user_id=? AND useful=1 LIMIT 1").bind(context.connectionId,userId).first(),
   ]);
-  return {upgrades:upgrades.results.map((r)=>({...r,modules:parseJson<string[]>(r.modulesJson,[]),acceptCount:Number(r.acceptCount),mine:String(r.proposerUserId)===userId})),modules:modules.results.map((r)=>({...r,active:Boolean(r.active),config:parseJson<Record<string,unknown>>(r.configJson,{})})),meetings:meetings.results.map((r)=>({...r,mine:String(r.proposerUserId)===userId})),receipts:receipts.results,myAvailability:myAvailability.results,availabilityIntersections:intersections.results};
+  return {viewerUserId:userId,upgradeEligible:Boolean(positiveFeedback),upgrades:upgrades.results.map((r)=>({...r,modules:parseJson<string[]>(r.modulesJson,[]),acceptCount:Number(r.acceptCount),mine:String(r.proposerUserId)===userId})),modules:modules.results.map((r)=>({...r,active:Boolean(r.active),config:parseJson<Record<string,unknown>>(r.configJson,{})})),entries:entries.results.map((r)=>({...r,payload:parseJson<Record<string,string>>(r.payloadJson,{})})),meetings:meetings.results.map((r)=>({...r,mine:String(r.proposerUserId)===userId})),receipts:receipts.results,myAvailability:myAvailability.results,availabilityIntersections:intersections.results};
+}
+
+export async function addRoomModuleEntry(DB:D1Database,input:{roomId:string;userId:string;moduleId:string;payload:Record<string,unknown>;now:number}){
+  await roomContext(DB,input.roomId,input.userId);
+  const moduleRow=await DB.prepare("SELECT kind FROM room_modules WHERE id=? AND room_id=? AND active=1").bind(input.moduleId,input.roomId).first<{kind:string}>();
+  if(!moduleRow)throw new Error("module_not_found");
+  const payload=validateRoomModuleEntry(moduleRow.kind,input.payload);
+  const id=crypto.randomUUID();
+  await DB.prepare("INSERT INTO room_module_entries (id,module_id,author_user_id,payload_json,created_at,updated_at,deleted_at) VALUES (?,?,?,?,?,?,NULL)").bind(id,input.moduleId,input.userId,JSON.stringify(payload),input.now,input.now).run();
+  return{id};
+}
+
+export async function updateRoomModuleEntry(DB:D1Database,input:{roomId:string;userId:string;moduleId:string;entryId:string;payload:Record<string,unknown>;now:number}){
+  await roomContext(DB,input.roomId,input.userId);
+  const moduleRow=await DB.prepare("SELECT kind FROM room_modules WHERE id=? AND room_id=? AND active=1").bind(input.moduleId,input.roomId).first<{kind:string}>();
+  if(!moduleRow)throw new Error("module_not_found");
+  const payload=validateRoomModuleEntry(moduleRow.kind,input.payload);
+  const result=await DB.prepare("UPDATE room_module_entries SET payload_json=?,updated_at=? WHERE id=? AND module_id=? AND author_user_id=? AND deleted_at IS NULL").bind(JSON.stringify(payload),input.now,input.entryId,input.moduleId,input.userId).run();
+  if(Number(result.meta?.changes??0)!==1)throw new Error("entry_not_found");
+}
+
+export async function deleteRoomModuleEntry(DB:D1Database,input:{roomId:string;userId:string;moduleId:string;entryId:string;now:number}){
+  await roomContext(DB,input.roomId,input.userId);
+  const result=await DB.prepare(`UPDATE room_module_entries SET payload_json='{}',updated_at=?,deleted_at=? WHERE id=? AND module_id=? AND author_user_id=? AND deleted_at IS NULL
+    AND EXISTS (SELECT 1 FROM room_modules module WHERE module.id=room_module_entries.module_id AND module.room_id=? AND module.active=1)`).bind(input.now,input.now,input.entryId,input.moduleId,input.userId,input.roomId).run();
+  if(Number(result.meta?.changes??0)!==1)throw new Error("entry_not_found");
 }
 
 export async function saveAvailabilityWindow(DB:D1Database,input:{roomId:string;userId:string;clientWindowId:string;startsAt:number;endsAt:number;timezone:string;now:number}){
@@ -235,11 +267,29 @@ export async function respondRoomUpgrade(DB:D1Database,input:{roomId:string;prop
     for(const kind of modules) statements.push(DB.prepare(`INSERT INTO room_modules (id,room_id,proposal_id,kind,config_json,active,created_at)
       SELECT ?,?,?,?,?,1,? FROM room_upgrade_proposals WHERE id=? AND room_id=? AND status='activated'
       ON CONFLICT(room_id,kind) DO UPDATE SET active=1`).bind(`module:${input.roomId}:${kind}`,input.roomId,input.proposalId,kind,"{}",input.now,input.proposalId,input.roomId));
-    statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'room_upgraded','immediate',?,? WHERE EXISTS (SELECT 1 FROM room_upgrade_proposals WHERE id=? AND room_id=? AND status='activated')").bind(`room-upgraded:${input.proposalId}:${context.otherUserId}`,context.otherUserId,JSON.stringify({roomId:input.roomId,proposalId:input.proposalId}),input.now,input.proposalId,input.roomId));
+    statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'room_upgraded','immediate',?,? WHERE EXISTS (SELECT 1 FROM room_upgrade_proposals WHERE id=? AND room_id=? AND status='activated') AND EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(`room-upgraded:${input.proposalId}:${context.otherUserId}`,context.otherUserId,JSON.stringify({roomId:input.roomId,proposalId:input.proposalId}),input.now,input.proposalId,input.roomId,context.connectionId,context.otherUserId));
   }
   await DB.batch(statements);
   const current=await DB.prepare("SELECT status FROM room_upgrade_proposals WHERE id=? AND room_id=?").bind(input.proposalId,input.roomId).first<{status:string}>();
   if(!current||(!['activated','declined','proposed'].includes(current.status)))throw new Error("upgrade_not_found");
+}
+
+function validateRoomModuleEntry(kind:string,payload:Record<string,unknown>):Record<string,string>{
+  const fields:Record<string,readonly string[]>={
+    resource_shelf:["title","url","note"],
+    experiment_tracker:["title","hypothesis","status","outcome"],
+    decision_log:["decision","rationale"],
+    feedback_queue:["feedback","status"],
+    milestone_tracker:["milestone","dueDate","status"],
+  };
+  const allowed=fields[kind];
+  if(!allowed)throw new Error("module_not_found");
+  const normalized:Record<string,string>={};
+  for(const key of allowed){const value=payload[key];if(typeof value==="string"&&value.trim())normalized[key]=value.trim().slice(0,2000)}
+  const primary=allowed[0];
+  if(!primary||!normalized[primary])throw new Error("entry_payload_invalid");
+  if(kind==="resource_shelf"&&normalized.url&&!/^https?:\/\//i.test(normalized.url))throw new Error("entry_payload_invalid");
+  return normalized;
 }
 
 export async function proposeMeeting(DB:D1Database,input:{roomId:string;userId:string;clientRequestId:string;startsAt:number;endsAt:number;timezone:string;note:string|null;parentProposalId?:string|null;now:number}){
@@ -252,7 +302,7 @@ export async function proposeMeeting(DB:D1Database,input:{roomId:string;userId:s
       SELECT ?,?,?,?,?,?,?,?,'proposed',?,? FROM meeting_proposals parent WHERE parent.id=? AND parent.room_id=? AND parent.status='proposed' AND parent.proposer_user_id<>?`).bind(id,input.roomId,input.userId,input.parentProposalId,input.startsAt,input.endsAt,input.timezone,input.note,input.now,input.now,input.parentProposalId,input.roomId,input.userId));
     statements.push(DB.prepare("UPDATE meeting_proposals SET status='countered',responded_by_user_id=?,responded_at=?,updated_at=? WHERE id=? AND room_id=? AND status='proposed' AND EXISTS (SELECT 1 FROM meeting_proposals child WHERE child.id=? AND child.parent_proposal_id=meeting_proposals.id)").bind(input.userId,input.now,input.now,input.parentProposalId,input.roomId,id));
   } else statements.push(DB.prepare("INSERT OR IGNORE INTO meeting_proposals (id,room_id,proposer_user_id,parent_proposal_id,starts_at,ends_at,timezone,note,status,created_at,updated_at) VALUES (?,?,?,NULL,?,?,?,?,'proposed',?,?)").bind(id,input.roomId,input.userId,input.startsAt,input.endsAt,input.timezone,input.note,input.now,input.now));
-  statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'meeting_proposed','immediate',?,? WHERE EXISTS (SELECT 1 FROM meeting_proposals WHERE id=? AND room_id=? AND status='proposed')").bind(`meeting-proposed:${id}:${context.otherUserId}`,context.otherUserId,JSON.stringify({roomId:input.roomId,proposalId:id,startsAt:input.startsAt}),input.now,id,input.roomId));
+  statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'meeting_proposed','immediate',?,? WHERE EXISTS (SELECT 1 FROM meeting_proposals WHERE id=? AND room_id=? AND status='proposed') AND EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(`meeting-proposed:${id}:${context.otherUserId}`,context.otherUserId,JSON.stringify({roomId:input.roomId,proposalId:id,startsAt:input.startsAt}),input.now,id,input.roomId,context.connectionId,context.otherUserId));
   await DB.batch(statements);
   const stored=await DB.prepare("SELECT starts_at AS startsAt,ends_at AS endsAt,timezone,note,parent_proposal_id AS parentProposalId FROM meeting_proposals WHERE id=? AND room_id=? AND proposer_user_id=?").bind(id,input.roomId,input.userId).first<{startsAt:number;endsAt:number;timezone:string;note:string|null;parentProposalId:string|null}>();
   if(!stored)throw new Error("meeting_not_found");
@@ -261,14 +311,21 @@ export async function proposeMeeting(DB:D1Database,input:{roomId:string;userId:s
 }
 
 export async function respondMeeting(DB:D1Database,input:{roomId:string;proposalId:string;userId:string;response:"accepted"|"declined";now:number}){
-  await roomContext(DB,input.roomId,input.userId);
+  const context=await roomContext(DB,input.roomId,input.userId);
   const proposal=await DB.prepare("SELECT proposer_user_id AS proposerUserId FROM meeting_proposals WHERE id=? AND room_id=? AND status='proposed' LIMIT 1").bind(input.proposalId,input.roomId).first<{proposerUserId:string}>();
   if(!proposal){const existing=await DB.prepare("SELECT status,proposer_user_id AS proposerUserId FROM meeting_proposals WHERE id=? AND room_id=?").bind(input.proposalId,input.roomId).first<{status:string;proposerUserId:string}>();if(existing?.proposerUserId!==input.userId&&existing?.status===input.response)return;throw new Error("meeting_not_found");}
   if(proposal.proposerUserId===input.userId)throw new Error("meeting_not_found");
   const result=await DB.prepare("UPDATE meeting_proposals SET status=?,responded_by_user_id=?,responded_at=?,updated_at=? WHERE id=? AND room_id=? AND proposer_user_id<>? AND status='proposed'")
     .bind(input.response,input.userId,input.now,input.now,input.proposalId,input.roomId,input.userId).run();
   if(Number(result.meta?.changes??0)!==1)throw new Error("meeting_not_found");
-  await DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) VALUES (?,?,'meeting_response','immediate',?,?)").bind(`meeting-response:${input.proposalId}:${proposal.proposerUserId}`,proposal.proposerUserId,JSON.stringify({roomId:input.roomId,proposalId:input.proposalId,response:input.response}),input.now).run();
+  await DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'meeting_response','immediate',?,? WHERE EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(`meeting-response:${input.proposalId}:${proposal.proposerUserId}`,proposal.proposerUserId,JSON.stringify({roomId:input.roomId,proposalId:input.proposalId,response:input.response}),input.now,context.connectionId,proposal.proposerUserId).run();
+}
+
+export async function getAcceptedMeetingForIcs(DB:D1Database,input:{roomId:string;proposalId:string;userId:string}){
+  await roomContext(DB,input.roomId,input.userId);
+  const proposal=await DB.prepare("SELECT starts_at AS startsAt,ends_at AS endsAt,timezone FROM meeting_proposals WHERE id=? AND room_id=? AND status='accepted' LIMIT 1").bind(input.proposalId,input.roomId).first<{startsAt:number;endsAt:number;timezone:string}>();
+  if(!proposal)throw new Error("accepted_proposal_required");
+  return proposal;
 }
 
 async function stableLifecycleId(prefix:string,...parts:string[]){const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(parts.join("\u0000")));return `${prefix}_${Array.from(new Uint8Array(digest)).slice(0,16).map((value)=>value.toString(16).padStart(2,"0")).join("")}`}

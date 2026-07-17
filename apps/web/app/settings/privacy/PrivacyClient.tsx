@@ -1,7 +1,10 @@
 "use client";
 import { useState, useSyncExternalStore } from "react";
 import type { OnboardingSnapshot } from "@/src/platform/onboarding-data";
+import { userFacingError } from "@/src/client/user-facing-error";
 import styles from "../settings.module.css";
+
+class RequestError extends Error {}
 
 export function PrivacyClient({
   initialSnapshot,
@@ -33,22 +36,18 @@ export function PrivacyClient({
         jobId?: string;
       };
       if (!response.ok)
-        throw new Error(payload.error || "Could not complete that request.");
+        throw new RequestError(userFacingError(payload.error, "Could not complete that request."));
       if (body.command === "request_deletion") {
         window.location.assign("/account/deleted");
         return;
       }
       if (payload.snapshot) setSnapshot(payload.snapshot);
-      setMessage(
-        payload.jobId
-          ? `Request queued: ${payload.jobId}`
-          : "Privacy setting updated.",
-      );
+      setMessage(payload.jobId ? "Your request is queued." : "Privacy setting updated.");
     } catch (error) {
       setMessage(
-        error instanceof Error
+        error instanceof RequestError
           ? error.message
-          : "Could not complete that request.",
+          : "Could not complete that request. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -70,14 +69,14 @@ export function PrivacyClient({
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok)
-        throw new Error(payload.error || "Could not revoke source.");
+        throw new RequestError(userFacingError(payload.error, "Could not revoke source."));
       await refresh();
       setMessage(
         "Source revoked and its active signals removed from future matching.",
       );
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not revoke source.",
+        error instanceof RequestError ? error.message : "Could not revoke source. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -97,7 +96,7 @@ export function PrivacyClient({
         error?: string;
       };
       if (!response.ok)
-        throw new Error(payload.error || "Could not delete signal.");
+        throw new RequestError(userFacingError(payload.error, "Could not delete the Work Signal."));
       setSnapshot((current) => ({
         ...current,
         signals: payload.signals ?? current.signals,
@@ -105,7 +104,7 @@ export function PrivacyClient({
       setMessage("Work Signal removed from Buildmates.");
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not delete signal.",
+        error instanceof RequestError ? error.message : "Could not delete the Work Signal. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -129,7 +128,7 @@ export function PrivacyClient({
                 .length
             }
           </strong>
-          <span>stored signals</span>
+          <span>active signals</span>
         </div>
         <div>
           <strong>
@@ -203,7 +202,7 @@ export function PrivacyClient({
                           className={styles.badge}
                           data-status={signal.status}
                         >
-                          {signal.status}
+                          {statusLabel(signal.status)}
                         </span>
                         <span>
                           {visibilityLabel(signal.audience)} ·{" "}
@@ -311,7 +310,7 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Automation and Codex"
-            description="Disconnecting stops future syncing. Existing Buildmates data remains until you delete it."
+            description="Disconnecting revokes the Codex identity link, disables source policies, and revokes active Work Signals. Your profile, projects, Connections, rooms, and messages remain until you delete them separately."
           />
           <dl className={styles.details}>
             <div>
@@ -322,14 +321,14 @@ export function PrivacyClient({
               <dt>Automation</dt>
               <dd>
                 {snapshot.automation?.enabled
-                  ? snapshot.automation.cadence.replaceAll("_", " ")
+                  ? cadenceLabel(snapshot.automation.cadence)
                   : "Manual only"}
               </dd>
             </div>
             <div>
               <dt>Background actions</dt>
               <dd>
-                {snapshot.automation?.capability.replaceAll("_", " ") ??
+                {capabilityLabel(snapshot.automation?.capability) ??
                   "Not checked"}
               </dd>
             </div>
@@ -365,12 +364,12 @@ export function PrivacyClient({
             <div className={styles.list}>
               {snapshot.projects.map((project)=>(
                 <article key={project.slug}>
-                  <div><strong>{project.title}</strong><span>{project.status} · {visibilityLabel(project.audience)}</span><p>Updated {formatDate(project.updatedAt)}</p></div>
+                  <div><strong>{project.title}</strong><span>{statusLabel(project.status)} · {visibilityLabel(project.audience)}</span><p>Updated {formatDate(project.updatedAt)}</p></div>
                   <button className={styles.dangerText} onClick={()=>{if(window.confirm(`Delete ${project.title} from Buildmates?`))void command({command:"delete_project",slug:project.slug})}} disabled={busy}>Delete project</button>
                 </article>
               ))}
             </div>
-          ) : <Empty title="No active projects" body="Deleted projects no longer appear on your profile or in discovery." />}
+          ) : <Empty title="No active projects" body="Deleted projects no longer appear on your profile, shared links, or matching." />}
           <div className={styles.controlRow}>
             <button
               className={styles.dangerButton}
@@ -388,7 +387,7 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Export and account deletion"
-            description="Download a current copy of your Buildmates data. Deletion places the account into a deleting state immediately."
+            description="Download a current JSON copy of your Buildmates data. Deletion revokes access immediately, then finishes removing owned assets. It cannot be undone."
           />
           <div className={styles.controlRow}>
             <a href="/api/privacy/export" download>
@@ -419,7 +418,7 @@ export function PrivacyClient({
               {snapshot.lifecycle.map((job) => (
                 <li key={job.id}>
                   <span>
-                    {job.kind} · {job.status}
+                    {lifecycleLabel(job.kind)} · {statusLabel(job.status)}
                   </span>
                   <time dateTime={job.createdAt}>
                     {formatDateTime(job.createdAt)}
@@ -432,13 +431,13 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Recent account audit"
-            description="Content-free records show when privacy-sensitive settings changed."
+            description="This history shows when privacy-sensitive settings changed without storing the changed content."
           />
           {snapshot.audit.length ? (
             <ul className={styles.audit}>
               {snapshot.audit.map((event) => (
                 <li key={event.id}>
-                  <span>{event.action.replaceAll("_", " ")}</span>
+                  <span>{auditLabel(event.action)}</span>
                   <time dateTime={event.createdAt}>
                     {formatDateTime(event.createdAt)}
                   </time>
@@ -511,6 +510,12 @@ function visibilityLabel(value: string) {
     )[value] ?? value
   );
 }
+
+function statusLabel(value:string){return ({active:"Active",expired:"Expired",pending:"Pending",processing:"In progress",complete:"Complete",completed:"Complete",failed:"Needs attention",revoked:"Revoked",draft:"Draft",published:"Published",paused:"Paused"} as Record<string,string>)[value]??"Updated"}
+function cadenceLabel(value:string){return ({daily:"Daily",weekdays:"Weekdays",weekly:"Weekly",manual:"Manual only",every_3_days:"Every three days"} as Record<string,string>)[value]??"Scheduled"}
+function capabilityLabel(value?:string){if(!value)return undefined;return ({supported:"Ready",unsupported:"Not available",unknown:"Not checked",requires_confirmation:"Needs confirmation",background_supported:"Background actions ready"} as Record<string,string>)[value]??"Checked"}
+function lifecycleLabel(value:string){return ({account_deletion:"Account deletion",data_export:"Data export",profile_refresh:"Profile refresh",signal_expiry:"Work Signal expiry"} as Record<string,string>)[value]??"Account request"}
+function auditLabel(value:string){return ({profile_updated:"Profile updated",privacy_updated:"Privacy settings updated",source_revoked:"Connected source removed",signal_revoked:"Work Signal removed",account_deletion_requested:"Account deletion requested",codex_disconnected:"Codex disconnected",shared_context_redacted:"Shared connection context removed"} as Record<string,string>)[value]??"Account setting changed"}
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(value));

@@ -1,14 +1,19 @@
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { DESIGN_POLICY_VERSION } from "@buildmates/surfaces";
 import {
   addCircleModuleEntry,
   createCircle,
   createCircleProposal,
+  deleteCircleModuleEntry,
   getCircle,
   inviteCircleMember,
+  listCircleModuleEntries,
   publishCircleProposal,
   respondCircleInvite,
+  sendCircleMessage,
+  updateCircleModuleEntry,
   voteCircleProposal,
 } from "../../apps/web/src/circles/service";
 
@@ -56,11 +61,39 @@ describe("Circle governance and privacy", () => {
     expect(entry.id).toBeTruthy();
   });
 
+  it("creates a governed Surface and publishes a real private design revision", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Surface builders",purpose:"Govern a shared generated Circle page",governanceMode:"admin",now});
+    expect(circle.surfaceId).toBe(`surface_circle_${circle.id}`);
+    const spec={schemaVersion:"1",designPolicyVersion:DESIGN_POLICY_VERSION,kind:"circle",title:"Surface builders",theme:{mode:"light",colors:{canvas:"#f4f0e7",surface:"#fffdf8",ink:"#22231f",mutedInk:"#55584f",accent:"#cbd6b5",accentInk:"#20251b",rule:"#c8c7bc",focusInner:"#000000",focusOuter:"#ffffff"},typography:{display:"technical",body:"humanist",scale:"comfortable"},shape:{corners:"soft",density:"comfortable"}},root:{id:"circle-root",type:"section",tone:"canvas",children:[{id:"circle-title",type:"heading",level:1,binding:"circle.name",fallback:"Circle"},{id:"circle-purpose",type:"text",style:"lead",binding:"circle.purpose",fallback:"Shared purpose"}]},bindingManifest:{content:[{key:"circle.name",type:"text"},{key:"circle.purpose",type:"text"}],media:[]},approvedAssets:[],decorativeRegions:[],responsive:{collapseGridsBelow:"md",contentWidth:"standard",edgePadding:"comfortable"},accessibility:{label:"Circle",primaryHeadingNodeId:"circle-title",reducedMotion:"required"}};
+    const proposal=await createCircleProposal(DB,{actorId:"owner",circleId:circle.id,kind:"design",payload:{title:"Quiet workshop",spec},now:now+1});
+    expect(await DB.prepare("SELECT visibility,status FROM surface_revisions WHERE id=?").bind(proposal.revisionId).first()).toEqual({visibility:"private_preview",status:"draft"});
+    await publishCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:proposal.id,now:now+2});
+    expect(await DB.prepare("SELECT published_revision_id AS revisionId FROM surfaces WHERE id=?").bind(circle.surfaceId).first()).toEqual({revisionId:proposal.revisionId});
+  });
+
+  it("versions approved rules and enforces author-only entry edits", async () => {
+    const circle=await createCircle(DB,{actorId:"owner",name:"Shipping circle",purpose:"Track experiments and decisions together",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2});
+    const moduleProposal=await createCircleProposal(DB,{actorId:"member",circleId:circle.id,kind:"module",payload:{kind:"experiment_tracker",config:{title:"RAG experiments"}},now:now+3});
+    await publishCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:moduleProposal.id,now:now+4});
+    const moduleId=`circle-module-${moduleProposal.id}`;
+    const rules=await createCircleProposal(DB,{actorId:"member",circleId:circle.id,kind:"rules",payload:{moduleId,rules:{title:"Weekly progress",description:"Completed experiments rank above running work."}},now:now+5});
+    await publishCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:rules.id,now:now+6});
+    expect(await DB.prepare("SELECT rules_version AS version FROM circle_modules WHERE id=?").bind(moduleId).first()).toEqual({version:2});
+    expect(await DB.prepare("SELECT version FROM circle_module_rule_versions WHERE proposal_id=?").bind(rules.id).first()).toEqual({version:2});
+    const entry=await addCircleModuleEntry(DB,{actorId:"member",circleId:circle.id,moduleId,payload:{title:"Hybrid retrieval",hypothesis:"Reranking improves precision",status:"running"},now:now+7});
+    await expect(updateCircleModuleEntry(DB,{actorId:"owner",circleId:circle.id,moduleId,entryId:entry.id,payload:{title:"Changed"},now:now+8})).rejects.toThrow("entry_not_found");
+    await updateCircleModuleEntry(DB,{actorId:"member",circleId:circle.id,moduleId,entryId:entry.id,payload:{title:"Hybrid retrieval",status:"complete",outcome:"Precision improved"},now:now+9});
+    await deleteCircleModuleEntry(DB,{actorId:"owner",circleId:circle.id,moduleId,entryId:entry.id,now:now+10});
+    expect(await DB.prepare("SELECT deleted_at AS deletedAt FROM circle_module_entries WHERE id=?").bind(entry.id).first()).toEqual({deletedAt:now+10});
+  });
+
   it("publishes vote-governed proposals only after a strict active-member majority", async () => {
     const circle = await createCircle(DB,{actorId:"owner",name:"Voice builders",purpose:"Explore real-time conversational systems",governanceMode:"vote",now});
     await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
     await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2});
-    const proposal = await createCircleProposal(DB,{actorId:"owner",circleId:circle.id,kind:"design",payload:{direction:"quiet-editorial"},now:now+3});
+    const proposal = await createCircleProposal(DB,{actorId:"owner",circleId:circle.id,kind:"module",payload:{kind:"resource_shelf",config:{title:"Voice references"}},now:now+3});
     await voteCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:proposal.id,vote:"approve",now:now+4});
     await expect(publishCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:proposal.id,now:now+5})).rejects.toThrow("proposal_not_approved");
     await voteCircleProposal(DB,{actorId:"member",circleId:circle.id,proposalId:proposal.id,vote:"approve",now:now+6});
@@ -75,5 +108,15 @@ describe("Circle governance and privacy", () => {
     await DB.prepare("INSERT INTO blocks (blocker_user_id,blocked_user_id,created_at) VALUES ('member','owner',?)").bind(now+3).run();
     expect(await getCircle(DB,circle.id,"owner")).toBeNull();
     expect(await getCircle(DB,circle.id,"member")).toBeNull();
+    await expect(sendCircleMessage(DB,{actorId:"owner",circleId:circle.id,clientMessageId:"blocked-message",body:"This must not cross a block",now:now+4})).rejects.toThrow("forbidden");
+    await expect(listCircleModuleEntries(DB,circle.id,"member")).rejects.toThrow("forbidden");
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM notifications WHERE kind='circle_message'").first()).toEqual({count:0});
+
+    const pending=await createCircle(DB,{actorId:"owner",name:"Pending circle",purpose:"Prove blocked invite acceptance fails closed",governanceMode:"admin",now:now+5});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:pending.id,userId:"stranger",now:now+6});
+    await DB.prepare("INSERT INTO blocks (blocker_user_id,blocked_user_id,created_at) VALUES ('stranger','owner',?)").bind(now+7).run();
+    expect(await getCircle(DB,pending.id,"stranger")).toBeNull();
+    await expect(respondCircleInvite(DB,{actorId:"stranger",circleId:pending.id,accept:true,now:now+8})).rejects.toThrow("invitation_blocked");
+    expect(await DB.prepare("SELECT status FROM circle_memberships WHERE circle_id=? AND user_id='stranger'").bind(pending.id).first()).toEqual({status:"invited"});
   });
 });

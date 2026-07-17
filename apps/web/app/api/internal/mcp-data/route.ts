@@ -4,6 +4,7 @@ import { completeIdentityLink, createD1IdentityLinkStore } from "@/src/platform/
 import { BUILD_MATES_MCP_TOOLS, canonicalToolInputHash, createD1McpProductRepository, executeBuildmatesTool, pruneExpiredAssertionReplays } from "@buildmates/mcp-core";
 import { recordTrustedAutomationCapability } from "@/src/platform/onboarding-data";
 import { AUTOMATION_CAPABILITY_TTL_MS } from "@buildmates/domain";
+import { getMcpCandidateShortlist, recordMcpCandidateEvaluation, recordMcpManualMatchResponse } from "@/src/matching/mcp-adapter";
 
 const ALLOWED_ACTIONS = {
   "identity.link-status.read": "identity:link-status:read",
@@ -72,6 +73,9 @@ export async function POST(request: Request) {
               expiresAt: new Date(checkedAt + AUTOMATION_CAPABILITY_TTL_MS).toISOString(),
             };
           },
+          getCandidateShortlist: (input) => getMcpCandidateShortlist(DB, input),
+          recordCandidateEvaluation: (input) => recordMcpCandidateEvaluation(DB, input),
+          recordManualMatchResponse: (input) => recordMcpManualMatchResponse(DB, input),
         });
         return Response.json({ value }, { headers: { "cache-control": "no-store" } });
       } catch (error) {

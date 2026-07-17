@@ -43,7 +43,7 @@ Codex can produce a profile or room with a strong individual visual identity. Au
 
 ### Privacy is a visible product feature
 
-Users can see every approved Work Signal, its source label, its expiry, and whether it is public or used privately for matching. Deletion and revocation are real operations.
+Users can see every approved Work Signal, its source label, its expiry, and its matching audience. Work Signals are never public or publicly searchable. Publishing current work is a separate, explicit profile or project-update action. Deletion and revocation are real operations.
 
 ## 3. Primary actors
 
@@ -80,7 +80,7 @@ For each visible app, the user chooses:
 
 - Never use: Buildmates workflows do not ask Codex to read it.
 - Ask each time: Codex requests approval before using it for a Work Pulse. An unattended automation skips the source and queues a consent request; a prior one-time approval is not recurring permission.
-- Allow approved Work Signals: Codex may read permitted content and submit summaries under the user's explicit sharing policy. New facts default to matching-private review; no automatically submitted signal becomes public without a separate publication rule or item approval.
+- Allow approved Work Signals: Codex may read permitted content and submit summaries under the user's explicit sharing policy. Submitted signals remain private to the owner or authorized matching surfaces. Sharing the same idea publicly requires a separate profile or project-update preview and explicit publication approval.
 - Actions only, where relevant: the app supplies no matching context but may help after mutual interest. Buildmates internally distinguishes free/busy reading, proposing an event, and creating/updating an event; these are product capability classes, not claims about Google Calendar's actual tool or permission names.
 
 Buildmates stores a source-use preference and an app identifier/label. This preference governs what Buildmates skills may submit or request; it does not modify or override the host platform's connector permissions. Buildmates never receives the app's access token or connector credentials. The connected app's own permissions and action-confirmation rules remain in force.
@@ -106,7 +106,7 @@ A Work Pulse can run during onboarding, manually, or through one recurring Codex
 - last successful refresh and current available, stale, or unavailable status;
 - observation date and optional expiry;
 - confidence;
-- audience: public, signed-in members, suggested connections, mutual connections, or private;
+- audience: suggested connections, mutual connections, or private;
 - optional cohort audience constraint;
 - matching permission: usable or excluded;
 - evidence sensitivity flag;
@@ -178,42 +178,38 @@ Projects are independently owned product objects rather than profile-only cards.
 
 Project routes use canonical `/projects/{slug}` URLs. Public projects can be followed, shared, indexed, and included in opted-in network statistics; private or restricted projects are omitted from page metadata, social previews, discovery indexes, and graph responses.
 
-### 4.7 Discovery, cohorts, globe, and build graph
+### 4.7 Discovery, city map, and build graph
 
-- Search people by active topic, tool, problem, offer, need, location, timezone, cohort, and collaboration mode.
-- Browse cohorts and community-created groups.
-- View a geographic globe that shows opted-in coarse locations, never precise private addresses.
-- View a build graph connecting people, projects, problems, tools, cohorts, and rooms through public or connection-authorized data.
-- See privacy-safe activity such as opted-in new projects, cohort events, aggregate city activity, and anonymized introduction counts. A person's new introduction is never exposed without explicit sharing permission.
-- See honest aggregate network counters computed from production data, such as builders, public projects, Connections formed, active cohorts, and meetings scheduled; counters are omitted until real data exists and never use fabricated launch numbers.
-- Open a profile or project from discovery.
-- Use saved filters without creating a popularity feed.
-- See why a result is relevant in direct, evidence-based language.
+- Buildmates does not expose a people, profile, project, location, or Work Signal search endpoint or directory. Public profiles and projects are reached only through deliberate direct/share links.
+- View a MapLibre map with one aggregate bubble per supported city that has at least five opted-in builders. Bubble size represents opted-in builder count; aggregate project and Connection counts may appear in the city summary.
+- View an aggregate build graph whose bubbles group deliberately published project topics. Bubble size represents visible project activity, never popularity or private Work Signals.
+- See honest aggregate network counters computed from production data, such as opted-in builders, public projects, Connections formed, and meetings scheduled; counters are omitted until real data exists and never use fabricated launch numbers.
+- Receive private, server-bounded match recommendations with direct, evidence-based explanations after authentication and matching authorization.
 
-The globe and graph are functional discovery views, not decorative background effects. They provide accessible list alternatives and keyboard-operable navigation.
+The map and graph are functional aggregate network views, not decorative background effects. They provide accessible aggregate-list alternatives and keyboard-operable navigation. Neither surface links to or lists the people, profiles, projects, or Work Signals represented by an aggregate bubble.
 
-Room, Connection, collaboration, and Circle edges appear in the public or connection graph only when every represented member explicitly approved that edge audience. Authorization from one participant is insufficient. Otherwise the graph may show only non-relational aggregate activity.
+The public build graph never exposes room, Connection, collaboration, Circle, or person-to-person edges. A signed-in personalized explanation may use viewer-authorized evidence outside the public graph.
 
 ### 4.8 Cold-start and network growth
 
 A user receives value even when no strong match exists. Buildmates supports:
 
 - shareable generated profile and project links;
-- personal invite links and cohort-admin invitation flows;
+- personal invite links;
 - “Invite a builder whose work you follow”;
 - shareable connection cards such as “I’m building X—find people working nearby”;
-- following public projects, topics, and cohorts;
+- following public projects and topics;
 - “Notify me when someone relevant joins” watches;
 - honest no-match states that preserve the user's preferences and continue watching;
-- immediate exploration of projects, profiles, cohorts, the globe, and the graph.
+- immediate exploration of aggregate city and topic activity through the map and build graph.
 
-Invite links never pre-authorize profile visibility, matching, or a connection. Cohort admins may invite and manage cohort membership but cannot access private Work Signals.
+Invite links never pre-authorize profile visibility, matching, or a connection.
 
 Invites use expiry, revocation, per-sender and per-cohort quotas, repeated-recipient suppression, recipient blocks, abuse reporting, and rate limits. Invite and share-card payloads contain only data already authorized for the recipient or public audience and never include private matching evidence.
 
 Owners control whether each public profile or project is search-engine indexable. Canonical URLs, robots directives, structured metadata, and social previews are generated only from public fields. Private/restricted links use non-indexable metadata and neutral unfurls. Owners can revoke a share card or invite without changing the canonical profile/project URL.
 
-Cohorts have owner, admin, and member roles plus public, request-to-join, invite-only, or private visibility. The creator begins as owner/admin. The system supports create, edit, invitation, join request, approval/decline, leave, removal, admin promotion/revocation, ownership transfer, archive, and deletion. The final owner cannot leave without transferring ownership or deleting the cohort. Cohort membership never expands the audience of a field unless the owner explicitly selected that cohort constraint.
+Cohorts are deferred from the current product and navigation. Existing cohort domain tables and authorization code remain dormant for a possible later community release; no day-one flow depends on cohort creation, discovery, invitations, filtering, or audience expansion. Circles remain the active member-created group model.
 
 ### 4.9 Deterministic candidate retrieval
 
@@ -430,9 +426,9 @@ Buildmates separates immediate product events from scheduled intelligence. Invit
 
 - A “What Buildmates knows about me” page lists all server-held profile fields, Work Signals, permissions, evaluations safe for the owner, rooms, Circles, and automation state.
 - Users can change visibility, revoke a source, disconnect all Codex syncing, delete a signal or project, pause matching, disable Full Autopilot, block another user, leave a room, report abuse, export data, or delete the account.
-- Every field and Work Signal uses the same canonical audience enum: public, signed-in members, suggested connections, mutual connections, or private. Cohort scope is an optional additional constraint; `allow_matching` remains independent. Search, MCP responses, explanations, graph data, metadata, and room bindings all enforce the same enum server-side.
+- Profile fields and projects use the canonical audience enum: public, signed-in members, suggested connections, mutual connections, or private. Work Signals are restricted to suggested connections, mutual connections, or private and can never enter public search, graph data, metadata, or public pages. `allow_matching` remains independent.
 - Location defaults to coarse city/region or timezone and is opt-in.
-- Globe aggregates require at least five opted-in builders per displayed cell and suppress exact activity timestamps for sparse regions. Individual city display on a profile is a separate consent from aggregate-map participation.
+- Map aggregates require at least five opted-in builders per displayed city and suppress exact activity timestamps for sparse regions. Individual city display on a profile is a separate consent from aggregate-map participation. The map exposes city-center coordinates and aggregate counts only, never individual coordinates or a city roster.
 - Sensitive traits are not inferred for matching.
 - Private match reasoning is not shown to the candidate.
 - Blocks apply before candidate retrieval and prevent new shared spaces.

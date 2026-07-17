@@ -22,7 +22,9 @@ test("server-renders the Buildmates public landing page", async () => {
   assert.match(html, /Find your people/);
   assert.match(html, /Build your profile/);
   assert.match(html, /You approve the work summaries that leave your conversation/);
-  assert.match(html, /work signals in. mutual relevance out./);
+  assert.match(html, /Each side follows its saved acceptance rules/);
+  assert.match(html, /your work changes. your network keeps up./);
+  assert.doesNotMatch(html, /Browse coarse locations/);
   assert.doesNotMatch(html, /Your site is taking shape|Codex is working|react-loading-skeleton/);
 });
 
@@ -38,6 +40,34 @@ test("ships product metadata and removes the starter preview", async () => {
   assert.match(layout, /export const viewport: Viewport/);
   assert.doesNotMatch(layout, /Starter Project|next\/font\/google|codex-preview/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
+});
+
+test("sitemap and robots omit retired discovery and cohort surfaces", async () => {
+  const [sitemapResponse, robotsResponse] = await Promise.all([render("/sitemap.xml"), render("/robots.txt")]);
+  assert.equal(sitemapResponse.status, 200);
+  assert.equal(robotsResponse.status, 200);
+  const [sitemap, robots] = await Promise.all([sitemapResponse.text(), robotsResponse.text()]);
+  assert.doesNotMatch(sitemap, /\/discover|\/cohorts/);
+  assert.doesNotMatch(robots, /\/discover|\/cohorts/);
+  assert.match(robots, /Disallow:\s*\/builders\//);
+});
+
+test("privacy and error copy stay aligned with the product boundaries", async () => {
+  const [profileReview, graph, errors, profileDesign, onboarding] = await Promise.all([
+    readFile(new URL("../components/profile-projects/ProfileReview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/graph/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/client/user-facing-error.ts", import.meta.url), "utf8"),
+    readFile(new URL("../components/profile-projects/RevisionPreview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/onboarding/OnboardingClient.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(profileReview, /key === "current_work" \|\| key === "networking_intent" \? "suggested_connections"/);
+  assert.match(graph, /at least two builders/);
+  assert.match(errors, /export function userFacingError/);
+  assert.doesNotMatch(errors, /return value/);
+  assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);
+  assert.match(profileDesign, /Design with Codex/);
+  assert.match(onboarding, /Turn on relevance watch and finish/);
+  assert.doesNotMatch(onboarding, /Topic to watch/);
 });
 
 function emptyDiscoveryDb() {

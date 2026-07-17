@@ -2,7 +2,7 @@ import { z } from "zod";
 import { requireApiUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { requireSameOriginMutation } from "@/src/platform/same-origin";
-import { addCircleModuleEntry, createCircleProposal, getCircle, inviteCircleMemberByHandle, leaveCircle, listCircleMessages, listCircleModuleEntries, manageCircleMember, publishCircleProposal, respondCircleInvite, sendCircleMessage, voteCircleProposal } from "@/src/circles/service";
+import { addCircleModuleEntry, createCircleProposal, deleteCircleModuleEntry, getCircle, inviteCircleMemberByHandle, leaveCircle, listCircleMessages, listCircleModuleEntries, manageCircleMember, publishCircleProposal, respondCircleInvite, sendCircleMessage, updateCircleModuleEntry, voteCircleProposal } from "@/src/circles/service";
 
 const command = z.discriminatedUnion("action", [
   z.object({ action: z.literal("invite"), handle: z.string().trim().min(1).max(64) }).strict(),
@@ -11,6 +11,8 @@ const command = z.discriminatedUnion("action", [
   z.object({ action: z.literal("vote"), proposalId: z.string().min(1).max(160), vote: z.enum(["approve", "reject", "abstain"]) }).strict(),
   z.object({ action: z.literal("publish"), proposalId: z.string().min(1).max(160) }).strict(),
   z.object({ action: z.literal("add_entry"), moduleId: z.string().min(1).max(160), payload: z.record(z.string(), z.unknown()) }).strict(),
+  z.object({ action: z.literal("update_entry"), moduleId: z.string().min(1).max(160), entryId: z.string().min(1).max(160), payload: z.record(z.string(), z.unknown()) }).strict(),
+  z.object({ action: z.literal("delete_entry"), moduleId: z.string().min(1).max(160), entryId: z.string().min(1).max(160) }).strict(),
   z.object({ action: z.literal("send_message"), clientMessageId: z.string().min(1).max(160), body: z.string().trim().min(1).max(4000) }).strict(),
   z.object({ action: z.literal("manage_member"), targetUserId: z.string().min(1).max(160), memberAction: z.enum(["promote", "demote", "remove", "transfer"]) }).strict(),
   z.object({ action: z.literal("leave") }).strict(),
@@ -46,6 +48,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     else if (input.action === "vote") await voteCircleProposal(DB, { actorId: user.id, circleId: id, proposalId: input.proposalId, vote: input.vote, now: Date.now() });
     else if (input.action === "publish") await publishCircleProposal(DB, { actorId: user.id, circleId: id, proposalId: input.proposalId, now: Date.now() });
     else if (input.action === "add_entry") result = await addCircleModuleEntry(DB, { actorId: user.id, circleId: id, moduleId: input.moduleId, payload: input.payload, now: Date.now() });
+    else if (input.action === "update_entry") await updateCircleModuleEntry(DB, { actorId: user.id, circleId: id, moduleId: input.moduleId, entryId: input.entryId, payload: input.payload, now: Date.now() });
+    else if (input.action === "delete_entry") await deleteCircleModuleEntry(DB, { actorId: user.id, circleId: id, moduleId: input.moduleId, entryId: input.entryId, now: Date.now() });
     else if (input.action === "send_message") result = await sendCircleMessage(DB, { actorId: user.id, circleId: id, clientMessageId: input.clientMessageId, body: input.body, now: Date.now() });
     else if (input.action === "manage_member") await manageCircleMember(DB, { actorId: user.id, circleId: id, targetUserId: input.targetUserId, action: input.memberAction });
     else await leaveCircle(DB, { actorId: user.id, circleId: id });

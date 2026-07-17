@@ -25,7 +25,7 @@ export function AppPermissionRow({ source, onChange, onRemove, persisted }: { so
 }
 const policyHelp: Record<SourcePolicy, string> = {
   never: "Buildmates workflows will not ask Codex to read this source.",
-  ask_each_time: "Codex asks before each Work Pulse. Unattended runs skip this source.",
+  ask_each_time: "Codex asks before using this source. Unattended runs skip it.",
   allow_approved_work_signals: "Codex may submit concise summaries for your review. Raw source content is not sent.",
   actions_only:
     "Choose this only when Codex confirms the source supports an action. Buildmates does not use its context for matching.",

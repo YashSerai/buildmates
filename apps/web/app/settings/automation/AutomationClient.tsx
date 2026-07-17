@@ -5,7 +5,10 @@ import type {
   AutomationCadence as Cadence,
 } from "@/src/platform/onboarding-data";
 import { AutomationCadence } from "@/components/onboarding/AutomationCadence";
+import { userFacingError } from "@/src/client/user-facing-error";
 import styles from "../settings.module.css";
+class RequestError extends Error {}
+const automationPrompt = "Open Buildmates and create or update my single Buildmates Work Pulse using my saved cadence, source choices, quiet hours, and introduction limit. Confirm the schedule before creating it, then tell me when it will run next and whether any approved source needs my computer to be available.";
 export function AutomationClient({
   initialSnapshot,
 }: {
@@ -56,14 +59,22 @@ export function AutomationClient({
       });
       const payload = (await response.json()) as { error?: string };
       if (!response.ok)
-        throw new Error(payload.error || "Could not save settings.");
-      setMessage("Settings saved.");
+        throw new RequestError(userFacingError(payload.error, "Could not save settings."));
+      setMessage(body.action === "save_automation" ? "Automation preferences saved. Continue in Codex to create or update the recurring task." : "Networking Pulse saved.");
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Could not save settings.",
+        error instanceof RequestError ? error.message : "Could not save settings. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
+    }
+  }
+  async function copyAutomationPrompt() {
+    try {
+      await navigator.clipboard.writeText(automationPrompt);
+      setMessage("Automation prompt copied. Paste it into Codex.");
+    } catch {
+      setMessage("Copy was blocked. Open Buildmates in Codex and ask it to create your Work Pulse from the saved preferences.");
     }
   }
   return (
@@ -227,10 +238,10 @@ export function AutomationClient({
       <section>
         <header className={styles.sectionHeader}>
           <div>
-            <h2>One Buildmates automation</h2>
+            <h2>One Buildmates Work Pulse</h2>
             <p>
-              Automatic checks stay quiet when nothing relevant changed. Your
-              Codex usage limits still apply.
+              These controls save the requested cadence and whether background actions are available.
+              Codex creates and runs the recurring task under your Codex usage limits.
             </p>
           </div>
           <span
@@ -268,6 +279,8 @@ export function AutomationClient({
         >
           Save automation
         </button>
+        <a href={`codex://open?prompt=${encodeURIComponent(automationPrompt)}`}>Continue in Codex</a>
+        <button className={styles.secondaryButton} type="button" onClick={() => void copyAutomationPrompt()}>Copy automation prompt</button>
         {initialSnapshot.codexConnected ? (
           <button className={styles.secondaryButton} onClick={()=>save({action:"save_automation",cadence,enabled:cadence!=="manual",sourceLivenessReviewed:liveness,requestCapabilityRecheck:true})} disabled={busy || !liveness}>
             Recheck background actions
