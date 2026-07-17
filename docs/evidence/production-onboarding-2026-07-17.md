@@ -56,3 +56,11 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - The install page received the requested copy and UI/UX pass: one primary action, centered accessible prompt dialog, compact editorial hierarchy, phone-safe layout, manual app-link fallback, and a visible agent-instruction block.
 - Web lint and typecheck passed. The focused public suite passed 12/12 across desktop and phone, including copy-dialog behavior, exact prompt content, public agent-contract text, and overflow checks. Rendered desktop and phone screenshots were inspected.
 - Exact commit `3e8a03949685ed90e6a807d83d134fb847bcaefb` is live as ChatGPT Sites version 9. Production returned the new install page and the strengthened `/llms.txt`; the static asset briefly remained on the prior edge-cache response during propagation, then returned the new contract.
+
+## Native install and OAuth handoff correction
+
+- The setup contract now requires the host-native Codex plugin-install confirmation and forbids using Chrome automation to install or connect Buildmates through the ChatGPT website.
+- Native installation still requires the user's confirmation. Until Buildmates is published and discoverable, Codex must disclose that native installation is unavailable and offer the official manual app link.
+- GitHub remains an external OAuth handoff. Codex asks whether the user wants to complete it themselves or wants guided browser help; manual completion is the default, and guided help cannot silently handle credentials, verification codes, or provider consent.
+- The affected public contract passed lint, web typecheck, and 12/12 focused desktop/phone checks with rendered screenshot inspection.
+- Sites version 10 was saved against a stale pre-rebuild archive and was intentionally not deployed. A corrected production build containing the verified native-install copy was created before the next version save.
