@@ -1,6 +1,6 @@
 {
   "name": "buildmates",
-  "version": "0.3.0-beta.1",
+  "version": "0.3.0-beta.1+codex.20260717222507",
   "description": "Meet builders through what you are working on now, with explicit privacy controls and reciprocal matching.",
   "author": {
     "name": "Yash Serai",
@@ -9,7 +9,12 @@
   "homepage": "https://buildmates.yashns.chatgpt.site/install",
   "repository": "https://github.com/YashSerai/buildmates",
   "license": "MIT",
-  "keywords": ["builders", "networking", "codex", "matching"],
+  "keywords": [
+    "builders",
+    "networking",
+    "codex",
+    "matching"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
@@ -18,7 +23,10 @@
     "longDescription": "Buildmates creates a user-reviewed builder profile, finds mutually relevant people, and opens lightweight shared rooms.",
     "developerName": "Yash Serai",
     "category": "Productivity",
-    "capabilities": ["Interactive", "Write"],
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
     "websiteURL": "https://buildmates.yashns.chatgpt.site",
     "privacyPolicyURL": "https://buildmates.yashns.chatgpt.site/privacy",
     "termsOfServiceURL": "https://buildmates.yashns.chatgpt.site/terms",

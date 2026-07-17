@@ -93,18 +93,18 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(response.status()).toBe(200);
   const instructions = await response.text();
   expect(instructions).toContain("Canonical setup guide: https://buildmates.yashns.chatgpt.site/install");
-  expect(instructions).toContain("Canonical Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt");
   expect(instructions).toContain("Fetch this file directly as public text");
-  expect(instructions).toContain("Call get_setup_state immediately");
-  expect(instructions).toContain("Never infer setup state from old ChatGPT conversations");
-  expect(instructions).toContain("native Codex plugin-install confirmation");
-  expect(instructions).toContain("whether the user wants to complete OAuth themselves");
+  expect(instructions).toContain("host's native plugin-install confirmation");
+  expect(instructions).toContain("A plugin installed during a task does not hot-load its skills and MCP tools");
+  expect(instructions).toContain("Buildmates is installed. May I open a fresh Codex task to activate it and continue setup?");
+  expect(instructions).toContain("If native task creation is unavailable or fails");
+  expect(instructions).toContain("Never spawn recursive `codex exec` helpers or use a child Codex process");
+  expect(instructions).toContain("Call `get_setup_state` immediately");
+  expect(instructions).toContain("Never infer progress from old tasks");
   expect(instructions).toContain("show up to three concrete next actions");
-  expect(instructions).toContain("Do not pre-approve unknown results");
-  expect(instructions).toContain("Use current Codex context");
-  expect(instructions).toContain("Do not list GitHub merely because it was used for Buildmates website identity");
-  expect(instructions).toContain("do not ask for session IDs");
-  expect(instructions).toContain("user-approved structured summaries only");
+  expect(instructions).toContain("Use my Codex workspace");
+  expect(instructions).toContain("Do not treat GitHub website sign-in as repository permission");
+  expect(instructions).toContain("submit only reviewed structured profile fields");
 });
 
 test("product, privacy, install, and account paths are complete", async ({

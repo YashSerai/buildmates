@@ -15,6 +15,8 @@ codex plugin marketplace add YashSerai/buildmates --ref launch/buildmates
 codex plugin add buildmates@buildmates-beta
 ```
 
+After installation and MCP authorization, Codex asks permission to open the fresh task required to load the plugin's skills and tools. If the host cannot create that task, it gives the same one-line continuation prompt for manual use. The installer never hides this boundary behind recursive `codex exec` processes.
+
 For the MCP-only fallback:
 
 ```powershell
