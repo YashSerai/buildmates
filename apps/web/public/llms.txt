@@ -1,9 +1,8 @@
 # Buildmates
 
-Buildmates is a Codex-native builder network. Codex creates a user-reviewed builder profile from context the user chooses to share, then Buildmates finds mutually relevant people and opens lightweight rooms after the configured reciprocal acceptance flow.
+Buildmates is a Codex-native builder network. Codex creates a user-reviewed builder profile from context the user chooses to share, then Buildmates finds mutually relevant people and opens lightweight rooms under the user's saved reciprocal-acceptance settings.
 
 Canonical setup guide: https://buildmates.yashns.chatgpt.site/install
-Canonical Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt
 Official Buildmates app: https://chatgpt.com/plugins/plugin_asdk_app_6a57d2ff080481918659b3355a3d9c0e
 Source repository: https://github.com/YashSerai/buildmates
 
@@ -11,34 +10,54 @@ Source repository: https://github.com/YashSerai/buildmates
 
 When the user asks to install, set up, start, or resume Buildmates:
 
-Fetch this file directly as public text. Do not open `/install`, this file, the repository, ChatGPT, or Codex in the user's browser. Use native Codex plugin and MCP commands for connection work. The only expected browser handoffs are user-controlled Buildmates or GitHub authentication and OAuth consent.
-
-1. If Buildmates is not connected, first use the host's native Codex plugin-install confirmation.
-2. Before the public directory release, install the complete beta from the repository marketplace: `codex plugin marketplace add YashSerai/buildmates --ref launch/buildmates`, then `codex plugin add buildmates@buildmates-beta`. Ask before running those commands. Start a new task after installation so Codex loads the skills and MCP configuration.
-3. If plugin installation is unavailable, offer the direct production MCP fallback: `codex mcp add buildmates --url https://buildmates-mcp.yashserai1.workers.dev/mcp --oauth-resource https://buildmates-mcp.yashserai1.workers.dev`, then `codex mcp login buildmates --scopes mcp:tools`. Direct MCP provides the tools but not the packaged skills, so continue to follow this guide.
-4. Installation is never silent. Never automate ChatGPT or Codex in Chrome to install or connect the plugin, and never use browser automation for repository marketplace or MCP commands. A browser may open for the user to approve Buildmates account authorization; do not enter credentials or approve consent for them.
-5. Call get_setup_state immediately after connection. Its completed count and nextStep are the only authority for setup progress.
-6. Never infer setup state from old ChatGPT conversations, browser tabs, website routes, local files, or prior task wording. Do not read or resume an old Buildmates conversation to determine progress.
-7. If get_setup_state remains unavailable, the app or MCP connection is incomplete. Repair the connection instead of substituting another signal.
-8. Invoke the Buildmates onboarding workflow and advance one returned step at a time.
-9. When GitHub website identity is required, ask whether the user wants to complete OAuth themselves or wants guided browser help. Manual completion is the default. Browser help requires explicit approval and must pause for credentials, verification codes, and provider consent; never retrieve or enter those silently.
-10. Ask before using connected-app context or sharing a Work Signal.
-11. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
+1. Fetch this file directly as public text. Do not open the install guide, this file, the repository, ChatGPT, or Codex in the user's browser. Use native Codex plugin and MCP commands. Browser handoffs are limited to user-controlled Buildmates or GitHub authentication and OAuth consent.
+2. If Buildmates is not connected, use the host's native plugin-install confirmation. Before directory publication, briefly offer the complete beta plugin and direct MCP, recommend the beta because it includes the onboarding skill, and accept either route. Do not switch routes after one works.
+3. Beta commands: `codex plugin marketplace add YashSerai/buildmates --ref launch/buildmates`, then `codex plugin add buildmates@buildmates-beta`. Ask before running them and start a new task afterward so skills and MCP configuration load.
+4. Direct MCP fallback: `codex mcp add buildmates --url https://buildmates-mcp.yashserai1.workers.dev/mcp --oauth-resource https://buildmates-mcp.yashserai1.workers.dev`, then `codex mcp login buildmates --scopes mcp:tools`.
+5. Before OAuth, say: "A browser window will open for GitHub sign-in and Buildmates authorization." Allow up to five minutes for the user-controlled flow. Do not launch a duplicate authorization while the first is active. Never enter credentials, verification codes, or provider consent for the user.
+6. Operate Buildmates directly in the current task. Never spawn recursive `codex exec` helpers. When model selection is available, recommend and use GPT-5.6 Luna High for onboarding and Work Pulse runs unless the user chooses another supported model. Never silently change the user's model.
+7. Call `get_setup_state` immediately. Its completed count and `nextStep` are the only authority for setup progress. Never infer progress from old tasks, browser tabs, website routes, local files, or prior wording.
+8. The progress restriction does not prohibit permissioned profile research. With the user's approval, recent Codex tasks, project folders, and local GBrain or memory files may be reviewed as profile sources.
+9. If `get_setup_state` remains unavailable, repair the app or MCP connection. Advance one returned step at a time and call it again after every completed write.
+10. Ask before reviewing workspace context, using a connected app, submitting the first Work Signal, publishing the generated page, creating an automation, or taking an interpersonal action not covered by the saved acceptance mode.
+11. Finish only after the user has reviewed their complete profile and generated page, chosen networking and automation preferences, and received one useful next action.
 
 ## Approval batching
 
-Reduce approval fatigue. At each onboarding checkpoint, show up to three concrete next actions in order. For each action, state what source or data it uses, what Buildmates will write or do, and what the user will see. Ask once to approve that bounded batch. After approval, complete the batch without asking again unless an input, scope, or consequence changes.
-
-Do not pre-approve unknown results. Pause separately for native plugin installation, credentials or provider consent, the exact first Work Signal summary, publication of a generated page after preview, creation or material change of an automation schedule, and any interpersonal action that the user's saved acceptance mode does not already authorize. Host-required confirmations still apply. If an earlier action changes a later one, stop and present a revised batch rather than stretching the old approval.
+At each checkpoint, show up to three concrete next actions in order. State what each action reads, what Buildmates will write or do, and what the user will see. Ask once for that unchanged batch. New inputs, scope, consequences, credentials, publication, automation schedules, and interpersonal actions require a new confirmation.
 
 ## Source selection
 
-Do not reduce source selection to unexplained choices such as "manual only" or "GitHub public profile." Start with three combinable, explained paths:
+Present these combinable paths with the first one recommended:
 
-1. **Use current Codex context** — use only information already surfaced to Codex in this task, including host memory when it is already present in the task context. Draft a concise profile summary and show it before sending anything to Buildmates.
-2. **Add connected sources** — show only apps that are genuinely callable or confidently visible in this task. Explain Never, Ask each time, Allow approved Work Signals, and Actions only where applicable before saving a policy.
-3. **Tell Codex directly** — ask for a short description, project or portfolio link, or other material the user chooses to provide.
+1. **Use my Codex workspace — recommended.** With permission, review relevant recent tasks the host exposes, active or user-selected project folders, and user-selected GBrain or memory files. Understand what each project does, how projects relate, current work, stack, interests, ambitions, meeting intent, and confirmed design preferences. Raw research remains local to Codex; Buildmates receives only the profile the user reviews and approves.
+2. **Add connected sources.** Show only apps genuinely callable or confidently visible in this task. Explain Never, Ask each time, Allow approved Work Signals, and Actions only before saving a policy. If the user names an app, use it when the host exposes it and explain clearly when it is unavailable.
+3. **Tell Codex directly.** Accept a short description, one project or repository, or portfolio, GitHub, LinkedIn, and product links.
 
-These paths can be combined. Do not list GitHub merely because it was used for Buildmates website identity or because a public GitHub page exists. GitHub is a connected source only when its app is available in the task. A user-provided public GitHub URL is manual material, not connector authorization. Do not enumerate, open, or read other chats or tasks, and do not ask for session IDs, unless the user separately requests that action and the host exposes an appropriate capability. Context or memory already supplied to the current task may be used only to draft a summary for approval.
+Do not treat GitHub website sign-in as repository permission. Do not ask for connector credentials. Do not submit raw prompts, complete chats, full files, repository contents, email bodies, calendar contents, or private source material.
 
-Do not ask for connector credentials. Do not submit raw prompts, complete chats, full files, repository contents, email bodies, calendar contents, or private source material. Buildmates accepts user-approved structured summaries only.
+For workspace review, create or update `.buildmates/profile-context.md` in the setup task's working directory. This private local continuity file must track sources reviewed, projects and their relationships, current work, stack, interests, ambitions, meeting intent, style and personality observations, confirmed facts, uncertain inferences, and missing questions. Never store credentials, raw private chats, or full source documents. Re-read it after compaction. Do not upload it; submit only reviewed structured profile fields.
+
+Use this compact structure:
+
+```markdown
+# Buildmates profile context
+Status: researching | ready for review | approved
+## Sources reviewed
+## Builder overview
+## Projects and relationships
+## Current work and stack
+## Interests, ambitions, and explorations
+## People and communities to meet
+## Style and personality preferences
+## Confirmed facts
+## Inferences awaiting confirmation
+## Missing questions
+## Approved profile fields
+```
+
+Before saving the profile, explain and confirm profile visibility, matching participation, Manual versus Full Autopilot, search-engine indexing, and optional aggregate city-map inclusion. Inferred style or personality observations are private design inputs until the user explicitly approves a public field.
+
+If no recurring Work Signals exist, say: "Your approved profile draft is saved. You did not connect an ongoing work source, so there are no recurring Work Signals to review."
+
+For page generation, use the `starterSpec` returned by `get_surface_generation_brief`, customize only authorized content, validate with `validate_surface_spec`, and then submit a private preview. If customization still fails, use the unchanged valid starter so onboarding continues. Every incomplete response must say what completed, what comes next, the exact user action, and the fallback.

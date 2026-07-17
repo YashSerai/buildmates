@@ -246,8 +246,8 @@ describe("Buildmates MCP contract", () => {
     await setup(mode === "rich" ? { step: "context_collection", method: "connected_context", summary: "Building privacy-safe builder matching", links: [] } : { step: "context_collection", method: "manual_profile", summary: "I build voice tools and want to meet nearby builders", links: ["https://example.com/portfolio"] }, `${mode}-step-04`);
     if (mode === "rich") await invoke(services, "submit_work_signal", { signal: validSignal() });
     await setup({ step: "signal_privacy_review", reviewedSignalIds: mode === "rich" ? ["signal-1"] : [], acknowledged: true }, `${mode}-step-05`);
-    await invoke(services, "update_profile_model", { profile: validProfile(`${mode}-profile`) });
-    await setup({ step: "basic_profile", handle: `${mode}_profile`, displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching" }, `${mode}-step-06`);
+    const profile = await invoke(services, "update_profile_model", { profile: validProfile(`${mode}-profile`) }) as { result: { id: string } };
+    await setup({ step: "basic_profile", profileId: profile.result.id, handle: `${mode}_profile`, approved: true }, `${mode}-step-06`);
     await repository.write({ kind: "surface", id: `${mode}-surface`, ownerUserId: "user_alice", value: { kind: "profile", subjectId: `${mode}-profile`, publishedRevisionId: `${mode}-surface-revision` }, now: "2026-07-15T12:00:00.000Z" });
     await repository.write({ kind: "surface_revision", id: `${mode}-surface-revision`, ownerUserId: "user_alice", value: { surfaceId: `${mode}-surface`, status: "published" }, now: "2026-07-15T12:00:00.000Z" });
     await setup({ step: "page_preview", surfaceRevisionId: `${mode}-surface-revision`, approved: true }, `${mode}-step-07`);
@@ -261,6 +261,14 @@ describe("Buildmates MCP contract", () => {
     await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 11, nextStep: null });
     await expect(invoke(services, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ audience: "public" }] });
     await expect(invoke(services, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { state: "configured", kind: "buildmates" } });
+  });
+
+  it("accepts an explicitly approved private profile as basic-profile evidence", async () => {
+    const { services, links, repository } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation", "source_selection", "context_collection", "signal_privacy_review"], updatedAt: "2026-07-15T12:00:00.000Z" }, now: "2026-07-15T12:00:00.000Z" });
+    const saved = await invoke(services, "update_profile_model", { profile: { ...validProfile("private-profile"), audience: "private", allowMatching: false } }) as { result: { id: string } };
+    await expect(invoke(services, "complete_setup_step", { payload: { step: "basic_profile", profileId: saved.result.id, handle: "private_profile", approved: true }, idempotencyKey: "private-profile-step" })).resolves.toMatchObject({ result: { confirmationState: "completed" } });
   });
 });
 

@@ -85,6 +85,13 @@
   width: 1.1rem !important;
   height: 1.1rem;
 }
+.hint {
+  max-width: 48rem;
+  margin: -0.45rem 0 0.75rem;
+  color: #706c64;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
 .form button {
   border: 0;
   border-radius: 4px;

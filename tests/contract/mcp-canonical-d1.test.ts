@@ -52,15 +52,15 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM work_signals WHERE free_text_summary LIKE 'Canonical work %'").first()).resolves.toEqual({ count: 3 });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM mcp_product_records").first()).rejects.toThrow();
 
-    const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "caller-profile", handle: "canonical_alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: "profile-write-01" } }) as MutationResult;
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "caller-profile", handle: "canonical_alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], audience: "public", allowMatching: true, acceptanceMode: "manual", indexable: false, fields: [{ key: "ambitions", value: "Build lasting tools for builders", audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" }, { key: "style_preferences", value: "Editorial, compact, and warm", audience: "private", allowMatching: false, provenance: "self_reported", sourceStatus: "confirmed" }], statistics: [{ key: "active_users", label: "Daily active users", value: "1,200", provenance: "self_reported", audience: "public" }], idempotencyKey: "profile-write-01" } }) as MutationResult;
     const pulse = await call(ALICE_SUB, "update_networking_pulse", { pulse: { pulseId: "caller-pulse", intentSummary: "Meet adjacent builders", builderSimilarity: "adjacent", geography: "global", maximumIntroductionsPerWeek: 4, serendipity: 40, timezone: "America/Vancouver", quietHours: [{ weekday: 1, startMinute: 0, endMinute: 480 }], snoozedUntil: null, exclusions: [{ kind: "industry", value: "Ads" }], startsAt: "2026-07-15T12:00:00.000Z", expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "pulse-write-01" } }) as MutationResult;
     expect(profile.result.id).toMatch(/^profile_/);
     expect(pulse.result.id).toMatch(/^networking_pulse_/);
-    await expect(DB.prepare("SELECT acceptance_mode AS mode,published_at AS publishedAt FROM profiles WHERE user_id='user_alice'").first()).resolves.toMatchObject({ mode: "manual", publishedAt: at });
+    await expect(DB.prepare("SELECT acceptance_mode AS mode,published_at AS publishedAt FROM profiles WHERE user_id='user_alice'").first()).resolves.toMatchObject({ mode: "manual", publishedAt: null });
     await expect(DB.prepare("SELECT maximum_per_week AS maximum FROM introduction_budgets WHERE user_id='user_alice'").first()).resolves.toEqual({ maximum: 4 });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM quiet_hours WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM matching_exclusions WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
-    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"] }] });
+    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], fields: [{ key: "ambitions", value: "Build lasting tools for builders" }, { key: "style_preferences", value: "Editorial, compact, and warm", audience: "private" }], statistics: [{ key: "active_users", label: "Daily active users", value: "1,200" }], publishedAt: null }] });
     await expect(call(ALICE_SUB, "get_networking_pulse", {})).resolves.toMatchObject({ pulses: [{ maximumIntroductionsPerWeek: 4, timezone: "America/Vancouver", quietHours: [{ weekday: 1, startMinute: 0, endMinute: 480 }], snoozedUntil: null, exclusions: [{ kind: "industry", value: "Ads" }] }] });
     const activeFollow = await call(ALICE_SUB, "set_follow_or_watch", { relationId: "follow-topic", relation: "follow", targetKind: "topic", targetId: "topic-matching", enabled: true, idempotencyKey: "follow-enable-01" }) as MutationResult;
     expect(activeFollow.result.id).toBe("follow:topic:topic-matching");
@@ -89,7 +89,7 @@ describe("canonical MCP D1 execution", () => {
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "source_selection", sourceIds: ["github"] }, idempotencyKey: "setup-source-01" });
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "context_collection", method: "manual_profile", summary: "Builds canonical collaboration tools", links: [] }, idempotencyKey: "setup-context-01" });
     await call(ALICE_SUB, "complete_setup_step", { payload: { step: "signal_privacy_review", reviewedSignalIds: [alice.result.id], acknowledged: true }, idempotencyKey: "setup-signal-01" });
-    await call(ALICE_SUB, "complete_setup_step", { payload: { step: "basic_profile", handle: "canonical_alice", displayName: "Alice", builderSummary: "Builds canonical collaboration tools", projectOrInterest: "Builder matching" }, idempotencyKey: "setup-profile-01" });
+    await call(ALICE_SUB, "complete_setup_step", { payload: { step: "basic_profile", profileId: profile.result.id, handle: "canonical_alice", approved: true }, idempotencyKey: "setup-profile-01" });
     await expect(DB.prepare("SELECT completed_steps_json AS steps FROM setup_states WHERE user_id='user_alice'").first<{ steps: string }>()).resolves.toSatisfy((row) => JSON.parse(row!.steps).includes("basic_profile"));
 
     await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "caller-checkpoint", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "automation-write-01" });
@@ -219,7 +219,10 @@ describe("canonical MCP D1 execution", () => {
     await seedDesignPolicy(repositories);
     const surfaceId = String((profile.result as Record<string, unknown>).surfaceId);
     expect(surfaceId).toBe(`surface_profile_${profile.result.id}`);
-    await expect(call(ALICE_SUB, "get_surface_generation_brief", { surfaceId })).resolves.toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, designPolicy: { trustedComponents: expect.arrayContaining(["section", "decorative-region"]) } });
+    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { starterSpec: Record<string, unknown> };
+    expect(brief).toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, designPolicy: { trustedComponents: expect.arrayContaining(["section", "decorative-region"]) }, starterSpec: { kind: "profile" } });
+    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.starterSpec })).resolves.toEqual({ valid: true, issues: [] });
+    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: { kind: "profile" } })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ path: expect.any(String), message: expect.any(String) })]) });
 
     const revision = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-revision", surfaceId, baseRevisionId: null, spec: workshopProfileSpec, visibility: "private_preview", idempotencyKey: "surface-revision-01" }) as MutationResult;
     expect((revision.result as Record<string, unknown>).previewUrl).toBe("https://buildmates.example/profile/design");
@@ -242,7 +245,7 @@ describe("canonical MCP D1 execution", () => {
     await setup({ step: "source_selection", sourceIds: ["github"] }, "surface-setup-02");
     await setup({ step: "context_collection", method: "manual_profile", summary: "Builds governed surfaces", links: [] }, "surface-setup-03");
     await setup({ step: "signal_privacy_review", reviewedSignalIds: [setupSignal.result.id], acknowledged: true }, "surface-setup-04");
-    await setup({ step: "basic_profile", handle: "surface_alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety" }, "surface-setup-05");
+    await setup({ step: "basic_profile", profileId: profile.result.id, handle: "surface_alice", approved: true }, "surface-setup-05");
     await setup({ step: "page_preview", surfaceRevisionId: revision.result.id, approved: true }, "surface-setup-06");
     await setup({ step: "networking_pulse", pulseId: setupPulse.result.id }, "surface-setup-07");
     await setup({ step: "acceptance_mode", mode: "manual" }, "surface-setup-08");

@@ -165,7 +165,7 @@ function createRecursiveSurfaceSpecSchema<const Version extends string>(policyVe
 }
 
 const historicalSurfaceSpecSchema = createRecursiveSurfaceSpecSchema(HISTORICAL_DESIGN_POLICY_VERSION);
-const activeSurfaceSpecSchema = createRecursiveSurfaceSpecSchema(DESIGN_POLICY_VERSION);
+export const activeSurfaceSpecSchema = createRecursiveSurfaceSpecSchema(DESIGN_POLICY_VERSION);
 
 const MAX_SURFACE_SPEC_BYTES = 320_000;
 const MAX_SURFACE_VALUE_DEPTH = 64;

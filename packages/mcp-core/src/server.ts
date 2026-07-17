@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CANONICAL_CITIES, getSetupState, completeSetupStep, resolveCanonicalCity, type SetupProgress } from "@buildmates/domain";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, safeParseSurfaceSpec, type SurfaceSpec } from "@buildmates/surfaces";
+import { activeSurfaceSpecSchema, DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, safeParseSurfaceSpec, type SurfaceSpec } from "@buildmates/surfaces";
 import { canonicalToolInputHash } from "./tool-hash";
 import { z } from "zod";
 import type { McpProductRepository, McpRecord } from "./repository";
@@ -59,9 +59,9 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
 
   tool("get_setup_state", "Get setup state", "Returns the visible, resumable first-run finish line and next incomplete step. Before identity linking it safely returns identity_link as the next step and exposes no user data.", z.object(workspaceInput).strict(), readAnnotations, async (_, context, services) => {
     const linked = await services.resolveLinkedUser({ mcpSubject: context.mcpSubject, workspaceScope: context.workspaceScope });
-    if (!linked) return getSetupState();
+    if (!linked) return setupStateWithGuidance(getSetupState());
     const record = await services.repository.readForMember<SetupProgress>("setup", linked.userId, linked.userId);
-    return getSetupState(linkedSetupProgress(record?.value, services));
+    return setupStateWithGuidance(getSetupState(linkedSetupProgress(record?.value, services)));
   }, true),
   tool("complete_setup_step", "Complete setup step", "Completes exactly the next mandatory setup step after validating its step-specific evidence.", z.object({ payload: setupPayloadSchema, ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "complete_setup_step", input, async () => {
     const current = await services.repository.readForMember<SetupProgress>("setup", context.userId!, context.userId!);
@@ -109,7 +109,7 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
 
   tool("get_profile_model", "Get profile model", "Returns the linked user's structured profile model and publication controls.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("profile_model", context.userId!, pageOptions(input)); return { profiles: page.records.map(value), nextCursor: page.nextCursor }; }),
   tool("list_map_cities", "List supported Map cities", "Returns the city choices available for optional participation in the anonymous aggregate Map. It contains no user data.", z.object(workspaceInput).strict(), readAnnotations, async () => ({ cities: CANONICAL_CITIES.map(({ id, label, country }) => ({ id, label, country })) })),
-  tool("update_profile_model", "Update profile model", "Stores a reviewed structured profile; it does not infer or invent missing facts.", z.object({ profile: profileModelSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
+  tool("update_profile_model", "Save reviewed profile draft", "Stores a complete user-reviewed profile draft, including confirmed interests, ambitions, meeting intent, and private design preferences. Public audience is only an intended visibility setting; the profile is not published until its generated page is approved.", z.object({ profile: profileModelSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
     const profile = input.profile as z.infer<typeof profileModelSchema>;
     const city = resolveCanonicalCity(profile.coarseLocation);
     if (profile.locationMapOptIn && !city) throw new Error("map_city_required");
@@ -178,9 +178,18 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   tool("get_surface_generation_brief", "Get surface generation brief", "Returns the current Design Policy, authorized bindings, governance, base revision, accessibility rules, and privacy boundary before generation.", z.object({ surfaceId: idSchema, ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const surface = await services.repository.readForMember<Record<string, unknown>>("surface", input.surfaceId as string, context.userId!);
     if (!surface || !surfaceBriefIsComplete(surface.value, context.userId!)) throw new Error("surface_brief_unavailable");
-    return { surfaceId: surface.id, kind: surface.value.kind, designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents: surface.value.trustedComponents }, allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, authorizedBindingTypes: surface.value.authorizedBindingTypes ?? null, governance: surface.value.governance, baseRevision: surface.value.publishedRevisionId ?? null, constraints: { scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only" } };
+    return { surfaceId: surface.id, kind: surface.value.kind, designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents: surface.value.trustedComponents }, allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, authorizedBindingTypes: surface.value.authorizedBindingTypes ?? null, governance: surface.value.governance, baseRevision: surface.value.publishedRevisionId ?? null, starterSpec: starterSurfaceSpec(String(surface.value.kind)), constraints: { scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only" }, nextAction: "Customize starterSpec using only authorized bindings, validate it, then submit a private preview." };
   }),
-  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown(), visibility: z.enum(["private_preview", "personal_view"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
+  tool("validate_surface_spec", "Validate generated page", "Validates a generated SurfaceSpec without saving it and returns exact field-level problems. Start from the generation brief's starterSpec.", z.object({ surfaceId: idSchema, spec: z.unknown(), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
+    const surface = await requiredRecord<Record<string, unknown>>(services, "surface", input.surfaceId as string, context.userId!);
+    const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
+    const kindMatches = parsed.success && parsed.data.kind === surface.value.kind;
+    const bindingsAllowed = parsed.success && surfaceBindingsAllowed(parsed.data, surface.value.authorizedBindings);
+    if (parsed.success && kindMatches && bindingsAllowed) return { valid: true, issues: [] };
+    const issues = parsed.success ? [!kindMatches ? { path: "kind", message: `Expected ${String(surface.value.kind)}` } : null, !bindingsAllowed ? { path: "bindingManifest", message: "A binding is not authorized for this page" } : null].filter(Boolean) : parsed.error.issues.slice(0, 30).map((issue) => ({ path: issue.path.join("."), message: issue.message }));
+    return { valid: false, issues, recovery: "Start again from starterSpec returned by get_surface_generation_brief and change only theme, layout, fallbacks, and authorized bindings." };
+  }),
+  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Use get_surface_generation_brief.starterSpec and validate_surface_spec first. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: activeSurfaceSpecSchema, visibility: z.enum(["private_preview", "personal_view"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
     const surface = await requiredRecord(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     if (!parsed.success) throw new Error("surface_spec_invalid");
@@ -341,8 +350,8 @@ async function verifySetupEvidence(payload: z.infer<typeof setupPayloadSchema>, 
   if (payload.step === "source_selection") for (const id of payload.sourceIds) await requiredRecord(services, "source_policy", id, userId);
   if (payload.step === "signal_privacy_review") for (const id of payload.reviewedSignalIds) await requiredRecord(services, "work_signal", id, userId);
   if (payload.step === "basic_profile") {
-    const profiles = await services.repository.listForMember<Record<string, unknown>>("profile_model", userId);
-    if (!profiles.some((profile) => profile.value.handle === payload.handle && profile.value.audience === "public")) throw new Error("setup_evidence_missing");
+    const profile = await services.repository.readForMember<Record<string, unknown>>("profile_model", payload.profileId, userId);
+    if (!profile || profile.value.handle !== payload.handle) throw new Error("setup_evidence_missing");
   }
   if (payload.step === "page_preview") {
     const revision = await requiredRecord<Record<string, unknown>>(services, "surface_revision", payload.surfaceRevisionId, userId);
@@ -362,6 +371,36 @@ async function verifySetupEvidence(payload: z.infer<typeof setupPayloadSchema>, 
     const kind = { candidate: "candidate_batch", follow: "follow_watch", watch: "follow_watch", invite: "invite" }[payload.kind];
     await requiredRecord(services, kind, payload.objectId, userId);
   }
+}
+
+function setupStateWithGuidance(state: ReturnType<typeof getSetupState>) {
+  return {
+    ...state,
+    guidance: setupGuidance(state.nextStep),
+    responseContract: "State what completed, what happens next, the exact user action, and the safe fallback. Never leave an incomplete setup response without a next action.",
+  };
+}
+
+function setupGuidance(step: string | null) {
+  if (step === "identity_link") return { goal: "Link this Codex identity to the signed-in Buildmates account.", nextAction: "Tell the user a browser will open for GitHub sign-in and Buildmates authorization, then get the link and wait up to five minutes for user completion. Do not launch a duplicate authorization while the first remains active.", fallback: "If the page expires, request one new link and clearly discard the old one." };
+  if (step === "source_selection") return { goal: "Choose how Codex should understand the builder.", recommended: "codex_workspace", nextAction: "Offer Use my Codex workspace first: with permission, review relevant recent tasks, available project folders, and user-selected GBrain or memory files. Keep working notes in .buildmates/profile-context.md and submit only the reviewed structured profile output to Buildmates.", fallback: "Use callable connected apps or ask focused questions and accept project or portfolio links." };
+  if (step === "context_collection") return { goal: "Create a rich private profile draft.", nextAction: "Maintain .buildmates/profile-context.md with projects, relationships between projects, current work, stack, interests, ambitions, meeting intent, confirmed style preferences, sources checked, and uncertainties. Show the synthesized draft for approval before submission.", fallback: "Ask one focused question at a time for missing required fields." };
+  if (step === "signal_privacy_review") return { goal: "Review recurring matching signals separately from the saved profile draft.", nextAction: "Say whether the profile draft is saved, then list recurring Work Signals. If there are none, explicitly say no ongoing source was connected." };
+  if (step === "basic_profile") return { goal: "Review the complete structured profile and behavioral settings.", nextAction: "Explain profile visibility, matching, Manual versus Full Autopilot, map inclusion, and search-engine indexing before saving. Ask only about fields Codex could not infer confidently." };
+  if (step === "page_preview") return { goal: "Generate and review a private custom profile page.", nextAction: "Use the returned starterSpec, validate it, submit a private preview, and provide the preview URL. If customization fails, submit the unchanged valid starterSpec rather than blocking setup." };
+  return step ? { goal: `Complete ${step}.`, nextAction: "Explain the choice and complete only the returned setup step.", fallback: "Re-read setup state and report the exact next action." } : { goal: "Setup is complete.", nextAction: "Summarize the profile, networking settings, automation, and first useful action." };
+}
+
+function starterSurfaceSpec(kind: string): SurfaceSpec {
+  const prefix = kind === "profile" ? "profile" : kind;
+  const titleBinding = kind === "profile" ? "profile.displayName" : kind === "room" ? "room.themeTopic" : "circle.name";
+  const summaryBinding = kind === "profile" ? "profile.summary" : kind === "room" ? "room.connectionContext" : "circle.purpose";
+  return {
+    schemaVersion: "1", designPolicyVersion: DESIGN_POLICY_VERSION, kind: kind as SurfaceSpec["kind"], title: "Buildmates page",
+    theme: { mode: "light", colors: { canvas: "#f5f1e8", surface: "#fffdf8", ink: "#192019", mutedInk: "#4f5a50", accent: "#c9d7ad", accentInk: "#192019", rule: "#aeb7a8", focusInner: "#000000", focusOuter: "#ffffff" }, typography: { display: "editorial", body: "humanist", scale: "comfortable" }, shape: { corners: "soft", density: "comfortable" } },
+    root: { id: `${prefix}-root`, type: "section", tone: "canvas", children: [{ id: `${prefix}-title`, type: "heading", level: 1, binding: titleBinding, fallback: kind === "profile" ? "Builder profile" : kind === "room" ? "Introduction room" : "Build Circle" }, { id: `${prefix}-summary`, type: "text", style: "lead", binding: summaryBinding, fallback: "This page is ready to personalize." }] },
+    bindingManifest: { content: [{ key: titleBinding, type: "text" }, { key: summaryBinding, type: "text" }], media: [] }, approvedAssets: [], decorativeRegions: [], responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable" }, accessibility: { label: `${kind} page`, primaryHeadingNodeId: `${prefix}-title`, reducedMotion: "required" },
+  };
 }
 
 function safeError(error: unknown): string {

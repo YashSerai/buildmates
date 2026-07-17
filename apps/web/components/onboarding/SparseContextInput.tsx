@@ -18,7 +18,7 @@ export function SparseContextInput({ value, onChange }: { value: ContextDraft; o
         <input value={value.projectOrInterest} onChange={(event) => onChange({ ...value, projectOrInterest: event.target.value })} maxLength={240} placeholder="A local-first research assistant for small teams" />
       </label>
       <label>What should another builder understand about you?
-        <textarea value={value.summary} onChange={(event) => onChange({ ...value, summary: event.target.value })} minLength={20} maxLength={1200} rows={5} placeholder="Share the work, interests, ambitions, or communities that would make a connection interesting." />
+        <textarea value={value.summary} onChange={(event) => onChange({ ...value, summary: event.target.value })} minLength={20} maxLength={12000} rows={8} placeholder="Share the work, projects, interests, ambitions, or communities that should shape your profile." />
       </label>
       <label>Portfolio, GitHub, LinkedIn, or project links <span className={styles.optional}>Optional, one HTTPS link per line</span>
         <textarea value={value.links} onChange={(event) => onChange({ ...value, links: event.target.value })} rows={3} placeholder="https://github.com/you/project" />

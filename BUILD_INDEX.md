@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: functionality, security, copy/content-material, and screenshot-led UI/UX gates passed in source; deployment and production verification remain
+Status: clean-room onboarding QA repairs implemented and passing focused source gates; deployment and production re-verification remain
 Last updated: 2026-07-17
 Product line: Meet people through what you build.
 
@@ -77,6 +77,17 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
 | Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
 | Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | Public smoke complete; authenticated production and separate-account proof pending |
+
+## Clean-room onboarding QA repair - 2026-07-17
+
+- OAuth guidance announces the GitHub browser handoff, allows a five-minute user-controlled authorization window, and forbids duplicate in-flight launches.
+- Onboarding recommends GPT-5.6 Luna High when selectable and operates the MCP directly without recursive `codex exec` helpers.
+- Source selection recommends permissioned Codex-workspace review. A private local `.buildmates/profile-context.md` preserves multi-project research across compaction; only the reviewed structured profile is submitted.
+- Profile context accepts up to 12,000 characters and the canonical profile stores richer approved fields plus private design/personality preferences.
+- An approved private profile satisfies the basic-profile checkpoint. Intended public visibility no longer publishes before generated-page approval.
+- Surface generation returns a known-valid starter, exposes the active schema, supports field-level dry-run validation, and keeps the starter as a recovery path.
+- Work Signal wording, profile status wording, aggregate-map/indexing explanations, example metrics, and the connection-page first viewport were corrected.
+- Remaining brand task: generate the final Buildmates logo with ImageGen and replace the temporary B/C connection nodes with approved Buildmates and Codex marks, including reduced-motion behavior.
 
 ## Continuous launch validation
 

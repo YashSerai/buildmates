@@ -21,7 +21,7 @@ Every request requires a valid OAuth bearer with an opaque `mcp_sub`. Exactly tw
 
 After the link resolves, setup state automatically records `identity_link` complete. The remaining visible sequence is storage explanation, source selection, context collection, signal/privacy review, basic profile, page preview, Networking Pulse, acceptance mode, automation, and one real useful outcome: a canonical candidate batch, active follow/watch, or invite. Writes are ordered and idempotent; the state is resumable from web or Codex.
 
-Sparse setup accepts focused answers, a manual profile, one repository/project, a pasted description, or portfolio/GitHub/LinkedIn/project URLs. Rich setup can use user-approved connected context. Neither branch invents facts or requires optional details.
+Sparse setup accepts focused answers, a manual profile, one repository/project, a pasted description, or portfolio/GitHub/LinkedIn/project URLs. The recommended rich path is a permissioned Codex-workspace review of host-visible recent tasks, selected project folders, and selected local GBrain or memory files. Codex maintains `.buildmates/profile-context.md` locally for compaction continuity; raw research and full source material are never uploaded. Buildmates receives only the complete structured profile the user reviews. Saving intended public visibility does not publish it: `published_at` remains null until the owner approves a valid private Surface revision, while an approved private draft can satisfy the basic-profile checkpoint.
 
 ## Source and data boundary
 
@@ -31,7 +31,7 @@ Strict Zod objects are passed intact to the MCP SDK, so unknown keys are rejecte
 
 ## Public tools
 
-The 35-tool registry covers:
+The 39-tool registry covers:
 
 - linking: `get_link_url`, `complete_identity_link`;
 - setup and sources: `get_setup_state`, `complete_setup_step`, `get_source_preferences`, `save_source_preference`;
@@ -39,7 +39,7 @@ The 35-tool registry covers:
 - growth/discovery: `create_invite_link`, `revoke_invite_link`, `set_follow_or_watch`, `get_candidate_shortlist`;
 - reciprocal matching: `record_candidate_evaluation`, `record_manual_match_response`;
 - relationships: `get_connections`, `update_connection`, `save_connection_private_note`, `get_connection_private_notes`, `schedule_connection_reminder`, `get_connection_reminders`, `get_room_summaries`, `get_circle_summaries`, `submit_intro_feedback`;
-- generated surfaces: `get_surface_generation_brief`, `submit_surface_revision`, `decide_surface_revision`, `rollback_surface`;
+- generated surfaces: `get_surface_generation_brief`, `validate_surface_spec`, `submit_surface_revision`, `decide_surface_revision`, `rollback_surface`;
 - scheduling: `prepare_calendar_handoff`, `attach_calendar_event`;
 - automations: `get_automation_checkpoint`, `update_automation_checkpoint`.
 

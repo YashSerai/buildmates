@@ -221,11 +221,11 @@ export function ProfileReview({
       </label>
       <label className={styles.wide}>
         Numbers to share
-        <span>Add one per line, such as Connections made | 12.</span>
+        <span>Add one per line, such as Daily active users | 1,200.</span>
         <textarea
           name="statistics"
           rows={3}
-          placeholder="Connections made | 12"
+          placeholder={"Daily active users | 1,200\nProjects shipped | 4"}
           defaultValue={initial?.statistics
             .map((item) => `${item.label} | ${item.value}`)
             .join("\n")}
@@ -237,7 +237,7 @@ export function ProfileReview({
           name="indexable"
           defaultChecked={initial?.indexable}
         />
-        Allow search engines to index my public profile
+        Let Google and other search engines show my public profile
       </label>
       <label className={styles.check}>
         <input
@@ -245,10 +245,11 @@ export function ProfileReview({
           name="locationMapOptIn"
           defaultChecked={initial?.locationMapOptIn}
         />
-        Show my city in anonymous community totals
+        Include my city in the community map
       </label>
+      <p className={styles.hint}>Uses only the city you add to your profile - never your precise or live location - and appears only in aggregate.</p>
       <button disabled={busy}>
-        {busy ? "Saving…" : "Save and view profile"}
+        {busy ? "Saving..." : "Save and view profile"}
       </button>
     </form>
   );

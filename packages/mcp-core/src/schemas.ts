@@ -6,6 +6,7 @@ export const idSchema = z.string().trim().min(3).max(128).regex(/^[a-zA-Z0-9][a-
 export const idempotencyKeySchema = z.string().trim().min(8).max(128);
 export const isoDateSchema = z.string().datetime({ offset: true });
 export const summarySchema = z.string().trim().min(1).max(1200);
+export const profileContextSummarySchema = z.string().trim().min(1).max(12_000);
 export const audienceSchema = z.enum(["public", "signed_in", "suggested_connections", "mutual_connections", "private"]);
 export const workSignalAudienceSchema = z.enum(["suggested_connections", "mutual_connections", "private"]);
 export const sourcePolicySchema = z.enum(["never", "ask_each_time", "allow_approved_work_signals", "actions_only"]);
@@ -14,9 +15,9 @@ export const setupPayloadSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal("identity_link") }).strict(),
   z.object({ step: z.literal("storage_explanation"), acknowledged: z.literal(true) }).strict(),
   z.object({ step: z.literal("source_selection"), sourceIds: z.array(idSchema).max(50) }).strict(),
-  z.object({ step: z.literal("context_collection"), method: z.enum(["connected_context", "manual_profile", "repository", "project", "pasted_description", "portfolio_links"]), summary: summarySchema, links: z.array(z.string().url().max(500)).max(12).default([]) }).strict(),
+  z.object({ step: z.literal("context_collection"), method: z.enum(["codex_workspace", "connected_context", "manual_profile", "repository", "project", "pasted_description", "portfolio_links"]), summary: profileContextSummarySchema, links: z.array(z.string().url().max(500)).max(30).default([]) }).strict(),
   z.object({ step: z.literal("signal_privacy_review"), reviewedSignalIds: z.array(idSchema).max(100), acknowledged: z.literal(true) }).strict(),
-  z.object({ step: z.literal("basic_profile"), handle: z.string().trim().min(3).max(32).regex(/^[a-z0-9_]+$/), displayName: z.string().trim().min(1).max(80), builderSummary: summarySchema, projectOrInterest: z.string().trim().min(1).max(240) }).strict(),
+  z.object({ step: z.literal("basic_profile"), profileId: idSchema, handle: z.string().trim().min(3).max(32).regex(/^[a-z0-9_]+$/), approved: z.literal(true) }).strict(),
   z.object({ step: z.literal("page_preview"), surfaceRevisionId: idSchema, approved: z.literal(true) }).strict(),
   z.object({ step: z.literal("networking_pulse"), pulseId: idSchema }).strict(),
   z.object({ step: z.literal("acceptance_mode"), mode: z.enum(["manual", "full_autopilot"]) }).strict(),
@@ -64,15 +65,24 @@ export const profileModelSchema = z.object({
   profileId: idSchema,
   handle: z.string().trim().min(3).max(32).regex(/^[a-z0-9_]+$/),
   displayName: z.string().trim().min(1).max(80),
-  builderSummary: summarySchema,
-  projectOrInterest: z.string().trim().min(1).max(240),
-  portfolioLinks: z.array(z.string().url().max(500)).max(12).default([]),
+  builderSummary: z.string().trim().min(1).max(4_000),
+  projectOrInterest: z.string().trim().min(1).max(2_000),
+  portfolioLinks: z.array(z.string().url().max(500)).max(30).default([]),
   audience: audienceSchema,
   allowMatching: z.boolean(),
   acceptanceMode: z.enum(["manual", "full_autopilot"]),
   coarseLocation: z.string().trim().max(120).optional(),
   locationMapOptIn: z.boolean().default(false),
   timezone: z.string().trim().min(1).max(80).optional(),
+  indexable: z.boolean().default(false),
+  fields: z.array(z.object({
+    key: z.enum(["current_work", "interests", "ambitions", "exploring", "networking_intent", "style_preferences", "personality_notes"]),
+    value: z.string().trim().min(1).max(4_000),
+    audience: audienceSchema,
+    allowMatching: z.boolean(),
+    provenance: z.enum(["self_reported", "codex_summary", "connected_app"]),
+    sourceStatus: z.enum(["generated", "confirmed"]),
+  }).strict()).max(20).default([]),
   statistics: z.array(z.object({
     key: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
     label: z.string().trim().min(1).max(50),

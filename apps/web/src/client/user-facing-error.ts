@@ -50,7 +50,7 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   transfer_owner_first: "Transfer ownership before leaving this Circle.",
   transfer_failed: "Ownership was not transferred. Refresh the member list and try again.",
   member_unavailable: "That member is no longer available for this change.",
-  surface_spec_invalid: "Codex returned an invalid Circle design. Ask it to regenerate the SurfaceSpec.",
+  surface_spec_invalid: "This generated design could not be previewed. Codex can retry from the safe starter design.",
   surface_revision_missing: "The design preview could not be found. Create a new preview and try again.",
   module_payload_invalid: "Choose a supported shared tool and provide a title.",
   rules_payload_invalid: "Add a title and description for the proposed rules.",

@@ -432,7 +432,7 @@ export async function mutateOnboarding(
       ].includes(method)
     )
       throw new InputError("Invalid context method.");
-    const summary = text(body.summary, 20, 1200, "builder context");
+    const summary = text(body.summary, 20, 12000, "builder context");
     const projectOrInterest = text(
       body.projectOrInterest,
       2,
@@ -485,7 +485,7 @@ export async function mutateOnboarding(
       throw new InputError("Use 3 to 32 lowercase letters, numbers, or underscores for your handle.");
     }
     const name = text(body.displayName, 1, 80, "display name");
-    const summary = text(body.summary, 20, 1200, "builder summary");
+    const summary = text(body.summary, 20, 4000, "builder summary");
     const project = text(
       body.projectOrInterest,
       2,
@@ -658,7 +658,7 @@ export async function mutateOnboarding(
       checkedAt: capability === "available" && typeof existingState.checkedAt === "string" ? existingState.checkedAt : null,
       recheckRequestedAt: requestCapabilityRecheck ? new Date(now).toISOString() : null,
       modelRecommendation: "Luna High",
-      initialGenerativeRecommendation: "Luna Extra High",
+      initialGenerativeRecommendation: "GPT-5.6 Luna High",
     };
     await DB.prepare(
       "INSERT INTO automation_checkpoints (id,user_id,kind,cursor,state_json,updated_at) VALUES (?,?, 'buildmates',NULL,?,?) ON CONFLICT(user_id,kind) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at",
