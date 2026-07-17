@@ -90,6 +90,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - Remaining brand task: generate the final Buildmates logo with ImageGen and replace the temporary B/C connection nodes with approved Buildmates and Codex marks, including reduced-motion behavior.
 - Exact source commit `7b93a9b96e0396f7779c5e38da3aec04ed49d00d` is live as ChatGPT Sites version 17 and Worker version `534d8a18-5c4e-4a68-a573-262794948822`. Production returned 200 for `/`, `/install`, `/llms.txt`, OAuth metadata, and protected-resource metadata; unauthenticated MCP access returned 401 as required.
 - The production test account reached terminal deletion, external MCP OAuth/principal/handoff/replay/rate-limit state was cleared, and GitHub confirmed the Buildmates OAuth grant was revoked. The next authorization must therefore create a new Buildmates account and begin from the server-authoritative `0/11` state.
+- Beta activation now treats the fresh-task boundary as part of installation UX. After installation and OAuth, Codex asks permission to open the activated task itself through the host; only when native task creation is unavailable does it show the exact one-line manual fallback. Recursive `codex exec` is explicitly forbidden. Exact source commit `41766beb26e9fcfbf9d8f21c154cf428991b163a` is live as ChatGPT Sites version 18, and the beta cachebuster is `0.3.0-beta.1+codex.20260717222507`.
 
 ## Continuous launch validation
 
