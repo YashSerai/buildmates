@@ -50,10 +50,10 @@ The public `/install` page needs a focused copy and rendered UI review after the
 
 ## Online setup authority repair
 
-- The copied prompt is now only: `Set up Buildmates for me using the official guide: https://buildmates.yashns.chatgpt.site/install`.
+- The copied prompt now points Codex directly to the machine-readable contract: `Set up Buildmates for me using the official Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt`.
 - The live `/install` page and `/llms.txt` state that `get_setup_state` is the only setup-progress authority and that old conversations, tabs, routes, files, and prior task wording must not be used to infer resumable state.
 - The plugin onboarding skill and plugin README carry the same rule. If the setup-state tool is unavailable, Codex must complete the official app connection rather than substitute browser history.
-- The install page received the requested copy and UI/UX pass: one primary action, centered accessible prompt dialog, compact editorial hierarchy, phone-safe layout, manual app-link fallback, and a visible agent-instruction block.
+- The install page received the requested copy and UI/UX pass: one primary action, centered accessible prompt dialog, compact editorial hierarchy, and phone-safe layout. Agent-only commands and endpoints live in `/llms.txt`, not in the human-facing page.
 - Web lint and typecheck passed. The focused public suite passed 12/12 across desktop and phone, including copy-dialog behavior, exact prompt content, public agent-contract text, and overflow checks. Rendered desktop and phone screenshots were inspected.
 - Exact commit `3e8a03949685ed90e6a807d83d134fb847bcaefb` is live as ChatGPT Sites version 9. Production returned the new install page and the strengthened `/llms.txt`; the static asset briefly remained on the prior edge-cache response during propagation, then returned the new contract.
 
@@ -94,3 +94,10 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - A separate production OAuth run completed dynamic client registration, displayed the Buildmates-owned consent page, returned through the loopback callback, and reported a successful Codex MCP login.
 - The QA identity was then reset at every owned boundary: the Buildmates account reached the terminal deletion page, the Buildmates GitHub OAuth grant was revoked, remote MCP tokens/principals/handoffs/replay markers/rate-limit rows were deleted, and the local beta plugin, marketplace, MCP configuration, and OAuth credentials were removed.
 - The registered ChatGPT development plugin now presents **Install plugin**, confirming it is not installed for the test account. The next QA run must install or connect Buildmates again and must use `get_setup_state` as its only progress authority.
+
+## Native-first public handoff
+
+- The homepage and `/install` now share one centered setup dialog. A prior install-page selector restyled the dialog because it was a nested `<section>`; changing the dialog to a dedicated non-section container removed the collision. Desktop and phone screenshots confirm centered, viewport-contained rendering with no status/close overlap.
+- The copied prompt links directly to `/llms.txt`. That contract tells Codex to fetch it as public text, use native plugin and MCP commands, and avoid opening the install guide, repository, ChatGPT, or Codex in browser automation.
+- Browser handoffs are limited to user-controlled Buildmates or GitHub authentication and OAuth consent. Credentials, verification codes, and consent remain user actions.
+- Web typecheck, production build, and 6/6 focused desktop/phone tests passed. Exact commit `f69509485f83da61f479645c471451ac0351cd1b` is live as ChatGPT Sites version 16. Production checks confirmed the human-only install copy, direct `/llms.txt` contract, native-command rule, centered dialog, exact prompt, and visible backdrop.
