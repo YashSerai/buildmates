@@ -64,3 +64,4 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - GitHub remains an external OAuth handoff. Codex asks whether the user wants to complete it themselves or wants guided browser help; manual completion is the default, and guided help cannot silently handle credentials, verification codes, or provider consent.
 - The affected public contract passed lint, web typecheck, and 12/12 focused desktop/phone checks with rendered screenshot inspection.
 - Sites version 10 was saved against a stale pre-rebuild archive and was intentionally not deployed. A corrected production build containing the verified native-install copy was created before the next version save.
+- Exact commit `0ab09f5eeb26e146334a0222e87d56974866496c` is live as ChatGPT Sites version 11. Production verification found the native-install, no-Chrome-automation, manual-or-guided GitHub OAuth, and setup-state authority markers on both `/install` and `/llms.txt`.
