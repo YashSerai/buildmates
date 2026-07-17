@@ -23,7 +23,7 @@ export function SparseContextInput({ value, onChange }: { value: ContextDraft; o
       <label>Portfolio, GitHub, LinkedIn, or project links <span className={styles.optional}>Optional, one HTTPS link per line</span>
         <textarea value={value.links} onChange={(event) => onChange({ ...value, links: event.target.value })} rows={3} placeholder="https://github.com/you/project" />
       </label>
-      <p className={styles.inlineNote}>Sparse context is enough. Codex can improve the profile as you approve more context later.</p>
+      <p className={styles.inlineNote}>A few details are enough to start. You can keep shaping your profile with Codex.</p>
     </div>
   );
 }

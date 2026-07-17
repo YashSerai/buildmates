@@ -17,11 +17,8 @@ export function WorkSignalReview({
   if (!signals.length)
     return (
       <div className={styles.emptyState}>
-        <strong>No Work Signals yet</strong>
-        <p>
-          You can finish a basic profile now. A later automation run can add
-          approved summaries without exposing raw source content.
-        </p>
+        <strong>Nothing to review yet</strong>
+        <p>You can finish your profile now. Codex can suggest updates as it learns more about your work.</p>
       </div>
     );
   return (
@@ -61,7 +58,7 @@ function SignalEditor({
         </time>
       </div>
       <label>
-        Approved summary
+        What Codex understood
         <textarea
           value={draft.summary}
           rows={3}
@@ -73,7 +70,7 @@ function SignalEditor({
       </label>
       <div className={styles.twoColumns}>
         <label>
-          Matching audience
+          Who may use this context?
           <select
             value={draft.audience}
             onChange={(event) => {
@@ -87,7 +84,7 @@ function SignalEditor({
             <option value="mutual_connections">Mutual connections</option>
             <option value="private">Only me</option>
           </select>
-          <span>Work Signals are private matching context. They never appear on your public profile or in public discovery.</span>
+          <span>This helps Buildmates make recommendations. It never appears on your public profile.</span>
         </label>
         <label className={styles.checkLabel}>
           <input
@@ -106,7 +103,7 @@ function SignalEditor({
           onClick={() => onSave(draft)}
           disabled={busy}
         >
-          Save signal
+          Keep for matching
         </button>
         <button
           className={styles.textButton}

@@ -125,6 +125,15 @@ All findings below were implemented and regression-tested. The integrated source
 - Accessibility repairs include a skip link, visible focus treatment, semantic labels and live regions, full-opacity read notifications, non-color status cues, keyboard-operable menus, honest sparse states, and reduced-motion-safe content visibility.
 - Retained evidence is under `docs/evidence/ui-audit/2026-07-16/`. Source verification passes lint, all workspace typechecks, production build, rendered web 10/10, unit 80/80, integration 77/77 across the full run plus the isolated timeout rerun, contract 30/30, security 12/12, and `git diff --check`.
 
+### Corrective frontend audit 2026-07-16
+
+- Rejected internal-facing copy such as “A map without the pin drop,” aggregate-policy narration, matching-state mechanics, and account-link implementation language was removed from public and everyday product surfaces. Technical terminology remains only where it is necessary to control privacy or operate the system.
+- The landing page was restored to the approved left-story/right-sequence composition. Display sizes, section height, dashboard gaps, map/graph height, footer space, onboarding progress, and generated-surface headings were reduced to prevent oversized type and dead space.
+- Responsive corrections cover the 320px public header, the signed-in menu collapse, mobile onboarding progress, populated match actions, Circle heading actions, city rows, generated Surface headings, and long content overflow.
+- Render evidence was recaptured at 1440x900, 390x844, and 320x700. DOM checks confirm no horizontal overflow on landing, Map, Build Graph, Privacy, and Install at the tested widths. Focused phone suites pass: public discovery 5/5, matches/inbox/connections 3/3, onboarding 3/3, and profile/project forms 2/2.
+- The audit found and fixed duplicated metadata suffixes such as “Matches | Buildmates | Buildmates” across network, onboarding, settings, safety, and Circle pages.
+- Current source gates after the corrective pass: root lint, web typecheck, web production build, and `git diff --check` pass. Deployment and live-browser truth still require the next Site version; the current public Site remains the prior release until that deploy succeeds.
+
 ## Security and privacy findings repaired 2026-07-16
 
 - MCP authorization assertions are bound to the initiating one-time handoff, and the short-lived authorization cookie is bound to the exact OAuth request; sensitive redirects are non-cacheable and emit no referrer.

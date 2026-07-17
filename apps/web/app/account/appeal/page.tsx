@@ -6,7 +6,7 @@ import { SignOutButton } from "@/components/auth/SignOutButton";
 import { AppealClient } from "./AppealClient";
 import styles from "../../info.module.css";
 
-export const metadata: Metadata = { title: "Safety outcome | Buildmates", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Safety outcome", robots: { index: false, follow: false } };
 
 export default async function AppealPage() {
   const identity = await requireAppealIdentity("/account/appeal");

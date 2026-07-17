@@ -1,85 +1,408 @@
-.renderer { container-type: inline-size; color: var(--surface-ink); background: var(--surface-canvas); font-family: "Segoe UI", system-ui, sans-serif; min-height: 100%; max-width: var(--surface-content-width); margin-inline: auto; padding-inline: var(--surface-edge); overflow-wrap: anywhere; }
-.renderer:global(.surface-width-narrow) { --surface-content-width: 46rem; }
-.renderer:global(.surface-width-standard) { --surface-content-width: 68rem; }
-.renderer:global(.surface-width-wide) { --surface-content-width: 88rem; }
-.renderer:global(.surface-pad-compact) { --surface-edge: clamp(.75rem, 2vw, 1.25rem); }
-.renderer:global(.surface-pad-comfortable) { --surface-edge: clamp(1rem, 3vw, 2.5rem); }
-.renderer:global(.surface-pad-generous) { --surface-edge: clamp(1.25rem, 5vw, 4rem); }
-.renderer:global(.surface-density-compact) { --surface-section-space: clamp(1rem, 2.5vw, 2rem); --surface-control-y: .5rem; }
-.renderer:global(.surface-density-comfortable) { --surface-section-space: clamp(1.25rem, 4vw, 3rem); --surface-control-y: .65rem; }
-.renderer:global(.surface-density-spacious) { --surface-section-space: clamp(1.75rem, 5vw, 4.25rem); --surface-control-y: .8rem; }
-.renderer:global(.surface-body-humanist) { font-family: "Segoe UI", Candara, system-ui, sans-serif; }
-.renderer:global(.surface-body-neutral) { font-family: Arial, Helvetica, system-ui, sans-serif; }
-.renderer :global(*) { box-sizing: border-box; }
-.renderer :global(.surface-section) { padding-block: var(--surface-section-space); }
-.renderer :global(.surface-tone-canvas) { background: var(--surface-canvas); }
-.renderer :global(.surface-tone-surface) { background: var(--surface-panel); }
-.renderer :global(.surface-tone-accent) { background: var(--surface-accent); color: var(--surface-accent-ink); }
-.renderer :global(.surface-stack) { display: flex; flex-direction: column; }
-.renderer :global(.surface-align-center) { align-items: center; text-align: center; }
-.renderer :global(.surface-align-end) { align-items: flex-end; text-align: right; }
-.renderer :global(.surface-gap-none) { gap: 0; }
-.renderer :global(.surface-gap-xs) { gap: .35rem; }
-.renderer :global(.surface-gap-sm) { gap: .7rem; }
-.renderer :global(.surface-gap-md) { gap: 1.15rem; }
-.renderer :global(.surface-gap-lg) { gap: 1.8rem; }
-.renderer :global(.surface-gap-xl) { gap: 2.8rem; }
-.renderer :global(.surface-grid) { display: grid; min-width: 0; align-items: start; }
-.renderer :global(.surface-grid-2) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.renderer :global(.surface-grid-3) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.renderer :global(.surface-heading) { margin: 0; max-width: 18ch; line-height: 1.04; letter-spacing: -.025em; text-wrap: balance; }
-.renderer:global(.surface-display-editorial) :global(.surface-heading) { font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif; }
-.renderer:global(.surface-display-humanist) :global(.surface-heading) { font-family: Candara, "Segoe UI", system-ui, sans-serif; letter-spacing: -.035em; }
-.renderer:global(.surface-display-technical) :global(.surface-heading) { font-family: "Cascadia Mono", Consolas, monospace; letter-spacing: -.04em; }
-.renderer :global(.surface-heading-1) { font-size: clamp(2.1rem, 7vw, 5.25rem); }
-.renderer :global(.surface-heading-2) { font-size: clamp(1.55rem, 4vw, 2.65rem); }
-.renderer:global(.surface-scale-compact) :global(.surface-heading-1) { font-size: clamp(1.9rem, 6vw, 4.6rem); }
-.renderer:global(.surface-scale-compact) :global(.surface-text) { font-size: .94rem; }
-.renderer:global(.surface-scale-generous) :global(.surface-heading-1) { font-size: clamp(2.35rem, 7.5vw, 5.8rem); }
-.renderer:global(.surface-scale-generous) :global(.surface-text-body) { font-size: 1.08rem; }
-.renderer :global(.surface-heading-3) { font-size: clamp(1.2rem, 2vw, 1.5rem); }
-.renderer :global(.surface-heading-4) { font-size: 1.05rem; }
-.renderer :global(.surface-text), .renderer :global(.surface-project p), .renderer :global(.surface-callout p), .renderer :global(.surface-state p), .renderer :global(.surface-fallback p) { margin: 0; max-width: 68ch; line-height: 1.65; }
-.renderer :global(.surface-text-lead) { color: var(--surface-muted); font-size: clamp(1.05rem, 2vw, 1.3rem); }
-.renderer :global(.surface-text-caption) { color: var(--surface-muted); font-size: .86rem; }
-.renderer :global(.surface-text-data) { font-family: "Cascadia Mono", Consolas, monospace; font-size: .9rem; }
-.renderer :global(.surface-facts) { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1px; margin: 0; background: var(--surface-rule); }
-.renderer :global(.surface-fact) { min-width: 0; padding: 1rem; background: var(--surface-panel); }
-.renderer :global(.surface-fact dt) { color: var(--surface-muted); font-size: .82rem; }
-.renderer :global(.surface-fact dd) { margin: .35rem 0 0; font-weight: 650; line-height: 1.35; }
-.renderer :global(.surface-projects) { display: grid; gap: 1rem; }
-.renderer :global(.surface-project) { padding: 1.2rem; background: color-mix(in srgb, var(--surface-panel) 96%, var(--surface-ink)); }
-.renderer :global(.surface-project-title) { margin: 0 0 .45rem; color: var(--surface-ink); font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif; font-size: 1.35rem; font-weight: 700; line-height: 1.25; }
-.renderer :global(.surface-project a) { display: inline-block; margin-top: .8rem; min-height: 44px; padding-block: .65rem; color: inherit; font-weight: 650; }
-.renderer :global(.surface-callout) { padding: 1.25rem; background: var(--surface-panel); border-radius: .25rem; }
-.renderer :global(.surface-callout strong) { display: block; margin-bottom: .4rem; }
-.renderer :global(.surface-actions) { display: flex; flex-wrap: wrap; gap: .65rem; }
-.renderer :global(.surface-action) { display: grid; gap: .3rem; }
-.renderer :global(.surface-action span) { max-width: 28ch; color: var(--surface-muted); font-size: .82rem; }
-.renderer :global(.surface-actions button) { min-height: 44px; padding: var(--surface-control-y) 1rem; border: 1px solid transparent; border-radius: .2rem; background: var(--surface-panel); color: var(--surface-ink); font: inherit; font-weight: 650; cursor: pointer; }
-.renderer :global(.surface-actions button[data-action="connect"]), .renderer :global(.surface-actions button[data-action="navigate"]) { background: var(--surface-ink); color: var(--surface-canvas); }
-.renderer :global(.surface-actions button[data-action="report"]), .renderer :global(.surface-actions button[data-action="privacy"]) { background: transparent; color: var(--surface-muted); }
-.renderer :global(.surface-actions button:hover:not(:disabled)) { background: var(--surface-accent); color: var(--surface-accent-ink); }
-.renderer :global(.surface-actions button:disabled) { cursor: not-allowed; opacity: .55; }
-.renderer :global(a:focus-visible), .renderer :global(button:focus-visible), .renderer :global(iframe:focus-visible) { outline: 2px solid var(--surface-focus-inner); outline-offset: 2px; box-shadow: 0 0 0 5px var(--surface-focus-outer); }
-.renderer :global(.surface-decoration) { display: block; width: 100%; border: 0; background: transparent; }
-.renderer :global(.surface-decoration-short) { height: 10rem; }
-.renderer :global(.surface-decoration-medium) { height: 16rem; }
-.renderer :global(.surface-decoration-tall) { height: 24rem; }
-.renderer :global(.surface-media) { display: grid; place-items: center; margin: 0; min-height: 10rem; overflow: hidden; background: var(--surface-panel); }
-.renderer :global(.surface-media img) { display: block; width: 100%; height: 100%; object-fit: cover; }
-.renderer :global(.surface-media-portrait) { aspect-ratio: 3/4; }
-.renderer :global(.surface-media-landscape) { aspect-ratio: 16/9; }
-.renderer :global(.surface-media-square) { aspect-ratio: 1; }
-.renderer :global(.surface-empty), .renderer :global(.surface-state), .renderer :global(.surface-fallback) { margin: 0; padding: 1.25rem; color: var(--surface-muted); background: var(--surface-panel); border: 1px solid var(--surface-rule); }
-.renderer :global(.surface-state), .renderer :global(.surface-fallback) { min-height: 12rem; display: grid; align-content: center; gap: .5rem; }
-.renderer :global(.surface-state strong), .renderer :global(.surface-fallback strong) { color: var(--surface-ink); font: 600 1.3rem Charter, Cambria, Georgia, serif; }
-.renderer :global(.surface-loading-track) { width: min(24rem, 100%); height: .35rem; overflow: hidden; background: var(--surface-rule); }
-.renderer :global(.surface-loading-track span) { display: block; width: 38%; height: 100%; background: var(--surface-accent); animation: surface-loading 1.1s ease-in-out infinite alternate; }
-.renderer:global(.surface-corners-square) :global(.surface-callout), .renderer:global(.surface-corners-square) :global(button) { border-radius: 0; }
-.renderer:global(.surface-corners-rounded) :global(.surface-callout), .renderer:global(.surface-corners-rounded) :global(button) { border-radius: .8rem; }
-@keyframes surface-loading { from { transform: translateX(0); } to { transform: translateX(160%); } }
-@container (max-width: 479px) { .renderer:global([data-collapse-below="sm"]) :global(.surface-grid-2), .renderer:global([data-collapse-below="sm"]) :global(.surface-grid-3) { grid-template-columns: 1fr; } }
-@container (max-width: 719px) { .renderer:global([data-collapse-below="md"]) :global(.surface-grid-2), .renderer:global([data-collapse-below="md"]) :global(.surface-grid-3) { grid-template-columns: 1fr; } .renderer :global(.surface-facts) { grid-template-columns: 1fr; } .renderer :global(.surface-actions) { flex-direction: column; } .renderer :global(.surface-action), .renderer :global(.surface-actions button) { width: 100%; } }
-@container (max-width: 959px) { .renderer:global([data-collapse-below="lg"]) :global(.surface-grid-2), .renderer:global([data-collapse-below="lg"]) :global(.surface-grid-3) { grid-template-columns: 1fr; } }
-@media (prefers-reduced-motion: reduce) { .renderer :global(*), .renderer :global(*::before), .renderer :global(*::after) { scroll-behavior: auto !important; animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+.renderer {
+  container-type: inline-size;
+  color: var(--surface-ink);
+  background: var(--surface-canvas);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  min-height: 100%;
+  max-width: var(--surface-content-width);
+  margin-inline: auto;
+  padding-inline: var(--surface-edge);
+  overflow-wrap: anywhere;
+}
+.renderer:global(.surface-width-narrow) {
+  --surface-content-width: 46rem;
+}
+.renderer:global(.surface-width-standard) {
+  --surface-content-width: 68rem;
+}
+.renderer:global(.surface-width-wide) {
+  --surface-content-width: 88rem;
+}
+.renderer:global(.surface-pad-compact) {
+  --surface-edge: clamp(0.75rem, 2vw, 1.25rem);
+}
+.renderer:global(.surface-pad-comfortable) {
+  --surface-edge: clamp(1rem, 3vw, 2.5rem);
+}
+.renderer:global(.surface-pad-generous) {
+  --surface-edge: clamp(1.25rem, 5vw, 4rem);
+}
+.renderer:global(.surface-density-compact) {
+  --surface-section-space: clamp(1rem, 2.5vw, 2rem);
+  --surface-control-y: 0.5rem;
+}
+.renderer:global(.surface-density-comfortable) {
+  --surface-section-space: clamp(1.25rem, 4vw, 3rem);
+  --surface-control-y: 0.65rem;
+}
+.renderer:global(.surface-density-spacious) {
+  --surface-section-space: clamp(1.75rem, 5vw, 4.25rem);
+  --surface-control-y: 0.8rem;
+}
+.renderer:global(.surface-body-humanist) {
+  font-family: "Segoe UI", Candara, system-ui, sans-serif;
+}
+.renderer:global(.surface-body-neutral) {
+  font-family: Arial, Helvetica, system-ui, sans-serif;
+}
+.renderer :global(*) {
+  box-sizing: border-box;
+}
+.renderer :global(.surface-section) {
+  padding-block: var(--surface-section-space);
+}
+.renderer :global(.surface-tone-canvas) {
+  background: var(--surface-canvas);
+}
+.renderer :global(.surface-tone-surface) {
+  background: var(--surface-panel);
+}
+.renderer :global(.surface-tone-accent) {
+  background: var(--surface-accent);
+  color: var(--surface-accent-ink);
+}
+.renderer :global(.surface-stack) {
+  display: flex;
+  flex-direction: column;
+}
+.renderer :global(.surface-align-center) {
+  align-items: center;
+  text-align: center;
+}
+.renderer :global(.surface-align-end) {
+  align-items: flex-end;
+  text-align: right;
+}
+.renderer :global(.surface-gap-none) {
+  gap: 0;
+}
+.renderer :global(.surface-gap-xs) {
+  gap: 0.35rem;
+}
+.renderer :global(.surface-gap-sm) {
+  gap: 0.7rem;
+}
+.renderer :global(.surface-gap-md) {
+  gap: 1.15rem;
+}
+.renderer :global(.surface-gap-lg) {
+  gap: 1.8rem;
+}
+.renderer :global(.surface-gap-xl) {
+  gap: 2.8rem;
+}
+.renderer :global(.surface-grid) {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+}
+.renderer :global(.surface-grid-2) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.renderer :global(.surface-grid-3) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.renderer :global(.surface-heading) {
+  margin: 0;
+  max-width: 18ch;
+  line-height: 1.04;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+.renderer:global(.surface-display-editorial) :global(.surface-heading) {
+  font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+}
+.renderer:global(.surface-display-humanist) :global(.surface-heading) {
+  font-family: Candara, "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.035em;
+}
+.renderer:global(.surface-display-technical) :global(.surface-heading) {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  letter-spacing: -0.04em;
+}
+.renderer :global(.surface-heading-1) {
+  font-size: clamp(2.1rem, 6vw, 4.8rem);
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.renderer :global(.surface-heading-2) {
+  font-size: clamp(1.55rem, 4vw, 2.65rem);
+}
+.renderer:global(.surface-scale-compact) :global(.surface-heading-1) {
+  font-size: clamp(1.9rem, 6vw, 4.6rem);
+}
+.renderer:global(.surface-scale-compact) :global(.surface-text) {
+  font-size: 0.94rem;
+}
+.renderer:global(.surface-scale-generous) :global(.surface-heading-1) {
+  font-size: clamp(2.25rem, 6.5vw, 5.1rem);
+}
+.renderer:global(.surface-scale-generous) :global(.surface-text-body) {
+  font-size: 1.08rem;
+}
+.renderer :global(.surface-heading-3) {
+  font-size: clamp(1.2rem, 2vw, 1.5rem);
+}
+.renderer :global(.surface-heading-4) {
+  font-size: 1.05rem;
+}
+.renderer :global(.surface-text),
+.renderer :global(.surface-project p),
+.renderer :global(.surface-callout p),
+.renderer :global(.surface-state p),
+.renderer :global(.surface-fallback p) {
+  margin: 0;
+  max-width: 68ch;
+  line-height: 1.65;
+}
+.renderer :global(.surface-text-lead) {
+  color: var(--surface-muted);
+  font-size: clamp(1.05rem, 2vw, 1.3rem);
+}
+.renderer :global(.surface-text-caption) {
+  color: var(--surface-muted);
+  font-size: 0.86rem;
+}
+.renderer :global(.surface-text-data) {
+  font-family: "Cascadia Mono", Consolas, monospace;
+  font-size: 0.9rem;
+}
+.renderer :global(.surface-facts) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 1px;
+  margin: 0;
+  background: var(--surface-rule);
+}
+.renderer :global(.surface-fact) {
+  min-width: 0;
+  padding: 1rem;
+  background: var(--surface-panel);
+}
+.renderer :global(.surface-fact dt) {
+  color: var(--surface-muted);
+  font-size: 0.82rem;
+}
+.renderer :global(.surface-fact dd) {
+  margin: 0.35rem 0 0;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.renderer :global(.surface-projects) {
+  display: grid;
+  gap: 1rem;
+}
+.renderer :global(.surface-project) {
+  padding: 1.2rem;
+  background: color-mix(in srgb, var(--surface-panel) 96%, var(--surface-ink));
+}
+.renderer :global(.surface-project-title) {
+  margin: 0 0 0.45rem;
+  color: var(--surface-ink);
+  font-family: Charter, "Bitstream Charter", Cambria, Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+.renderer :global(.surface-project a) {
+  display: inline-block;
+  margin-top: 0.8rem;
+  min-height: 44px;
+  padding-block: 0.65rem;
+  color: inherit;
+  font-weight: 650;
+}
+.renderer :global(.surface-callout) {
+  padding: 1.25rem;
+  background: var(--surface-panel);
+  border-radius: 0.25rem;
+}
+.renderer :global(.surface-callout strong) {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+.renderer :global(.surface-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+.renderer :global(.surface-action) {
+  display: grid;
+  gap: 0.3rem;
+}
+.renderer :global(.surface-action span) {
+  max-width: 28ch;
+  color: var(--surface-muted);
+  font-size: 0.82rem;
+}
+.renderer :global(.surface-actions button) {
+  min-height: 44px;
+  padding: var(--surface-control-y) 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.2rem;
+  background: var(--surface-panel);
+  color: var(--surface-ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+.renderer :global(.surface-actions button[data-action="connect"]),
+.renderer :global(.surface-actions button[data-action="navigate"]) {
+  background: var(--surface-ink);
+  color: var(--surface-canvas);
+}
+.renderer :global(.surface-actions button[data-action="report"]),
+.renderer :global(.surface-actions button[data-action="privacy"]) {
+  background: transparent;
+  color: var(--surface-muted);
+}
+.renderer :global(.surface-actions button:hover:not(:disabled)) {
+  background: var(--surface-accent);
+  color: var(--surface-accent-ink);
+}
+.renderer :global(.surface-actions button:disabled) {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.renderer :global(a:focus-visible),
+.renderer :global(button:focus-visible),
+.renderer :global(iframe:focus-visible) {
+  outline: 2px solid var(--surface-focus-inner);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 5px var(--surface-focus-outer);
+}
+.renderer :global(.surface-decoration) {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+}
+.renderer :global(.surface-decoration-short) {
+  height: 10rem;
+}
+.renderer :global(.surface-decoration-medium) {
+  height: 16rem;
+}
+.renderer :global(.surface-decoration-tall) {
+  height: 24rem;
+}
+.renderer :global(.surface-media) {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  min-height: 10rem;
+  overflow: hidden;
+  background: var(--surface-panel);
+}
+.renderer :global(.surface-media img) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.renderer :global(.surface-media-portrait) {
+  aspect-ratio: 3/4;
+}
+.renderer :global(.surface-media-landscape) {
+  aspect-ratio: 16/9;
+}
+.renderer :global(.surface-media-square) {
+  aspect-ratio: 1;
+}
+.renderer :global(.surface-empty),
+.renderer :global(.surface-state),
+.renderer :global(.surface-fallback) {
+  margin: 0;
+  padding: 1.25rem;
+  color: var(--surface-muted);
+  background: var(--surface-panel);
+  border: 1px solid var(--surface-rule);
+}
+.renderer :global(.surface-state),
+.renderer :global(.surface-fallback) {
+  min-height: 12rem;
+  display: grid;
+  align-content: center;
+  gap: 0.5rem;
+}
+.renderer :global(.surface-state strong),
+.renderer :global(.surface-fallback strong) {
+  color: var(--surface-ink);
+  font:
+    600 1.3rem Charter,
+    Cambria,
+    Georgia,
+    serif;
+}
+.renderer :global(.surface-loading-track) {
+  width: min(24rem, 100%);
+  height: 0.35rem;
+  overflow: hidden;
+  background: var(--surface-rule);
+}
+.renderer :global(.surface-loading-track span) {
+  display: block;
+  width: 38%;
+  height: 100%;
+  background: var(--surface-accent);
+  animation: surface-loading 1.1s ease-in-out infinite alternate;
+}
+.renderer:global(.surface-corners-square) :global(.surface-callout),
+.renderer:global(.surface-corners-square) :global(button) {
+  border-radius: 0;
+}
+.renderer:global(.surface-corners-rounded) :global(.surface-callout),
+.renderer:global(.surface-corners-rounded) :global(button) {
+  border-radius: 0.8rem;
+}
+@keyframes surface-loading {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(160%);
+  }
+}
+@container (max-width: 479px) {
+  .renderer :global(.surface-heading-1),
+  .renderer:global(.surface-scale-generous) :global(.surface-heading-1) {
+    font-size: clamp(2rem, 12vw, 3.15rem);
+  }
+  .renderer:global([data-collapse-below="sm"]) :global(.surface-grid-2),
+  .renderer:global([data-collapse-below="sm"]) :global(.surface-grid-3) {
+    grid-template-columns: 1fr;
+  }
+}
+@container (max-width: 719px) {
+  .renderer:global([data-collapse-below="md"]) :global(.surface-grid-2),
+  .renderer:global([data-collapse-below="md"]) :global(.surface-grid-3) {
+    grid-template-columns: 1fr;
+  }
+  .renderer :global(.surface-facts) {
+    grid-template-columns: 1fr;
+  }
+  .renderer :global(.surface-actions) {
+    flex-direction: column;
+  }
+  .renderer :global(.surface-action),
+  .renderer :global(.surface-actions button) {
+    width: 100%;
+  }
+}
+@container (max-width: 959px) {
+  .renderer:global([data-collapse-below="lg"]) :global(.surface-grid-2),
+  .renderer:global([data-collapse-below="lg"]) :global(.surface-grid-3) {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .renderer :global(*),
+  .renderer :global(*::before),
+  .renderer :global(*::after) {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

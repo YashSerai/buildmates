@@ -84,14 +84,14 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
       {!mapHidden ? (
         <div className={styles.mapFrame} aria-busy={status === "loading"}>
           <div ref={mapRoot} className={styles.map} />
-          {status === "loading" ? <p className={styles.mapState}>Loading the aggregate city map…</p> : null}
-          {status === "error" ? <p className={styles.mapState} role="status">The map tiles could not load. The complete aggregate city summary remains available below.</p> : null}
-          <p className={styles.srOnly} aria-live="polite">{status === "ready" ? "Aggregate city map loaded." : ""}</p>
+          {status === "loading" ? <p className={styles.mapState}>Loading city activity…</p> : null}
+          {status === "error" ? <p className={styles.mapState} role="status">The map could not load. City totals are still available below.</p> : null}
+          <p className={styles.srOnly} aria-live="polite">{status === "ready" ? "City activity map loaded." : ""}</p>
         </div>
       ) : null}
       {places.length ? (
         <div className={styles.transcript}>
-          <header className={styles.transcriptHead}><h2>City activity</h2><p>Only totals are shown. A city appears after at least five builders choose to join its aggregate.</p></header>
+          <header className={styles.transcriptHead}><h2>Builders by city</h2><p>See the communities taking shape across Buildmates.</p></header>
           <ol className={styles.cityList}>{places.map((place) => <li className={styles.city} key={place.cityId}><h3>{place.label}</h3><AggregateStat value={place.builderCount} label="builders" /><AggregateStat value={place.projectCount} label="projects" /><AggregateStat value={place.connectionCount} label="connections" /></li>)}</ol>
         </div>
       ) : null}

@@ -19,7 +19,7 @@ export default async function OnboardingPage() {
     <section className={styles.intro}>
       <p className={styles.eyebrow}>{snapshot.setup.complete ? "Setup complete" : "Guided first run"}</p>
       <h1>{snapshot.setup.complete ? "Your Buildmates profile is ready" : "Build your profile with Codex"}</h1>
-      <p>{snapshot.setup.complete ? "Return to Codex whenever your work changes, or continue to your profile and conversations on Buildmates." : "Codex guides you through approved work context, a reviewed builder profile, networking preferences, and one useful first action. Your progress is saved after every step."}</p>
+      <p>{snapshot.setup.complete ? "Return to Codex whenever your work changes, or continue to your profile and conversations on Buildmates." : "Tell Codex what you are building and who you would like to meet. It will shape your profile, your page, and your preferences with you."}</p>
     </section>
     <section className={styles.handoffWorkspace} aria-labelledby="codex-handoff-title">
       <SetupProgress completedSteps={snapshot.setup.completedSteps} nextStep={snapshot.setup.nextStep} />
@@ -31,8 +31,8 @@ export default async function OnboardingPage() {
         <div className={styles.handoffContent}>
           <p className={styles.eyebrow}>Continue in Codex</p>
           <h2 id="codex-handoff-title">Take the next guided step</h2>
-          <p className={styles.description}>Buildmates only stores the structured summaries and settings you approve. It never receives your connected-app credentials, raw chats, full prompts, repository contents, email bodies, or calendar contents.</p>
-          {!snapshot.codexConnected && <div className={styles.inlineNote}><strong>Account link required</strong><p>Codex will direct you through a one-time link to this signed-in Buildmates account. GitHub sign-in proves your website identity only; it does not grant repository access.</p></div>}
+          <p className={styles.description}>Continue in Codex to finish the next step. You review everything before it is saved.</p>
+          {!snapshot.codexConnected && <div className={styles.inlineNote}><strong>Connect Codex once</strong><p>This lets Codex update your Buildmates profile and find relevant people for you.</p></div>}
           <CodexSetupActions complete={snapshot.setup.complete} />
           <div className={styles.websiteRole}>
             <strong>The website is your shared space</strong>
@@ -49,4 +49,4 @@ export default async function OnboardingPage() {
   </main></>;
 }
 
-function setupLabel(step:string){return ({identity_link:"account link",storage_explanation:"privacy boundary",source_selection:"connected sources",context_collection:"builder context",signal_privacy_review:"Work Signal review",basic_profile:"profile",page_preview:"page preview",networking_pulse:"Networking Pulse",acceptance_mode:"introduction approval",automation:"automation",first_useful_outcome:"first useful action"} as Record<string,string>)[step]??"next setup step"}
+function setupLabel(step:string){return ({identity_link:"account",storage_explanation:"what to share",source_selection:"connected apps",context_collection:"about you",signal_privacy_review:"review context",basic_profile:"profile",page_preview:"page",networking_pulse:"who to meet",acceptance_mode:"introductions",automation:"updates",first_useful_outcome:"finish"} as Record<string,string>)[step]??"next step"}

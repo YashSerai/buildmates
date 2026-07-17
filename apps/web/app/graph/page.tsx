@@ -5,6 +5,7 @@ import { getCurrentUser } from "../../src/auth/require-user";
 import { getBuildGraph } from "../../src/discovery/service";
 import { getPlatformBindings } from "../../src/platform/bindings";
 import styles from "../discovery.module.css";
+import headStyles from "../aggregate-head.module.css";
 
 export const metadata: Metadata = {
   title: "Build graph",
@@ -35,9 +36,9 @@ export default async function GraphPage() {
     <main className={styles.page}>
       <ProductHeader signedIn={Boolean(viewer)} />
       <div className={styles.main}>
-        <header className={styles.head}>
-          <h1>Follow the work,<br />not the follower count.</h1>
-          <p>Each bubble is a topic found across visible public projects. Its size reflects project count, not popularity or a relationship between builders.</p>
+        <header className={`${styles.head} ${headStyles.aggregateHead}`}>
+          <h1>See what builders<br />are working on.</h1>
+          <p>Explore the ideas, tools, and problems builders across Buildmates are working through right now.</p>
         </header>
 
         <section className={styles.graph} aria-labelledby="topic-field-title">
@@ -52,13 +53,13 @@ export default async function GraphPage() {
                   </li>
                 ))}
               </ul>
-          ) : <div className={styles.graphEmpty}><h2>The graph is ready for its first shared topic.</h2><p>A bubble appears after public projects from at least two builders use it.</p><Link className={styles.action} href={viewer ? "/projects/new" : "/onboarding"}>{viewer ? "Publish a project" : "Create a profile"}</Link></div>}
+          ) : <div className={styles.graphEmpty}><h2>The first topics will appear here soon.</h2><p>Share a project to help the graph come alive.</p><Link className={styles.action} href={viewer ? "/projects/new" : "/onboarding"}>{viewer ? "Share a project" : "Create a profile"}</Link></div>}
         </section>
         {graph.topics.length ? (
             <section className={styles.topicTotals} aria-labelledby="topic-totals-title">
               <div className={styles.sectionHead}>
-                <h2 id="topic-totals-title">Topic totals</h2>
-                <p>Aggregate public activity only</p>
+                <h2 id="topic-totals-title">What builders are exploring</h2>
+                <p>A closer look at the ideas moving through Buildmates</p>
               </div>
               <div className={styles.topicTableWrap}>
                 <table className={styles.topicTable}>

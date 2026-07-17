@@ -60,7 +60,11 @@ export function OnboardingClient({
   const [cadence, setCadence] = useState<Cadence>(
     initialSnapshot.automation?.cadence ?? "automatic",
   );
-  const hydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const hydrated = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
 
   async function onboarding(body: Record<string, unknown>) {
     setBusy(true);
@@ -74,12 +78,19 @@ export function OnboardingClient({
       const payload = (await response.json()) as
         OnboardingSnapshot | { error: string };
       if (!response.ok)
-        throw new RequestError(userFacingError("error" in payload ? payload.error : undefined, "Could not save this step."));
+        throw new RequestError(
+          userFacingError(
+            "error" in payload ? payload.error : undefined,
+            "Could not save this step.",
+          ),
+        );
       setSnapshot(payload as OnboardingSnapshot);
       setMessage("Saved. Your setup progress is up to date.");
     } catch (error) {
       setMessage(
-        error instanceof RequestError ? error.message : "Could not save this step. Check your connection and try again.",
+        error instanceof RequestError
+          ? error.message
+          : "Could not save this step. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -103,7 +114,9 @@ export function OnboardingClient({
         error?: string;
       };
       if (!response.ok)
-        throw new RequestError(userFacingError(payload.error, "Could not save source policies."));
+        throw new RequestError(
+          userFacingError(payload.error, "Could not save source policies."),
+        );
       const refreshed = await fetch("/api/onboarding", { cache: "no-store" });
       setSnapshot((await refreshed.json()) as OnboardingSnapshot);
       setMessage(
@@ -138,7 +151,9 @@ export function OnboardingClient({
         error?: string;
       };
       if (!response.ok)
-        throw new RequestError(userFacingError(payload.error, "Could not update the signal."));
+        throw new RequestError(
+          userFacingError(payload.error, "Could not update the signal."),
+        );
       setSnapshot((current) => ({
         ...current,
         signals: payload.signals ?? current.signals,
@@ -150,7 +165,9 @@ export function OnboardingClient({
       );
     } catch (error) {
       setMessage(
-        error instanceof RequestError ? error.message : "Could not update the signal. Check your connection and try again.",
+        error instanceof RequestError
+          ? error.message
+          : "Could not update the signal. Check your connection and try again.",
       );
     } finally {
       setBusy(false);
@@ -159,14 +176,24 @@ export function OnboardingClient({
 
   const step = snapshot.setup.nextStep;
   return (
-    <div className={styles.workspace} data-hydrated={hydrated} aria-busy={!hydrated || busy}>
+    <div
+      className={styles.workspace}
+      data-hydrated={hydrated}
+      aria-busy={!hydrated || busy}
+    >
       <SetupProgress
         completedSteps={snapshot.setup.completedSteps}
         nextStep={step}
       />
       <section className={styles.stepPanel} aria-labelledby="step-title">
         <div className={styles.resumeLine}>
-          <span>{snapshot.setup.complete ? "Codex setup complete" : step === "identity_link" ? "Website preparation saved" : "Current step"}</span>
+          <span>
+            {snapshot.setup.complete
+              ? "Codex setup complete"
+              : step === "identity_link"
+                ? "Website preparation saved"
+                : "Current step"}
+          </span>
           <span>
             {snapshot.codexConnected
               ? "Codex connected"
@@ -174,36 +201,37 @@ export function OnboardingClient({
           </span>
         </div>
         {step === "identity_link" && (
-          <Step title="Connect Buildmates in Codex" description="Your website account is ready. The guided first run begins after Codex confirms the secure account link.">
+          <Step
+            title="Connect Buildmates in Codex"
+            description="Your website account is ready. The guided first run begins after Codex confirms the secure account link."
+          >
             <div className={styles.completion}>
               <strong>Connection required</strong>
-              <p>Generate a single-use linking code, then complete the Buildmates connection from Codex. This website cannot mark the connection complete on its own.</p>
+              <p>
+                Generate a single-use linking code, then complete the Buildmates
+                connection from Codex. This website cannot mark the connection
+                complete on its own.
+              </p>
               <a href="/settings/connections">Open Codex connection settings</a>
             </div>
           </Step>
         )}
         {step === "storage_explanation" && (
-          <Step title="Know the boundary before sharing">
+          <Step title="You choose what Buildmates learns">
             <div className={styles.boundaryGrid}>
               <div>
                 <strong>Codex may read</strong>
-                <p>
-                  Only sources allowed by their existing host permissions and
-                  your Buildmates source-use policy.
-                </p>
+                <p>Only the connected apps and information you allow.</p>
               </div>
               <div>
                 <strong>Buildmates stores</strong>
-                <p>
-                  Concise, approved Work Signals and the profile fields you
-                  choose.
-                </p>
+                <p>The short summaries and profile details you approve.</p>
               </div>
               <div>
                 <strong>Buildmates never receives</strong>
                 <p>
-                  Connector credentials, raw chats, full prompts, complete
-                  documents, email bodies, or private repository contents.
+                  Passwords, raw chats, full prompts, complete documents, email
+                  bodies, or private repository contents.
                 </p>
               </div>
             </div>
@@ -270,8 +298,7 @@ export function OnboardingClient({
               </button>
             </div>
             <p className={styles.inlineNote}>
-              These controls govern Buildmates workflows only. They do not
-              change the connector&apos;s own access or confirmation rules.
+              Your connected apps keep their existing permissions.
             </p>
           </Step>
         )}
@@ -338,8 +365,8 @@ export function OnboardingClient({
         )}
         {step === "page_preview" && (
           <Step
-            title="Review a private page preview"
-            description="This neutral preview uses only the fields saved in Buildmates. Generative layout revisions remain private until you publish them."
+            title="Preview your profile"
+            description="Only you can see this version. Keep shaping it until it feels like you, then publish when you are ready."
           >
             <article className={styles.profilePreview}>
               <span>@{snapshot.profile?.handle ?? "builder"}</span>
@@ -354,14 +381,14 @@ export function OnboardingClient({
               }
               disabled={busy}
             >
-              Approve private preview
+              Continue with this profile
             </button>
           </Step>
         )}
         {step === "networking_pulse" && (
-        <NetworkingStep
-          initial={snapshot.networking}
-          generatedAt={snapshot.generatedAt}
+          <NetworkingStep
+            initial={snapshot.networking}
+            generatedAt={snapshot.generatedAt}
             busy={busy}
             onSubmit={onboarding}
           />
@@ -369,7 +396,7 @@ export function OnboardingClient({
         {step === "acceptance_mode" && (
           <Step
             title="Choose your acceptance mode"
-            description="Every match still requires two independent Codex evaluations. Full Autopilot removes only your human tap when the unattended-write check passes."
+            description="Review introductions yourself, or let Full Autopilot accept strong matches using the preferences you set."
           >
             <AcceptanceMode value={mode} onChange={setMode} />
             <button
@@ -409,10 +436,7 @@ export function OnboardingClient({
           </Step>
         )}
         {step === "first_useful_outcome" && (
-          <FirstOutcome
-            busy={busy}
-            onSubmit={onboarding}
-          />
+          <FirstOutcome busy={busy} onSubmit={onboarding} />
         )}
         {!step && (
           <Step
@@ -581,7 +605,7 @@ function NetworkingStep({
     quietStart: initial?.controls.quietStart ?? "22:00",
     quietEnd: initial?.controls.quietEnd ?? "08:00",
     exclusions: initial?.controls.exclusions.join("\n") ?? "",
-    snoozedUntil: initial?.controls.snoozedUntil?.slice(0,16) ?? "",
+    snoozedUntil: initial?.controls.snoozedUntil?.slice(0, 16) ?? "",
     avoidRepeatedClusters: initial?.controls.avoidRepeatedClusters ?? true,
     expiresAt:
       initial?.expiresAt ??
@@ -610,7 +634,8 @@ function NetworkingStep({
               onChange={(event) =>
                 setForm({
                   ...form,
-                  builderSimilarity: event.target.value as "similar" | "adjacent" | "balanced",
+                  builderSimilarity: event.target.value as
+                    "similar" | "adjacent" | "balanced",
                 })
               }
             >
@@ -626,7 +651,8 @@ function NetworkingStep({
               onChange={(event) =>
                 setForm({
                   ...form,
-                  geography: event.target.value as "local" | "global" | "balanced",
+                  geography: event.target.value as
+                    "local" | "global" | "balanced",
                 })
               }
             >
@@ -692,15 +718,24 @@ function NetworkingStep({
           <input
             type="date"
             value={form.expiresAt.slice(0, 10)}
-            min={new Date(Date.parse(generatedAt) + 864e5).toISOString().slice(0, 10)}
+            min={new Date(Date.parse(generatedAt) + 864e5)
+              .toISOString()
+              .slice(0, 10)}
             onChange={(event) =>
               setForm({ ...form, expiresAt: event.target.value })
             }
           />
         </label>
         <label>
-          Snooze matching until <span className={styles.optional}>Optional</span>
-          <input type="datetime-local" value={form.snoozedUntil} onChange={(event)=>setForm({...form,snoozedUntil:event.target.value})} />
+          Snooze matching until{" "}
+          <span className={styles.optional}>Optional</span>
+          <input
+            type="datetime-local"
+            value={form.snoozedUntil}
+            onChange={(event) =>
+              setForm({ ...form, snoozedUntil: event.target.value })
+            }
+          />
         </label>
         <label className={styles.checkLabel}>
           <input
@@ -737,7 +772,9 @@ function NetworkingStep({
             expiresAt: new Date(
               `${form.expiresAt.slice(0, 10)}T23:59:59.000Z`,
             ).toISOString(),
-            snoozedUntil: form.snoozedUntil ? new Date(form.snoozedUntil).toISOString() : null,
+            snoozedUntil: form.snoozedUntil
+              ? new Date(form.snoozedUntil).toISOString()
+              : null,
           })
         }
         disabled={busy}

@@ -1,0 +1,28 @@
+.aggregateHead.aggregateHead {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.55fr);
+  gap: clamp(1.5rem, 5vw, 5rem);
+  align-items: end;
+}
+.aggregateHead.aggregateHead h1 {
+  min-width: 0;
+  font: 520 clamp(2.65rem, 4.5vw, 4.65rem)/0.97 var(--font-display);
+  letter-spacing: -0.045em;
+  overflow-wrap: break-word;
+}
+.aggregateHead.aggregateHead p {
+  max-width: 520px;
+}
+@media (max-width: 900px) {
+  .aggregateHead.aggregateHead {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+  }
+  .aggregateHead.aggregateHead p {
+    margin: 0;
+  }
+}
+@media (max-width: 580px) {
+  .aggregateHead.aggregateHead h1 {
+    font-size: clamp(2.45rem, 11vw, 3.35rem);
+  }
+}

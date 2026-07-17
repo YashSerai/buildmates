@@ -1,12 +1,77 @@
-.page { min-height: 100vh; background: var(--paper); color: var(--ink); }
-.state { max-width: 820px; padding: clamp(4rem, 12vw, 10rem) clamp(1rem, 7vw, 6rem); }
-.eyebrow { margin: 0; color: var(--moss); font: 700 .74rem var(--font-code); letter-spacing: .1em; text-transform: uppercase; }
-.state h1 { max-width: 760px; margin: .6rem 0 1rem; font: 800 clamp(2.8rem, 8vw, 6.5rem)/.9 var(--font-display); letter-spacing: -.065em; text-transform: lowercase; }
-.state > p:not(.eyebrow) { max-width: 620px; color: var(--ink-soft); font-size: 1.05rem; line-height: 1.6; }
-.actions { display: flex; flex-wrap: wrap; gap: 14px 22px; align-items: center; margin-top: 1.5rem; }
-.actions button { border: 1px solid var(--moss); background: var(--leaf); color: var(--ink); padding: .75rem 1rem; font-weight: 750; cursor: pointer; box-shadow: 4px 4px 0 #d3cfc4; }
-.actions a { min-height: 44px; display: inline-flex; align-items: center; font-weight: 700; text-underline-offset: 4px; }
-.track { width: min(420px, 80vw); height: 8px; margin-top: 1.4rem; background: #d8d5ca; overflow: hidden; }
-.track span { display: block; width: 34%; height: 100%; background: var(--signal); animation: travel 1.2s ease-in-out infinite alternate; }
-@keyframes travel { to { transform: translateX(194%); } }
-@media (prefers-reduced-motion: reduce) { .track span { width: 72%; animation: none; } }
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+}
+.state {
+  max-width: 820px;
+  padding: clamp(3rem, 7vw, 6rem) clamp(1rem, 7vw, 6rem);
+}
+.eyebrow {
+  margin: 0;
+  color: var(--moss);
+  font: 700 0.74rem var(--font-code);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.state h1 {
+  max-width: 760px;
+  margin: 0.6rem 0 1rem;
+  font: 520 clamp(2.6rem, 5vw, 4.7rem)/0.97 var(--font-display);
+  letter-spacing: -0.045em;
+  text-transform: lowercase;
+}
+.state > p:not(.eyebrow) {
+  max-width: 620px;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+.actions button {
+  border: 1px solid var(--moss);
+  background: var(--leaf);
+  color: var(--ink);
+  padding: 0.75rem 1rem;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 4px 4px 0 #d3cfc4;
+}
+.actions a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+.track {
+  width: min(420px, 80vw);
+  height: 8px;
+  margin-top: 1.4rem;
+  background: #d8d5ca;
+  overflow: hidden;
+}
+.track span {
+  display: block;
+  width: 34%;
+  height: 100%;
+  background: var(--signal);
+  animation: travel 1.2s ease-in-out infinite alternate;
+}
+@keyframes travel {
+  to {
+    transform: translateX(194%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .track span {
+    width: 72%;
+    animation: none;
+  }
+}

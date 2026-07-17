@@ -1,0 +1,39 @@
+.candidateActions {
+  display: grid;
+  gap: 8px;
+  min-width: 10rem;
+}
+
+.candidateActions a,
+.candidateActions button {
+  display: grid;
+  place-items: center;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.candidateActions a {
+  background: var(--ink);
+  color: var(--paper);
+}
+.candidateActions a:focus-visible,
+.candidateActions button:focus-visible {
+  outline: 3px solid #d9753b;
+  outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+  .candidateActions {
+    width: 100%;
+    min-width: 0;
+  }
+}

@@ -7,7 +7,7 @@ import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "../onboarding.module.css";
 
 export const metadata: Metadata = {
-  title: "Manual setup | Buildmates",
+  title: "Manual setup",
   description: "Complete Buildmates setup on the website when Codex is unavailable.",
   robots: { index: false, follow: false },
 };

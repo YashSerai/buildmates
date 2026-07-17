@@ -629,16 +629,81 @@ button:disabled {
 }
 
 /* Shared Buildmates field-guide treatment. Functional density stays; generic dashboard chrome does not. */
-.page{background:var(--paper);color:var(--ink)}
-.header{max-width:none;padding-inline:clamp(18px,4vw,64px);border-bottom:1px solid var(--rule)}
-.wordmark{font-weight:800;text-transform:lowercase}
-.intro{max-width:1240px;padding-top:clamp(48px,8vw,92px)}
-.intro h1{font-weight:800;line-height:.9;letter-spacing:-.07em;text-transform:lowercase}
-.eyebrow{font-family:var(--font-code);color:var(--moss)}
-.progress,.stepPanel{border-color:var(--rule);border-radius:0;box-shadow:6px 6px 0 #ded9ce}
-.progress{background:#e1e8d7}.stepPanel{background:var(--paper-raised)}
-.progress li,.progress li>span:first-child,.boundaryGrid>div,.permissionRow,.signalCard,.statusBadge{border-radius:0}
-.progress .currentStep{background:var(--night);color:var(--paper)}
-.progress .currentStep>span:first-child{background:var(--signal);border-color:var(--signal);color:var(--ink)}
-.stepContent h2{font-weight:800;letter-spacing:-.045em}
-button{background:var(--moss);box-shadow:3px 3px 0 #d3cfc4}.secondaryButton{background:#dfe6d8;color:var(--moss)}
+.page {
+  background: var(--paper);
+  color: var(--ink);
+}
+.header {
+  max-width: none;
+  padding-inline: clamp(18px, 4vw, 64px);
+  border-bottom: 1px solid var(--rule);
+}
+.wordmark {
+  font-weight: 800;
+  text-transform: lowercase;
+}
+.intro {
+  max-width: 1240px;
+  padding-top: clamp(48px, 8vw, 92px);
+}
+.intro h1 {
+  font-weight: 550;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+.eyebrow {
+  font-family: var(--font-code);
+  color: var(--moss);
+}
+.progress,
+.stepPanel {
+  border-color: var(--rule);
+  border-radius: 0;
+  box-shadow: none;
+}
+.progress {
+  background: #e1e8d7;
+}
+.stepPanel {
+  background: var(--paper-raised);
+}
+.progress li,
+.progress li > span:first-child,
+.boundaryGrid > div,
+.permissionRow,
+.signalCard,
+.statusBadge {
+  border-radius: 0;
+}
+.progress .currentStep {
+  background: var(--night);
+  color: var(--paper);
+}
+.progress .currentStep > span:first-child {
+  background: var(--signal);
+  border-color: var(--signal);
+  color: var(--ink);
+}
+.stepContent h2 {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+button {
+  background: var(--moss);
+  box-shadow: 3px 3px 0 #d3cfc4;
+}
+.secondaryButton {
+  background: #dfe6d8;
+  color: var(--moss);
+}
+@media (max-width: 600px) {
+  .progress ol {
+    display: none;
+  }
+  .stack label,
+  .stepContent > label,
+  .signalCard label,
+  .permissionRow label {
+    font-size: 0.9rem;
+  }
+}

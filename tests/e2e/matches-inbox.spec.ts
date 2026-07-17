@@ -1,9 +1,78 @@
-import { expect,test } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { signInTestUser } from "./helpers/auth";
-test.beforeEach(async({page},testInfo)=>{await signInTestUser(page,`matches-${testInfo.project.name}-${testInfo.title}`)});
+test.beforeEach(async ({ page }, testInfo) => {
+  await signInTestUser(
+    page,
+    `matches-${testInfo.project.name}-${testInfo.title}`,
+  );
+});
 
-test("matches provides honest cold-start actions without horizontal overflow",async({page})=>{await page.goto("/matches");await expect(page).toHaveTitle("Matches | Buildmates");await expect(page.getByRole("heading",{name:"People worth meeting now."})).toBeVisible();await expect(page.getByRole("heading",{name:"No strong match yet"}).first()).toBeVisible();await expect(page.getByRole("link",{name:"Explore projects"}).first()).toBeVisible();await expect(page.getByRole("link",{name:"Invite a builder"}).first()).toBeVisible();const dimensions=await page.locator("main").evaluate((element)=>({client:element.clientWidth,scroll:element.scrollWidth}));expect(dimensions.scroll-dimensions.client).toBeLessThanOrEqual(1)});
+test("matches provides honest cold-start actions without horizontal overflow", async ({
+  page,
+}) => {
+  await page.goto("/matches");
+  await expect(page).toHaveTitle("Matches | Buildmates");
+  await expect(
+    page.getByRole("heading", { name: "People worth meeting now." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "No strong match yet" }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Explore the build graph" }).first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Invite a builder" }).first(),
+  ).toBeVisible();
+  const dimensions = await page
+    .locator("main")
+    .evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+  expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
+});
 
-test("inbox exposes loading and truthful empty activity states",async({page})=>{await page.goto("/inbox");await expect(page).toHaveTitle("Inbox | Buildmates");await expect(page.getByRole("heading",{name:"Your Buildmates inbox."})).toBeVisible();await expect(page.getByRole("heading",{name:"Nothing waiting"})).toBeVisible();await expect(page.getByRole("link",{name:"See recommended builders"})).toBeVisible();const dimensions=await page.locator("main").evaluate((element)=>({client:element.clientWidth,scroll:element.scrollWidth}));expect(dimensions.scroll-dimensions.client).toBeLessThanOrEqual(1)});
+test("inbox exposes loading and truthful empty activity states", async ({
+  page,
+}) => {
+  await page.goto("/inbox");
+  await expect(page).toHaveTitle("Inbox | Buildmates");
+  await expect(
+    page.getByRole("heading", { name: "Your Buildmates inbox." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Nothing waiting" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "See recommended builders" }),
+  ).toBeVisible();
+  const dimensions = await page
+    .locator("main")
+    .evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+  expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
+});
 
-test("connections preserves a useful cold-start state",async({page})=>{await page.goto("/connections");await expect(page).toHaveTitle("Connections | Buildmates");await expect(page.getByRole("heading",{name:"People you met through building."})).toBeVisible();await expect(page.getByRole("heading",{name:"Your network starts with mutual relevance."})).toBeVisible();await expect(page.getByRole("link",{name:"Review matches"})).toBeVisible();const dimensions=await page.locator("main").evaluate((element)=>({client:element.clientWidth,scroll:element.scrollWidth}));expect(dimensions.scroll-dimensions.client).toBeLessThanOrEqual(1)});
+test("connections preserves a useful cold-start state", async ({ page }) => {
+  await page.goto("/connections");
+  await expect(page).toHaveTitle("Connections | Buildmates");
+  await expect(
+    page.getByRole("heading", { name: "People you met through building." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your connections will live here." }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "See recommendations" }),
+  ).toBeVisible();
+  const dimensions = await page
+    .locator("main")
+    .evaluate((element) => ({
+      client: element.clientWidth,
+      scroll: element.scrollWidth,
+    }));
+  expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
+});

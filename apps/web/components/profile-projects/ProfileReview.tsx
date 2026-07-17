@@ -21,7 +21,9 @@ const audienceLabels: Readonly<Record<string, string>> = {
   full_autopilot: "Let Codex accept strong matches for me",
 };
 function defaultFieldAudience(key: string) {
-  return key === "current_work" || key === "networking_intent" ? "suggested_connections" : "public";
+  return key === "current_work" || key === "networking_intent"
+    ? "suggested_connections"
+    : "public";
 }
 
 export function ProfileReview({
@@ -45,7 +47,9 @@ export function ProfileReview({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const initialFields = new Map(initial?.fields.map((field) => [field.key, field]));
+  const initialFields = new Map(
+    initial?.fields.map((field) => [field.key, field]),
+  );
   async function submit(formData: FormData) {
     setBusy(true);
     setError("");
@@ -61,7 +65,9 @@ export function ProfileReview({
       .map((key) => ({
         key,
         value: String(formData.get(key) ?? "").trim(),
-        audience: String(formData.get(`${key}_audience`) ?? defaultFieldAudience(key)),
+        audience: String(
+          formData.get(`${key}_audience`) ?? defaultFieldAudience(key),
+        ),
       }))
       .filter((field) => field.value);
     const body = {
@@ -76,10 +82,22 @@ export function ProfileReview({
       locationMapOptIn: Boolean(formData.get("locationMapOptIn")),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       fields,
-      statistics: String(formData.get("statistics") ?? "").split("\n").map((line) => line.trim()).filter(Boolean).slice(0, 12).map((line, index) => {
-        const [label, ...value] = line.split("|");
-        return { key: `custom_${index + 1}`, label: label.trim(), value: value.join("|").trim(), provenance: "self_reported", audience: "public" };
-      }).filter((statistic) => statistic.label && statistic.value),
+      statistics: String(formData.get("statistics") ?? "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .slice(0, 12)
+        .map((line, index) => {
+          const [label, ...value] = line.split("|");
+          return {
+            key: `custom_${index + 1}`,
+            label: label.trim(),
+            value: value.join("|").trim(),
+            provenance: "self_reported",
+            audience: "public",
+          };
+        })
+        .filter((statistic) => statistic.label && statistic.value),
     };
     const response = await fetch(
       `/api/profiles/${encodeURIComponent(handle)}`,
@@ -130,10 +148,34 @@ export function ProfileReview({
         />
         <label className={styles.wide}>
           Short introduction
-          <textarea name="summary" defaultValue={initial?.summary} required maxLength={600} rows={4} />
+          <textarea
+            name="summary"
+            defaultValue={initial?.summary}
+            required
+            maxLength={600}
+            rows={4}
+          />
         </label>
-        <label>City for the aggregate map<select name="coarseLocation" defaultValue={initial?.coarseLocation ?? ""}><option value="">Not shared</option>{CANONICAL_CITIES.map((city)=><option key={city.id} value={city.label}>{city.label}, {city.country}</option>)}</select></label>
-        <Select name="audience" label="Profile visibility" values={audiences} defaultValue={initial?.audience} />
+        <label>
+          City (optional)
+          <select
+            name="coarseLocation"
+            defaultValue={initial?.coarseLocation ?? ""}
+          >
+            <option value="">Not shared</option>
+            {CANONICAL_CITIES.map((city) => (
+              <option key={city.id} value={city.label}>
+                {city.label}, {city.country}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Select
+          name="audience"
+          label="Profile visibility"
+          values={audiences}
+          defaultValue={initial?.audience}
+        />
         <Select
           name="acceptanceMode"
           label="Introduction approval"
@@ -141,7 +183,7 @@ export function ProfileReview({
           defaultValue={initial?.acceptanceMode}
         />
       </div>
-      <h2>Current context</h2>
+      <h2>About you</h2>
       {[
         ["current_work", "What are you building now?"],
         ["interests", "Interests"],
@@ -152,32 +194,58 @@ export function ProfileReview({
         <div className={styles.fieldRow} key={name}>
           <label>
             {label}
-            <textarea name={name} rows={2} maxLength={1000} defaultValue={String(initialFields.get(name)?.value ?? "")} />
+            <textarea
+              name={name}
+              rows={2}
+              maxLength={1000}
+              defaultValue={String(initialFields.get(name)?.value ?? "")}
+            />
           </label>
           <Select
             name={`${name}_audience`}
             label="Who can see this?"
             values={audiences}
-            defaultValue={initialFields.get(name)?.audience ?? defaultFieldAudience(name)}
+            defaultValue={
+              initialFields.get(name)?.audience ?? defaultFieldAudience(name)
+            }
           />
         </div>
       ))}
       <label className={styles.check}>
-        <input type="checkbox" name="allowMatching" defaultChecked={initial?.allowMatching} />
+        <input
+          type="checkbox"
+          name="allowMatching"
+          defaultChecked={initial?.allowMatching}
+        />
         Use approved fields for matching
       </label>
       <label className={styles.wide}>
-        Optional public profile counters
-        <span>One per line: Label | Value. Codex can refresh approved counters later, but Buildmates does not infer usage data it cannot access.</span>
-        <textarea name="statistics" rows={3} placeholder="Connections made | 12" defaultValue={initial?.statistics.map((item) => `${item.label} | ${item.value}`).join("\n")} />
+        Numbers to share
+        <span>Add one per line, such as Connections made | 12.</span>
+        <textarea
+          name="statistics"
+          rows={3}
+          placeholder="Connections made | 12"
+          defaultValue={initial?.statistics
+            .map((item) => `${item.label} | ${item.value}`)
+            .join("\n")}
+        />
       </label>
       <label className={styles.check}>
-        <input type="checkbox" name="indexable" defaultChecked={initial?.indexable} />
+        <input
+          type="checkbox"
+          name="indexable"
+          defaultChecked={initial?.indexable}
+        />
         Allow search engines to index my public profile
       </label>
       <label className={styles.check}>
-        <input type="checkbox" name="locationMapOptIn" defaultChecked={initial?.locationMapOptIn} />
-        Include my coarse location in anonymous map groups of at least five builders
+        <input
+          type="checkbox"
+          name="locationMapOptIn"
+          defaultChecked={initial?.locationMapOptIn}
+        />
+        Show my city in anonymous community totals
       </label>
       <button disabled={busy}>
         {busy ? "Saving…" : "Save and view profile"}

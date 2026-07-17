@@ -8,7 +8,7 @@ import { getCircle, listCircleMessages, listCircleModuleEntries, type CircleMess
 import { CircleClient } from "./CircleClient";
 import styles from "./circle.module.css";
 
-export const metadata: Metadata = { title: "Circle | Buildmates", description: "A private Buildmates Circle.", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Circle", description: "A private Buildmates Circle.", robots: { index: false, follow: false } };
 
 export default async function CirclePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -1,0 +1,10 @@
+.accountMenuPolish nav {
+  z-index: 20;
+  max-height: calc(100vh - 6rem);
+  overflow-y: auto;
+}
+@media (max-width: 960px) {
+  .signedInHeader .primaryNavPolish {
+    display: none;
+  }
+}

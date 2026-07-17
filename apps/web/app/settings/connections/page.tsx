@@ -8,7 +8,7 @@ import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "./connections.module.css";
 
 export const metadata: Metadata = {
-  title: "Connect Codex | Buildmates",
+  title: "Connect Codex",
   description: "Securely link your Buildmates web account to Buildmates in Codex.",
   robots: { index: false, follow: false },
 };
