@@ -65,3 +65,10 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - The affected public contract passed lint, web typecheck, and 12/12 focused desktop/phone checks with rendered screenshot inspection.
 - Sites version 10 was saved against a stale pre-rebuild archive and was intentionally not deployed. A corrected production build containing the verified native-install copy was created before the next version save.
 - Exact commit `0ab09f5eeb26e146334a0222e87d56974866496c` is live as ChatGPT Sites version 11. Production verification found the native-install, no-Chrome-automation, manual-or-guided GitHub OAuth, and setup-state authority markers on both `/install` and `/llms.txt`.
+
+## Bounded approval batches
+
+- Routine onboarding work is grouped into approval batches of at most three fully described actions. Each action discloses the data or source used, the write or external action, and the visible result. One approval covers the unchanged batch.
+- A changed input, scope, consequence, or result-dependent later action ends the prior approval and requires a revised batch.
+- Native installation, credentials/provider consent, the exact first Work Signal summary, Surface publication after preview, automation creation or material schedule changes, and interpersonal actions outside the saved acceptance mode remain separate checkpoints. Host confirmations still apply.
+- The revised public and plugin contracts passed lint, web typecheck, production build, and 12/12 focused desktop/phone tests. Desktop and phone screenshots were inspected for the additional copy and retained the established layout without overflow.

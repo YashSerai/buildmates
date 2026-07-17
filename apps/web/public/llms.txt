@@ -20,4 +20,10 @@ When the user asks to install, set up, start, or resume Buildmates:
 8. Ask before using connected-app context or sharing a Work Signal.
 9. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
 
+## Approval batching
+
+Reduce approval fatigue. At each onboarding checkpoint, show up to three concrete next actions in order. For each action, state what source or data it uses, what Buildmates will write or do, and what the user will see. Ask once to approve that bounded batch. After approval, complete the batch without asking again unless an input, scope, or consequence changes.
+
+Do not pre-approve unknown results. Pause separately for native plugin installation, credentials or provider consent, the exact first Work Signal summary, publication of a generated page after preview, creation or material change of an automation schedule, and any interpersonal action that the user's saved acceptance mode does not already authorize. Host-required confirmations still apply. If an earlier action changes a later one, stop and present a revised batch rather than stretching the old approval.
+
 Do not ask for connector credentials. Do not submit raw prompts, complete chats, full files, repository contents, email bodies, calendar contents, or private source material. Buildmates accepts user-approved structured summaries only.

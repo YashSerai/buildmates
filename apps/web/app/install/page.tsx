@@ -52,6 +52,11 @@ export default async function InstallPage() {
               questions. Nothing is shared with Buildmates until you approve
               the summary.
             </p>
+            <p>
+              Routine setup actions come in short batches of up to three. You
+              see what each action uses and changes, then approve the batch once.
+              Codex pauses again when there is something new to review.
+            </p>
             <Link className={styles.secondary} href="/onboarding">
               {user ? "Use manual setup instead" : "Set up on the website instead"}
             </Link>
@@ -75,8 +80,9 @@ export default async function InstallPage() {
             </p>
             <p className={styles.mono}>
               Codex: connect the official app, call get_setup_state, and trust
-              only its completed count and nextStep. Then follow the Buildmates
-              onboarding workflow one step at a time.
+              only its completed count and nextStep. Present up to three fully
+              described actions, ask once for that batch, and preserve the
+              separate consent checkpoints in the agent instructions.
             </p>
             <Link href="/llms.txt">Read the full agent instructions</Link>
           </div>
