@@ -32,6 +32,8 @@ GitHub sign-in creates the Buildmates website account and requests no repository
 
 GitHub OAuth is an external identity handoff, not plugin installation. Codex asks whether the user wants to complete it themselves or wants guided browser help. Manual completion is the default. Guided help is opt-in and pauses for credentials, verification codes, and provider consent unless the user explicitly authorizes the relevant action.
 
+Source selection begins with three combinable paths: use context already surfaced in the current Codex task, add only connected apps genuinely available in that task, or tell Codex directly through a description or link. GitHub website login never makes GitHub a source. A public GitHub URL is user-provided material unless the GitHub app is actually connected. Buildmates never asks Codex to enumerate or open other chats or to request session IDs as a substitute for current context.
+
 `Ask each time` requires a fresh, single-use source approval before the next Work Signal. `Allow approved Work Signals` authorizes recurring Work Pulse extraction from that source until the user changes the policy; each run reports what changed and the resulting signals remain revocable. `Actions only` permits applicable provider actions but never context extraction.
 
 ## Safety contract

@@ -26,4 +26,14 @@ Reduce approval fatigue. At each onboarding checkpoint, show up to three concret
 
 Do not pre-approve unknown results. Pause separately for native plugin installation, credentials or provider consent, the exact first Work Signal summary, publication of a generated page after preview, creation or material change of an automation schedule, and any interpersonal action that the user's saved acceptance mode does not already authorize. Host-required confirmations still apply. If an earlier action changes a later one, stop and present a revised batch rather than stretching the old approval.
 
+## Source selection
+
+Do not reduce source selection to unexplained choices such as "manual only" or "GitHub public profile." Start with three combinable, explained paths:
+
+1. **Use current Codex context** — use only information already surfaced to Codex in this task, including host memory when it is already present in the task context. Draft a concise profile summary and show it before sending anything to Buildmates.
+2. **Add connected sources** — show only apps that are genuinely callable or confidently visible in this task. Explain Never, Ask each time, Allow approved Work Signals, and Actions only where applicable before saving a policy.
+3. **Tell Codex directly** — ask for a short description, project or portfolio link, or other material the user chooses to provide.
+
+These paths can be combined. Do not list GitHub merely because it was used for Buildmates website identity or because a public GitHub page exists. GitHub is a connected source only when its app is available in the task. A user-provided public GitHub URL is manual material, not connector authorization. Do not enumerate, open, or read other chats or tasks, and do not ask for session IDs, unless the user separately requests that action and the host exposes an appropriate capability. Context or memory already supplied to the current task may be used only to draft a summary for approval.
+
 Do not ask for connector credentials. Do not submit raw prompts, complete chats, full files, repository contents, email bodies, calendar contents, or private source material. Buildmates accepts user-approved structured summaries only.

@@ -73,3 +73,9 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - Native installation, credentials/provider consent, the exact first Work Signal summary, Surface publication after preview, automation creation or material schedule changes, and interpersonal actions outside the saved acceptance mode remain separate checkpoints. Host confirmations still apply.
 - The revised public and plugin contracts passed lint, web typecheck, production build, and 12/12 focused desktop/phone tests. Desktop and phone screenshots were inspected for the additional copy and retained the established layout without overflow.
 - Exact commit `312182668ea6d4a3078d4278539666e63f1c7491` is live as ChatGPT Sites version 12. Production verification found the three-action batching, single-batch approval, no-unknown-results, and retained host-confirmation markers on `/install` and `/llms.txt`.
+
+## Source-selection correction
+
+- The live first-run test offered only `manual only` and `GitHub public profile` without explaining either choice. This was rejected as ambiguous and as an incorrect conflation of GitHub website identity, a public URL, and an installed GitHub connector.
+- The corrected contract presents three combinable paths: current context already surfaced in the Codex task, connected apps actually available in that task, and user-provided descriptions or links. Every path explains what Codex reads and that the approved structured summary is reviewed before submission.
+- Other chats, open tasks, and session IDs are outside the default source-selection boundary. Host memory already surfaced in the current task may inform a draft; Codex does not crawl unrelated conversations.

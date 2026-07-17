@@ -99,6 +99,9 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(instructions).toContain("whether the user wants to complete OAuth themselves");
   expect(instructions).toContain("show up to three concrete next actions");
   expect(instructions).toContain("Do not pre-approve unknown results");
+  expect(instructions).toContain("Use current Codex context");
+  expect(instructions).toContain("Do not list GitHub merely because it was used for Buildmates website identity");
+  expect(instructions).toContain("do not ask for session IDs");
   expect(instructions).toContain("user-approved structured summaries only");
 });
 
@@ -129,6 +132,7 @@ test("product, privacy, install, and account paths are complete", async ({
   await expect(page.getByText(/Buildmates installs inside Codex/i)).toBeVisible();
   await expect(page.getByText(/earlier Buildmates conversation does not/i)).toBeVisible();
   await expect(page.getByText(/short batches of up to three/i)).toBeVisible();
+  await expect(page.getByText(/what Codex already knows in this task/i)).toBeVisible();
   await page.keyboard.press("Escape");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

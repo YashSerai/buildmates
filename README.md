@@ -10,6 +10,8 @@ Normal users do not need this repository. Start from the [official setup guide](
 
 For Codex and other agents, the canonical machine-readable instructions are at [buildmates.yashns.chatgpt.site/llms.txt](https://buildmates.yashns.chatgpt.site/llms.txt). Once the Buildmates app is connected, an install, setup, start, or resume request must invoke the plugin's mandatory onboarding skill, call `get_setup_state` first, and use bounded batches of up to three fully described actions. Meaningful consent checkpoints remain separate. Do not infer permissions or send raw private source material; submit only user-approved structured summaries.
 
+Source selection can combine context already surfaced in the current Codex task, connected apps genuinely available in that task, and descriptions or links the user supplies. GitHub website identity does not grant repository or profile access, and Buildmates does not ask Codex to inspect unrelated chats or session IDs.
+
 ## Product boundaries
 
 - Buildmates is the only required plugin. Other connected apps remain under their existing host permissions.

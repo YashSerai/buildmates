@@ -47,9 +47,10 @@ export default async function InstallPage() {
               </li>
             </ol>
             <p>
-              You can start with connected apps, a project or portfolio link,
-              or a short description. If context is sparse, Codex asks focused
-              questions. Nothing is shared with Buildmates until you approve
+              Start with what Codex already knows in this task, add a connected
+              app that is actually available, or tell Codex directly with a
+              project, portfolio link, or short description. You can combine
+              all three. Nothing is shared with Buildmates until you approve
               the summary.
             </p>
             <p>
