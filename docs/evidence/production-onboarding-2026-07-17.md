@@ -121,3 +121,12 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - Direct MCP uses the same fresh-task fallback only when its tool registry does not refresh. Neither route may substitute recursive `codex exec` helpers.
 - The beta plugin cachebuster advanced to `0.3.0-beta.1+codex.20260717222507`. Both onboarding skills and both plugin packages validate. Web typecheck, production build, and the focused public agent-contract test pass on desktop and phone.
 - Exact source commit `41766beb26e9fcfbf9d8f21c154cf428991b163a` is live as ChatGPT Sites version 18 (`appgdep_6a5aacbffb888191bdc735076ef02c72`). Production `/llms.txt` returns the permissioned automatic task handoff, manual fallback, and recursive-process prohibition.
+
+## Authorization consent UI and task-handoff diagnosis
+
+- QA task `019f721b-2b85-7c72-8f5c-f0e0b6728887` successfully completed `codex mcp login buildmates --scopes mcp:tools`. Its current task registry did not reload `get_setup_state` after installation and OAuth.
+- The task made no `codex_app__create_thread`, create-task, or fork-task function call. It had fetched the pre-version-18 `/llms.txt` contract and installed beta `0.3.0-beta.1` before the native automatic handoff instructions were published. Its final manual continuation prompt was therefore the old fallback, not evidence that host task creation failed.
+- The prior `/mcp/authorize` route reused a generic information-page shell, left excessive empty space, and rendered an unexplained disabled action when `return_to` was absent or invalid.
+- The replacement is a dedicated consent page with a visible Codex-to-Buildmates handoff, three plain-language permission statements, an explicit expired-link state, sign-in recovery, responsive layout, reduced-motion support, and search-engine exclusion.
+- Web typecheck and production build pass. The focused authorization suite passes 4/4 across desktop and phone; lint has zero errors and one unrelated pre-existing ref-cleanup warning in `CodexHandoff.tsx`.
+- Two initial public deployment attempts returned a transient Sites internal error before a deployment ID was issued. The retry succeeded: exact source commit `feb9e04b4bd5397223c5fed0475600e2524e7806` is live as ChatGPT Sites version 19 (`appgdep_6a5ab28641e88191b642ad2afc763a11`). A production request returned 200 and contained the new `Connection request` and explicit expired-link state.
