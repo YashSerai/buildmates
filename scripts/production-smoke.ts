@@ -27,6 +27,7 @@ async function get(path: string, init?: RequestInit) {
   return fetch(`${baseUrl}${path}`, { redirect: "manual", ...init });
 }
 
+async function main() {
 await check("public landing", async () => {
   const response = await get("/");
   if (response.status !== 200) throw new Error(`HTTP ${response.status}`);
@@ -78,3 +79,9 @@ if (mcpUrl) {
 for (const result of checks) console.log(`${result.ok ? "PASS" : "FAIL"}  ${result.name}: ${result.detail}`);
 const failures = checks.filter((result) => !result.ok);
 if (failures.length) process.exit(1);
+}
+
+void main().catch((error) => {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+});
