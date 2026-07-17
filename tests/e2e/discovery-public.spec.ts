@@ -15,7 +15,7 @@ test("landing explains the real product and exposes only current network surface
   await expect(setupToast).toBeVisible();
   const closePrompt = page.getByRole("button", { name: "Close setup prompt" });
   await expect(closePrompt).toBeFocused();
-  const backdrop = page.locator(".codex-setup-backdrop");
+  const backdrop = setupToast.locator("..");
   await expect(backdrop).toHaveCSS("position", "fixed");
   await expect(backdrop).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   const [dialogBox, viewport] = await Promise.all([
@@ -26,7 +26,7 @@ test("landing explains the real product and exposes only current network surface
   expect(Math.abs(dialogBox!.x + dialogBox!.width / 2 - viewport.width / 2)).toBeLessThan(2);
   expect(Math.abs(dialogBox!.y + dialogBox!.height / 2 - viewport.height / 2)).toBeLessThan(2);
   await expect(page.getByLabel("Copied Buildmates setup prompt")).toHaveValue(
-    /buildmates\.yashns\.chatgpt\.site\/install/,
+    /buildmates\.yashns\.chatgpt\.site\/llms\.txt/,
   );
   await expect(setupToast.getByRole("status")).toContainText(/Copied|Clipboard access was blocked/);
   await expect(page.getByText(/You decide what becomes part of your profile/i)).toBeVisible();
@@ -93,6 +93,8 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(response.status()).toBe(200);
   const instructions = await response.text();
   expect(instructions).toContain("Canonical setup guide: https://buildmates.yashns.chatgpt.site/install");
+  expect(instructions).toContain("Canonical Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt");
+  expect(instructions).toContain("Fetch this file directly as public text");
   expect(instructions).toContain("Call get_setup_state immediately");
   expect(instructions).toContain("Never infer setup state from old ChatGPT conversations");
   expect(instructions).toContain("native Codex plugin-install confirmation");
@@ -119,20 +121,21 @@ test("product, privacy, install, and account paths are complete", async ({
   }
 
   await page.goto("/install");
-  await expect(page.getByRole("link", { name: "official Buildmates app" })).toHaveAttribute(
-    "href",
-    /plugin_asdk_app_6a57d2ff080481918659b3355a3d9c0e/,
-  );
   await page.getByRole("button", { name: /Set up with Codex/ }).click();
   const installDialog = page.getByRole("dialog", { name: "Buildmates setup prompt" });
   await expect(installDialog).toBeVisible();
   await expect(page.getByLabel("Copied Buildmates setup prompt")).toHaveValue(
-    "Set up Buildmates for me using the official guide: https://buildmates.yashns.chatgpt.site/install",
+    "Set up Buildmates for me using the official Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt",
   );
-  await expect(page.getByText(/Buildmates installs inside Codex/i)).toBeVisible();
-  await expect(page.getByText(/earlier Buildmates conversation does not/i)).toBeVisible();
+  await expect(page.getByText(/handles the Buildmates connection inside Codex/i)).toBeVisible();
+  await expect(page.getByText(/continue an unfinished setup/i)).toBeVisible();
   await expect(page.getByText(/short batches of up to three/i)).toBeVisible();
   await expect(page.getByText(/what Codex already knows in this task/i)).toBeVisible();
+  await expect(page.getByText("Testing before publication")).toHaveCount(0);
+  await expect(page.getByText(/buildmates-mcp\.yashserai1/i)).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("install-dialog.png"),
+  });
   await page.keyboard.press("Escape");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,

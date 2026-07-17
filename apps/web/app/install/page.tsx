@@ -28,8 +28,8 @@ export default async function InstallPage() {
           <h2>Start in Codex</h2>
           <div>
             <p>
-              Copy one short prompt into a new Codex task. This page carries the
-              setup instructions, so the prompt does not have to.
+              Copy one short prompt into a new Codex task. Codex reads the
+              current instructions and handles the connection from there.
             </p>
             <CodexInstallActions />
           </div>
@@ -38,7 +38,7 @@ export default async function InstallPage() {
           <h2>What happens next</h2>
           <div>
             <ol className={styles.steps}>
-              <li>Codex installs the public plugin, the GitHub beta, or the direct MCP connection, then checks your account.</li>
+              <li>Codex connects Buildmates and checks whether you are starting fresh or returning.</li>
               <li>You choose what Codex may use to understand your work.</li>
               <li>You review your profile and the page Codex creates.</li>
               <li>
@@ -64,48 +64,31 @@ export default async function InstallPage() {
           </div>
         </section>
         <section>
-          <h2>Testing before publication</h2>
+          <h2>What opens in your browser</h2>
           <div>
             <p>
-              The GitHub beta is the complete Buildmates plugin: onboarding
-              skills plus the production MCP connection. Codex adds the
-              Buildmates repository marketplace, asks you to install it, then
-              opens a browser once so you can authorize your account.
+              Codex handles the Buildmates connection inside Codex. Your
+              browser opens only when Buildmates needs you to sign in or approve
+              account access.
             </p>
             <p>
-              Direct MCP is the smaller fallback. It connects the same
-              production tools without installing the Buildmates skills. The
-              setup guide remains the workflow authority in that mode.
-            </p>
-            <p className={styles.mono}>
-              Repository: github.com/YashSerai/buildmates<br />
-              MCP: buildmates-mcp.yashserai1.workers.dev/mcp
+              Codex will not type credentials, retrieve verification codes, or
+              approve consent for you. You stay in control of those steps.
             </p>
           </div>
         </section>
         <section>
-          <h2>The setup rule</h2>
-          <div className={styles.status}>
+          <h2>Continue where you left off</h2>
+          <div>
             <p>
-              <strong>Buildmates connects inside Codex.</strong>{" "}Codex asks for
-              confirmation before installing the beta plugin or adding the MCP
-              server. A browser opens only for account authorization.
-            </p>
-            <p>
-              GitHub opens only to establish your Buildmates website identity.
-              You can complete it yourself or ask Codex for guided browser help.
+              Buildmates checks your account before asking questions. A new
+              Codex task can continue an unfinished setup without relying on an
+              old conversation.
             </p>
             <p>
-              <strong>Your account decides where setup resumes.</strong>{" "}An
-              earlier Buildmates conversation does not.
+              If Codex cannot connect, it explains what needs attention instead
+              of pretending setup is complete.
             </p>
-            <p className={styles.mono}>
-              Codex: connect the official app, call get_setup_state, and trust
-              only its completed count and nextStep. Present up to three fully
-              described actions, ask once for that batch, and preserve the
-              separate consent checkpoints in the agent instructions.
-            </p>
-            <Link href="/llms.txt">Read the full agent instructions</Link>
           </div>
         </section>
       </article>

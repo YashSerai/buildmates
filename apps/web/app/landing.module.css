@@ -75,65 +75,6 @@
 .codexHandoff > button span {
   font-size: 1.2rem;
 }
-.codexHandoff :global(.codex-setup-backdrop) {
-  position: fixed;
-  z-index: 50;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  overflow-y: auto;
-  padding: 1rem;
-  background: rgba(35, 38, 34, 0.48);
-}
-.codexHandoff :global(.codex-setup-toast) {
-  width: min(560px, 100%);
-  max-height: calc(100dvh - 2rem);
-  overflow-y: auto;
-  display: grid;
-  gap: 0.8rem;
-  border: 1px solid #65705f;
-  background: #f0f2e9;
-  color: #20231d;
-  padding: 1.15rem;
-  box-shadow: 0 8px 18px rgba(14, 17, 14, 0.24);
-}
-.codexHandoff :global(.codex-setup-toast header) {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-}
-.codexHandoff :global(.codex-setup-toast header button) {
-  width: 36px;
-  height: 36px;
-  border: 0;
-  background: transparent;
-  color: #20231d;
-  font: 500 1.45rem/1 var(--font-body);
-  cursor: pointer;
-}
-.codexHandoff :global(.codex-setup-toast p) {
-  margin: 0;
-  color: #356347;
-  font-size: 0.88rem;
-  line-height: 1.45;
-}
-.codexHandoff :global(.codex-setup-toast textarea) {
-  width: 100%;
-  min-height: 9rem;
-  resize: vertical;
-  border: 1px solid #8d9784;
-  border-radius: 0;
-  background: #e4e8dc;
-  color: #20231d;
-  padding: 0.8rem;
-  font: 500 0.84rem/1.5 var(--font-body);
-}
-.codexHandoff :global(.codex-setup-toast textarea:focus-visible),
-.codexHandoff :global(.codex-setup-toast button:focus-visible) {
-  outline: 3px solid var(--signal);
-  outline-offset: 2px;
-}
 .secondary {
   min-height: 44px;
   display: inline-flex;
@@ -341,10 +282,6 @@
   .heroActions {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .codexHandoff :global(.codex-setup-toast) {
-    max-height: calc(100dvh - 1.5rem);
-    padding: 1rem;
   }
   .fieldLabel {
     display: grid;

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BUILDMATES_SETUP_PROMPT } from "../../src/product/codex-setup";
+import styles from "./CodexHandoff.module.css";
 
 type CodexHandoffProps = {
   className?: string;
@@ -18,7 +19,7 @@ export function CodexHandoff({
   const [open, setOpen] = useState(false);
   const ready = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const dialogRef = useRef<HTMLElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -73,10 +74,11 @@ export function CodexHandoff({
   }
 
   return (
-    <div className={className}>
+    <div className={[styles.root, className].filter(Boolean).join(" ")}>
       <button
         aria-expanded={open}
         aria-haspopup="dialog"
+        className={styles.trigger}
         disabled={!ready}
         ref={triggerRef}
         type="button"
@@ -86,40 +88,40 @@ export function CodexHandoff({
       </button>
       {open ? (
         <div
-          className="codex-setup-backdrop"
+          className={styles.backdrop}
           onMouseDown={(event) => {
             if (event.currentTarget === event.target) setOpen(false);
           }}
         >
-          <section
+          <div
             aria-describedby="buildmates-setup-toast-status"
             aria-labelledby="buildmates-setup-toast-title"
             aria-modal="true"
-            className="codex-setup-toast"
+            className={styles.dialog}
             ref={dialogRef}
             role="dialog"
           >
-            <header>
-              <strong id="buildmates-setup-toast-title">Buildmates setup prompt</strong>
-              <button
-                aria-label="Close setup prompt"
-                onClick={() => setOpen(false)}
-                type="button"
-              >
-                <span aria-hidden="true">&times;</span>
-              </button>
-            </header>
-            <p id="buildmates-setup-toast-status" role="status" aria-live="polite">
+            <strong className={styles.title} id="buildmates-setup-toast-title">Buildmates setup prompt</strong>
+            <button
+              aria-label="Close setup prompt"
+              className={styles.close}
+              onClick={() => setOpen(false)}
+              type="button"
+            >
+              <span aria-hidden="true">&times;</span>
+            </button>
+            <p className={styles.status} id="buildmates-setup-toast-status" role="status" aria-live="polite">
               {status}
             </p>
             <textarea
               aria-label="Copied Buildmates setup prompt"
+              className={styles.prompt}
               onFocus={(event) => event.currentTarget.select()}
               readOnly
               rows={6}
               value={BUILDMATES_SETUP_PROMPT}
             />
-          </section>
+          </div>
         </div>
       ) : null}
     </div>

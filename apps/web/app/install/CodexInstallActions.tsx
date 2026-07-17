@@ -6,9 +6,8 @@ export function CodexInstallActions() {
     <div className={styles.handoff}>
       <CodexHandoff className={styles.actions} label="Set up with Codex" />
       <p className={styles.fallback}>
-        Before the directory release, Codex can install the GitHub beta plugin
-        or connect directly to the production MCP server. Both routes ask for
-        your confirmation and use the same Buildmates account.
+        The prompt gives Codex the current setup instructions. You do not need
+        to copy commands or choose a connection method.
       </p>
     </div>
   );
