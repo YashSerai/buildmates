@@ -132,7 +132,7 @@ All findings below were implemented and regression-tested. The integrated source
 - Responsive corrections cover the 320px public header, the signed-in menu collapse, mobile onboarding progress, populated match actions, Circle heading actions, city rows, generated Surface headings, and long content overflow.
 - Render evidence was recaptured at 1440x900, 390x844, and 320x700. DOM checks confirm no horizontal overflow on landing, Map, Build Graph, Privacy, and Install at the tested widths. Focused phone suites pass: public discovery 5/5, matches/inbox/connections 3/3, onboarding 3/3, and profile/project forms 2/2.
 - The audit found and fixed duplicated metadata suffixes such as “Matches | Buildmates | Buildmates” across network, onboarding, settings, safety, and Circle pages.
-- Current source gates after the corrective pass: root lint, web typecheck, web production build, and `git diff --check` pass. Deployment and live-browser truth still require the next Site version; the current public Site remains the prior release until that deploy succeeds.
+- Current source gates after the corrective pass: root lint, web typecheck, web production build, and `git diff --check` pass. ChatGPT Sites version 5 is live from exact commit `57dce1e67d98b4acd1b45a21d0820138e182b52b`; public landing, D1 readiness, security headers, authenticated-route boundary, robots/manifest, external MCP OAuth boundary, and rendered 1440/390/320 overflow checks pass in production.
 
 ## Security and privacy findings repaired 2026-07-16
 
@@ -193,4 +193,4 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 
 ## Current next action
 
-Commit and push the exact verified source, deploy both the ChatGPT Site and external MCP Worker, run public and authenticated production smoke checks, then erase only the owner test account's product data for a clean 0/11 personal Codex onboarding run. Production remains the prior release until those deploy and live gates succeed.
+Run the clean 0/11 personal Codex onboarding with the owner account, then complete the remaining authenticated production interaction checks. The public Site and external MCP boundary are live; a second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
