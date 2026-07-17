@@ -8,8 +8,15 @@ test("landing explains the real product and exposes only current network surface
   await expect(
     page.getByRole("heading", { name: /find your people/i }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: /Set up with Codex/ })).toHaveAttribute("href", "/install");
-  await expect(page.getByRole("button", { name: "Copy setup prompt" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Set up with Codex/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy setup prompt" })).toHaveCount(0);
+  await page.getByRole("button", { name: /Set up with Codex/ }).click();
+  const setupToast = page.getByRole("dialog", { name: "Buildmates setup prompt" });
+  await expect(setupToast).toBeVisible();
+  await expect(page.getByLabel("Copied Buildmates setup prompt")).toHaveValue(
+    /buildmates\.yashns\.chatgpt\.site\/install/,
+  );
+  await expect(setupToast.getByRole("status")).toContainText(/Copied|Clipboard access was blocked/);
   await expect(page.getByText(/You decide what becomes part of your profile/i)).toBeVisible();
   await expect(page.getByRole("link", { name: "Discover" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Cohorts" })).toHaveCount(0);

@@ -28,10 +28,7 @@ export default function Home() {
             gives you a reason to talk.
           </p>
           <div className={styles.heroActions}>
-            <Link className={styles.primary} href="/install">
-              Set up with Codex <span aria-hidden="true">↗</span>
-            </Link>
-            <CodexHandoff className={styles.copyPrompt} />
+            <CodexHandoff className={styles.codexHandoff} />
           </div>
         </div>
         <div
