@@ -130,3 +130,10 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - The replacement is a dedicated consent page with a visible Codex-to-Buildmates handoff, three plain-language permission statements, an explicit expired-link state, sign-in recovery, responsive layout, reduced-motion support, and search-engine exclusion.
 - Web typecheck and production build pass. The focused authorization suite passes 4/4 across desktop and phone; lint has zero errors and one unrelated pre-existing ref-cleanup warning in `CodexHandoff.tsx`.
 - Two initial public deployment attempts returned a transient Sites internal error before a deployment ID was issued. The retry succeeded: exact source commit `feb9e04b4bd5397223c5fed0475600e2524e7806` is live as ChatGPT Sites version 19 (`appgdep_6a5ab28641e88191b642ad2afc763a11`). A production request returned 200 and contained the new `Connection request` and explicit expired-link state.
+
+## Controlled local reset after beta activation failure
+
+- Task `019f7229-c56b-7a33-8718-f31e1ac7f2bb` began before its MCP OAuth credential existed. Its immutable tool registry therefore contained the packaged Buildmates skill but no Buildmates MCP namespace. A later raw unauthenticated HTTP request returned the correct 401 and did not test the saved OAuth credential.
+- The installed plugin and marketplace snapshot were also stale at `0.3.0-beta.1`; the source package had advanced to `0.3.0-beta.1+codex.20260717222507` with the repaired install-authenticate-reload sequence.
+- The local Buildmates OAuth credential, plugin installation, and global MCP registration were removed. The marketplace upgrade completed without errors and now reports the repaired cachebuster version. The plugin is intentionally not installed, its cache is absent, and no Buildmates MCP/config entry remains.
+- Production account and database state were preserved. The next QA must begin only after a full Codex restart, from the public setup prompt in a new task. Product state should be reset separately only if the first callable `get_setup_state` result is not the expected clean first-run state.
