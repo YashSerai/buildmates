@@ -13,6 +13,18 @@ test("landing explains the real product and exposes only current network surface
   await page.getByRole("button", { name: /Set up with Codex/ }).click();
   const setupToast = page.getByRole("dialog", { name: "Buildmates setup prompt" });
   await expect(setupToast).toBeVisible();
+  const closePrompt = page.getByRole("button", { name: "Close setup prompt" });
+  await expect(closePrompt).toBeFocused();
+  const backdrop = page.locator(".codex-setup-backdrop");
+  await expect(backdrop).toHaveCSS("position", "fixed");
+  await expect(backdrop).not.toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  const [dialogBox, viewport] = await Promise.all([
+    setupToast.boundingBox(),
+    page.evaluate(() => ({ width: innerWidth, height: innerHeight })),
+  ]);
+  expect(dialogBox).not.toBeNull();
+  expect(Math.abs(dialogBox!.x + dialogBox!.width / 2 - viewport.width / 2)).toBeLessThan(2);
+  expect(Math.abs(dialogBox!.y + dialogBox!.height / 2 - viewport.height / 2)).toBeLessThan(2);
   await expect(page.getByLabel("Copied Buildmates setup prompt")).toHaveValue(
     /buildmates\.yashns\.chatgpt\.site\/install/,
   );
@@ -24,6 +36,9 @@ test("landing explains the real product and exposes only current network surface
     path: testInfo.outputPath("landing.png"),
     fullPage: true,
   });
+  await page.keyboard.press("Escape");
+  await expect(setupToast).toBeHidden();
+  await expect(page.getByRole("button", { name: /Set up with Codex/ })).toBeFocused();
   await page.getByLabel("Footer").getByRole("link", { name: "Map" }).click();
   await expect(page).toHaveURL(/\/map$/);
   await expect(

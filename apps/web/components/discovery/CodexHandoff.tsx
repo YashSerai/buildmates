@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { BUILDMATES_SETUP_PROMPT } from "../../src/product/codex-setup";
 
 type CodexHandoffProps = {
@@ -8,15 +8,59 @@ type CodexHandoffProps = {
   label?: string;
 };
 
+const subscribeToHydration = () => () => {};
+
 export function CodexHandoff({
   className,
   label = "Set up with Codex",
 }: CodexHandoffProps) {
   const [status, setStatus] = useState("");
   const [open, setOpen] = useState(false);
-  const [ready, setReady] = useState(false);
+  const ready = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLElement>(null);
 
-  useEffect(() => setReady(true), []);
+  useEffect(() => {
+    if (!open) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const dialog = dialogRef.current;
+    const focusable = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+    focusable()[0]?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const controls = focusable();
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      triggerRef.current?.focus();
+    };
+  }, [open]);
 
   async function copyPrompt() {
     setOpen(true);
@@ -34,39 +78,49 @@ export function CodexHandoff({
         aria-expanded={open}
         aria-haspopup="dialog"
         disabled={!ready}
+        ref={triggerRef}
         type="button"
         onClick={copyPrompt}
       >
         {label} <span aria-hidden="true">↗</span>
       </button>
       {open ? (
-        <section
-          aria-labelledby="buildmates-setup-toast-title"
-          aria-modal="false"
-          className="codex-setup-toast"
-          role="dialog"
+        <div
+          className="codex-setup-backdrop"
+          onMouseDown={(event) => {
+            if (event.currentTarget === event.target) setOpen(false);
+          }}
         >
-          <header>
-            <strong id="buildmates-setup-toast-title">Buildmates setup prompt</strong>
-            <button
-              aria-label="Close setup prompt"
-              onClick={() => setOpen(false)}
-              type="button"
-            >
-              ×
-            </button>
-          </header>
-          <p role="status" aria-live="polite">
-            {status}
-          </p>
-          <textarea
-            aria-label="Copied Buildmates setup prompt"
-            onFocus={(event) => event.currentTarget.select()}
-            readOnly
-            rows={6}
-            value={BUILDMATES_SETUP_PROMPT}
-          />
-        </section>
+          <section
+            aria-describedby="buildmates-setup-toast-status"
+            aria-labelledby="buildmates-setup-toast-title"
+            aria-modal="true"
+            className="codex-setup-toast"
+            ref={dialogRef}
+            role="dialog"
+          >
+            <header>
+              <strong id="buildmates-setup-toast-title">Buildmates setup prompt</strong>
+              <button
+                aria-label="Close setup prompt"
+                onClick={() => setOpen(false)}
+                type="button"
+              >
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </header>
+            <p id="buildmates-setup-toast-status" role="status" aria-live="polite">
+              {status}
+            </p>
+            <textarea
+              aria-label="Copied Buildmates setup prompt"
+              onFocus={(event) => event.currentTarget.select()}
+              readOnly
+              rows={6}
+              value={BUILDMATES_SETUP_PROMPT}
+            />
+          </section>
+        </div>
       ) : null}
     </div>
   );
