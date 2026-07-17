@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import styles from "../../info.module.css";
+import styles from "./authorize.module.css";
 
-export function McpAuthorizeButton({ returnTo, disabled }: { returnTo: string; disabled: boolean }) {
+export function McpAuthorizeButton({ returnTo }: { returnTo: string }) {
   const [status, setStatus] = useState<"idle" | "working" | "error">("idle");
+
   async function authorize() {
     setStatus("working");
     const form = new FormData();
@@ -22,10 +23,15 @@ export function McpAuthorizeButton({ returnTo, disabled }: { returnTo: string; d
       setStatus("error");
     }
   }
-  return <div>
-    <button className={styles.action} type="button" disabled={disabled || status === "working"} onClick={authorize}>
-      {status === "working" ? "Authorizing..." : "Authorize connection"}
-    </button>
-    {status === "error" && <p role="alert">The connection could not be authorized. Return to Codex and try the login again.</p>}
-  </div>;
+
+  return (
+    <div className={styles.actionArea}>
+      <button type="button" disabled={status === "working"} onClick={authorize}>
+        <span>{status === "working" ? "Connecting..." : "Connect Codex"}</span>
+        <i aria-hidden="true">↗</i>
+      </button>
+      <p className={styles.actionHelp}>You will return to Codex automatically when the connection is ready.</p>
+      {status === "error" && <p className={styles.error} role="alert">The connection did not finish. Return to Codex and start it again.</p>}
+    </div>
+  );
 }
