@@ -53,9 +53,9 @@ Surface generation briefs fail closed unless D1 can derive the active Design Pol
 
 ## Deployment and registration
 
-The external Worker needs these Task 2 variables: `OAUTH_ISSUER`, `MCP_RESOURCE`, `OAUTH_CLIENTS_JSON`, `WEB_BASE_URL`, `WEB_DATA_URL`, `WEB_AUTHORIZATION_ISSUER`, `WEB_AUTHORIZATION_AUDIENCE`, and `MCP_DELEGATION_KEY_ID`. Its secrets are `OAUTH_SUBJECT_SECRET`, `WEB_AUTHORIZATION_PUBLIC_KEY_PEM`, and `MCP_DELEGATION_PRIVATE_KEY_PEM`.
+The external Worker needs these Task 2 variables: `OAUTH_ISSUER`, `MCP_RESOURCE`, `OAUTH_CLIENTS_JSON`, `WEB_BASE_URL`, `WEB_DATA_URL`, `WEB_AUTHORIZATION_ISSUER`, `WEB_AUTHORIZATION_AUDIENCE`, and `MCP_DELEGATION_KEY_ID`. Its secrets are `OAUTH_SUBJECT_SECRET`, `OAUTH_DCR_SIGNING_SECRET`, `WEB_AUTHORIZATION_PUBLIC_KEY_PEM`, and `MCP_DELEGATION_PRIVATE_KEY_PEM`.
 
-The web deployment needs `MCP_TOPOLOGY=external`, `MCP_DELEGATION_PUBLIC_KEY_PEM`, and matching delegation issuer/audience values. Apply D1 migrations before enabling the registry route. OAuth clients must use exact registered redirect URIs and resource audience.
+The web deployment needs `MCP_TOPOLOGY=external`, `MCP_DELEGATION_PUBLIC_KEY_PEM`, and matching delegation issuer/audience values. Apply D1 migrations before enabling the registry route. OAuth clients must use exact registered redirect URIs and resource audience. The beta MCP supports stateless dynamic registration only for exact HTTP loopback IP redirects, requires PKCE S256, binds registration metadata in a signed client ID, rate-limits registration and authorization handoffs, and shows an explicit website consent screen before issuing a code.
 
 `plugin/.codex-plugin/plugin.json` references only `plugin/.app.json`; there is no `.mcp.json` or direct `mcpServers` registration. Until ChatGPT creates the real app, `.app.json` truthfully has no app entry. Set the returned `asdk_app_*` or `connector_*` value as `BUILDMATES_APP_ID` and run `node plugin/scripts/bind-app-registration.mjs`. The binder rejects synthetic IDs. App creation and clean-account connection are account-side release checks, not values inferred in source.
 

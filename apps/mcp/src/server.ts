@@ -2,7 +2,7 @@ import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/
 import { createBuildmatesMcpServer, type BuildmatesToolServices } from "@buildmates/mcp-core";
 import { ZodError } from "zod";
 import {
-  oauthDiscovery, oauthIssuerCapability, protectedResourceMetadata, validateAuthorizationRequest,
+  isRegisteredRedirect, oauthDiscovery, oauthIssuerCapability, protectedResourceMetadata, registerDynamicClient, validateAuthorizationRequest,
   type AuthorizedWebIdentity, type DurableOAuthStore, type OAuth21Config,
 } from "./oauth";
 
@@ -20,6 +20,7 @@ export function createExternalMcpFetchHandler(runtime: ExternalMcpRuntime) {
     try {
       if (request.method === "GET" && (url.pathname === "/.well-known/oauth-authorization-server" || url.pathname === "/.well-known/openid-configuration")) return json(oauthDiscovery(runtime.oauth));
       if (request.method === "GET" && url.pathname === "/.well-known/oauth-protected-resource") return json(protectedResourceMetadata(runtime.oauth));
+      if (request.method === "POST" && url.pathname === "/oauth/register") return await register(request, runtime);
       if (request.method === "GET" && url.pathname === "/oauth/authorize") return await authorize(request, runtime);
       if (request.method === "POST" && url.pathname === "/oauth/token") return await token(request, runtime);
       if (request.method === "POST" && url.pathname === "/oauth/revoke") return await revoke(request, runtime);
@@ -30,6 +31,23 @@ export function createExternalMcpFetchHandler(runtime: ExternalMcpRuntime) {
       return json({ error: failure.code }, failure.status);
     }
   };
+}
+
+async function register(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
+  const contentType = request.headers.get("content-type")?.split(";", 1)[0]?.trim().toLowerCase();
+  if (contentType !== "application/json") return json({ error: "invalid_client_metadata" }, 400, noStoreHeaders);
+  const length = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(length) && length > 8192) return json({ error: "invalid_client_metadata" }, 400, noStoreHeaders);
+  const body = await request.text();
+  if (body.length > 8192) return json({ error: "invalid_client_metadata" }, 400, noStoreHeaders);
+  try {
+    const registration = registerDynamicClient(JSON.parse(body), runtime.oauth);
+    return json(registration, 201, noStoreHeaders);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    const code = message === "invalid_client_metadata" ? "invalid_redirect_uri" : "invalid_client_metadata";
+    return json({ error: code }, 400, noStoreHeaders);
+  }
 }
 
 async function authorize(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
@@ -51,13 +69,15 @@ async function token(request: Request, runtime: ExternalMcpRuntime): Promise<Res
   const form = await request.formData();
   const grantType = field(form, "grant_type");
   const clientId = field(form, "client_id");
-  const audience = field(form, "resource");
-  if (audience !== runtime.oauth.resource || !runtime.oauth.registeredRedirectUris.has(clientId)) return json({ error: "invalid_grant" }, 400);
+  const requestedAudience = field(form, "resource");
+  const mcpAudience = new URL("/mcp", runtime.oauth.resource).toString();
+  if (requestedAudience && requestedAudience !== runtime.oauth.resource && requestedAudience !== mcpAudience) return json({ error: "invalid_grant" }, 400);
+  const audience = runtime.oauth.resource;
   const pair = grantType === "authorization_code"
-    ? await runtime.store.exchangeAuthorizationCode({
+    ? isRegisteredRedirect(runtime.oauth, clientId, field(form, "redirect_uri")) ? await runtime.store.exchangeAuthorizationCode({
         code: field(form, "code"), clientId, redirectUri: field(form, "redirect_uri"), codeVerifier: field(form, "code_verifier"), audience,
         accessTokenTtlSeconds: runtime.oauth.accessTokenTtlSeconds, refreshTokenTtlSeconds: runtime.oauth.refreshTokenTtlSeconds,
-      })
+      }) : null
     : grantType === "refresh_token"
       ? await runtime.store.rotateRefreshToken({
           refreshToken: field(form, "refresh_token"), clientId, audience,
@@ -71,7 +91,6 @@ async function token(request: Request, runtime: ExternalMcpRuntime): Promise<Res
 async function revoke(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
   const form = await request.formData();
   const clientId = field(form, "client_id");
-  if (!runtime.oauth.registeredRedirectUris.has(clientId)) return json({ error: "invalid_client" }, 401);
   await runtime.store.revoke(field(form, "token"), clientId);
   return new Response(null, { status: 200, headers: { "cache-control": "no-store" } });
 }
@@ -100,13 +119,15 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
   return Response.json(body, { status, headers: { "content-type": "application/json", ...headers } });
 }
 
+const noStoreHeaders = { "cache-control": "no-store", pragma: "no-cache" } as const;
+
 function redirectNoStore(location: string): Response {
   return new Response(null, { status: 302, headers: { location, "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" } });
 }
 
 function oauthError(error: unknown): { code: "invalid_request" | "server_error"; status: 400 | 500 } {
   const message = error instanceof Error ? error.message : "";
-  if (error instanceof ZodError || ["unregistered_redirect_uri", "invalid_resource_audience", "invalid_scope"].includes(message)) {
+  if (error instanceof ZodError || ["unregistered_redirect_uri", "invalid_resource_audience", "invalid_scope", "invalid_client_metadata", "dynamic_registration_disabled"].includes(message)) {
     return { code: "invalid_request", status: 400 };
   }
   return { code: "server_error", status: 500 };

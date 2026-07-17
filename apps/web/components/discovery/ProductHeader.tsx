@@ -75,6 +75,8 @@ export function ProductFooter() {
         <Link href="/map">Map</Link>
         <Link href="/graph">Build graph</Link>
         <Link href="/privacy">Privacy</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/support">Support</Link>
         <Link href="/install">Install</Link>
       </nav>
       <small>your work changes. your network keeps up.</small>

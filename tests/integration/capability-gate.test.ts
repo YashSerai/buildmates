@@ -149,6 +149,7 @@ describe("platform capability gate", () => {
       oauth: {
         issuer: "https://mcp.example", resource: "https://mcp.example/mcp",
         registeredRedirectUris: new Map([["codex", ["https://chatgpt.com/callback"]]]),
+        dynamicClientRegistrationSecret: "test-dynamic-client-registration-secret-32-bytes",
         allowedScopes: new Set(["mcp:tools"]), accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 86400,
       },
       store,
@@ -156,7 +157,42 @@ describe("platform capability gate", () => {
       async resolveAuthorizationIdentity() { return { issuer: "chatgpt_sites", subject: "web-subject-alice" }; },
     });
     const discovery = await handler(new Request("https://mcp.example/.well-known/oauth-authorization-server"));
-    expect(await discovery.json()).toMatchObject({ authorization_endpoint: "https://mcp.example/oauth/authorize", code_challenge_methods_supported: ["S256"] });
+    expect(await discovery.json()).toMatchObject({ authorization_endpoint: "https://mcp.example/oauth/authorize", registration_endpoint: "https://mcp.example/oauth/register", code_challenge_methods_supported: ["S256"] });
+
+    const registration = await handler(new Request("https://mcp.example/oauth/register", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ redirect_uris: ["http://127.0.0.1:43119/callback"], token_endpoint_auth_method: "none", grant_types: ["authorization_code", "refresh_token"], response_types: ["code"], client_name: "Codex", software_version: "0.142.0" }),
+    }));
+    expect(registration.status).toBe(201);
+    const dynamicClient = await registration.json() as { client_id: string };
+    expect(dynamicClient.client_id).toMatch(/^bm\./);
+    const dynamicAuthUrl = new URL("https://mcp.example/oauth/authorize");
+    Object.entries({ response_type: "code", client_id: dynamicClient.client_id, redirect_uri: "http://127.0.0.1:43119/callback", code_challenge: "y".repeat(43), code_challenge_method: "S256", scope: "mcp:tools", state: "state-456", resource: "https://mcp.example/mcp" }).forEach(([key, value]) => dynamicAuthUrl.searchParams.set(key, value));
+    expect((await handler(new Request(dynamicAuthUrl, { redirect: "manual" }))).status).toBe(302);
+
+    const unsafeRegistration = await handler(new Request("https://mcp.example/oauth/register", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ redirect_uris: ["https://attacker.example/callback"], token_endpoint_auth_method: "none" }),
+    }));
+    expect(unsafeRegistration.status).toBe(400);
+    expect(await unsafeRegistration.json()).toEqual({ error: "invalid_redirect_uri" });
+
+    const tamperedAuthUrl = new URL(dynamicAuthUrl);
+    tamperedAuthUrl.searchParams.set("client_id", `${dynamicClient.client_id}x`);
+    expect((await handler(new Request(tamperedAuthUrl, { redirect: "manual" }))).status).toBe(400);
+
+    const dynamicToken = await handler(formRequest("https://mcp.example/oauth/token", { grant_type: "authorization_code", client_id: dynamicClient.client_id, code: "authorization-code", redirect_uri: "http://127.0.0.1:43119/callback", code_verifier: "v".repeat(43), resource: "https://mcp.example/mcp" }));
+    expect(await dynamicToken.json()).toMatchObject({ access_token: "access", refresh_token: "refresh" });
+
+    const oversizedRegistration = await handler(new Request("https://mcp.example/oauth/register", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ redirect_uris: ["http://127.0.0.1:43119/callback"], client_name: "x".repeat(9000) }),
+    }));
+    expect(oversizedRegistration.status).toBe(400);
+
+    const confidentialRegistration = await handler(new Request("https://mcp.example/oauth/register", {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ redirect_uris: ["http://127.0.0.1:43119/callback"], token_endpoint_auth_method: "client_secret_post" }),
+    }));
+    expect(confidentialRegistration.status).toBe(400);
 
     const authUrl = new URL("https://mcp.example/oauth/authorize");
     Object.entries({ response_type: "code", client_id: "codex", redirect_uri: "https://chatgpt.com/callback", code_challenge: "x".repeat(43), code_challenge_method: "S256", scope: "mcp:tools", state: "state-123", resource: "https://mcp.example/mcp" }).forEach(([key, value]) => authUrl.searchParams.set(key, value));

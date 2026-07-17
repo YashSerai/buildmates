@@ -11,6 +11,7 @@ type Env = {
   MCP_RESOURCE: string;
   OAUTH_CLIENTS_JSON: string;
   OAUTH_SUBJECT_SECRET: string;
+  OAUTH_DCR_SIGNING_SECRET: string;
   WEB_BASE_URL: string;
   WEB_DATA_URL: string;
   WEB_AUTHORIZATION_PUBLIC_KEY_PEM: string;
@@ -27,6 +28,7 @@ const worker = {
       issuer: env.OAUTH_ISSUER,
       resource: env.MCP_RESOURCE,
       registeredRedirectUris: new Map(Object.entries(clients)),
+      dynamicClientRegistrationSecret: env.OAUTH_DCR_SIGNING_SECRET,
       allowedScopes: new Set(["mcp:tools"]),
       accessTokenTtlSeconds: 15 * 60,
       refreshTokenTtlSeconds: 30 * 24 * 60 * 60,
@@ -40,7 +42,14 @@ const worker = {
       publicKeyPem: env.WEB_AUTHORIZATION_PUBLIC_KEY_PEM,
       issuer: env.WEB_AUTHORIZATION_ISSUER, audience: env.WEB_AUTHORIZATION_AUDIENCE,
     });
-    if (new URL(request.url).pathname === "/oauth/web-callback") return handoff.complete(request);
+    const requestUrl = new URL(request.url);
+    if (requestUrl.pathname === "/oauth/web-callback") return handoff.complete(request);
+    if ((request.method === "POST" && requestUrl.pathname === "/oauth/register") || (request.method === "GET" && requestUrl.pathname === "/oauth/authorize")) {
+      const clientIp = request.headers.get("cf-connecting-ip") ?? "missing-client-ip";
+      if (!await allowRateLimitedAttempt(env.DB, clientIp, `oauth${requestUrl.pathname}`)) {
+        return Response.json({ error: "rate_limited" }, { status: 429, headers: { "cache-control": "no-store", "retry-after": "600" } });
+      }
+    }
     const handler = createExternalMcpFetchHandler({
       oauth,
       store: createD1OAuthStore(env.DB, env.OAUTH_SUBJECT_SECRET),

@@ -38,7 +38,7 @@ export default async function InstallPage() {
           <h2>What happens next</h2>
           <div>
             <ol className={styles.steps}>
-              <li>Codex asks you to install Buildmates inside Codex, then checks your account.</li>
+              <li>Codex installs the public plugin, the GitHub beta, or the direct MCP connection, then checks your account.</li>
               <li>You choose what Codex may use to understand your work.</li>
               <li>You review your profile and the page Codex creates.</li>
               <li>
@@ -64,12 +64,32 @@ export default async function InstallPage() {
           </div>
         </section>
         <section>
+          <h2>Testing before publication</h2>
+          <div>
+            <p>
+              The GitHub beta is the complete Buildmates plugin: onboarding
+              skills plus the production MCP connection. Codex adds the
+              Buildmates repository marketplace, asks you to install it, then
+              opens a browser once so you can authorize your account.
+            </p>
+            <p>
+              Direct MCP is the smaller fallback. It connects the same
+              production tools without installing the Buildmates skills. The
+              setup guide remains the workflow authority in that mode.
+            </p>
+            <p className={styles.mono}>
+              Repository: github.com/YashSerai/buildmates<br />
+              MCP: buildmates-mcp.yashserai1.workers.dev/mcp
+            </p>
+          </div>
+        </section>
+        <section>
           <h2>The setup rule</h2>
           <div className={styles.status}>
             <p>
-              <strong>Buildmates installs inside Codex.</strong>{" "}Codex asks for
-              your confirmation there. It does not drive Chrome through the
-              ChatGPT website.
+              <strong>Buildmates connects inside Codex.</strong>{" "}Codex asks for
+              confirmation before installing the beta plugin or adding the MCP
+              server. A browser opens only for account authorization.
             </p>
             <p>
               GitHub opens only to establish your Buildmates website identity.

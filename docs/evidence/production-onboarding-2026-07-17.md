@@ -80,3 +80,10 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - The corrected contract presents three combinable paths: current context already surfaced in the Codex task, connected apps actually available in that task, and user-provided descriptions or links. Every path explains what Codex reads and that the approved structured summary is reviewed before submission.
 - Other chats, open tasks, and session IDs are outside the default source-selection boundary. Host memory already surfaced in the current task may inform a draft; Codex does not crawl unrelated conversations.
 - Exact commit `301a2f343103479c7b65f5db01ebb8eacca62532` is live as ChatGPT Sites version 13. Production `/install` and `/llms.txt` verification found the current-context, combinable-paths, no-GitHub-identity inference, and no-session-ID markers.
+
+## Pre-publication beta distribution
+
+- The repository exposes `buildmates@buildmates-beta` through `.agents/plugins/marketplace.json`. Its plugin package contains the complete Buildmates skills and connects directly to `https://buildmates-mcp.yashserai1.workers.dev/mcp`.
+- Direct MCP remains a smaller fallback and uses the same production endpoint with an explicit OAuth resource override.
+- Codex CLI 0.142 completed dynamic client registration and OAuth login against the production Worker after the OAuth audience was normalized to the canonical Buildmates resource.
+- Dynamic clients are limited to exact loopback IP callbacks, use PKCE S256, receive no client secret, and require an explicit Buildmates website authorization confirmation. The development app ID is no longer a dependency for beta testers.

@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/src/auth/require-user";
 import { createMcpAuthorizationAssertion } from "@/src/platform/mcp-authorization";
 import { sha256 } from "@/src/auth/github-oauth";
+import { requireSameOriginMutation } from "@/src/platform/same-origin";
 
 export async function GET(request: Request) {
   const user = await getCurrentUser();
@@ -8,11 +9,27 @@ export async function GET(request: Request) {
     const returnTo = new URL(request.url).pathname + new URL(request.url).search;
     return Response.redirect(new URL(`/api/auth/github/start?return_to=${encodeURIComponent(returnTo)}`, request.url), 302);
   }
+  const mcpBaseUrl = process.env.MCP_OAUTH_BASE_URL;
+  if (!mcpBaseUrl) return Response.json({ error: "mcp_authorization_handoff_unavailable" }, { status: 503 });
+  const returnTo = new URL(request.url).searchParams.get("return_to");
+  if (!returnTo || !isAllowedMcpCallback(returnTo, mcpBaseUrl)) return Response.json({ error: "invalid_return_to" }, { status: 400 });
+
+  const consent = new URL("/mcp/authorize", request.url);
+  consent.searchParams.set("return_to", returnTo);
+  return Response.redirect(consent, 302);
+}
+
+export async function POST(request: Request) {
+  const originFailure = requireSameOriginMutation(request);
+  if (originFailure) return originFailure;
+  const user = await getCurrentUser();
+  if (!user) return Response.json({ error: "authentication_required" }, { status: 401 });
   const privateKeyPem = process.env.MCP_WEB_AUTHORIZATION_PRIVATE_KEY_PEM;
   const mcpBaseUrl = process.env.MCP_OAUTH_BASE_URL;
   if (!privateKeyPem || !mcpBaseUrl) return Response.json({ error: "mcp_authorization_handoff_unavailable" }, { status: 503 });
-  const returnTo = new URL(request.url).searchParams.get("return_to");
-  if (!returnTo || !isAllowedMcpCallback(returnTo, mcpBaseUrl)) return Response.json({ error: "invalid_return_to" }, { status: 400 });
+  const form = await request.formData();
+  const returnTo = form.get("return_to");
+  if (typeof returnTo !== "string" || !isAllowedMcpCallback(returnTo, mcpBaseUrl)) return Response.json({ error: "invalid_return_to" }, { status: 400 });
 
   const callback = new URL(returnTo);
   const handoff = callback.searchParams.get("handoff");

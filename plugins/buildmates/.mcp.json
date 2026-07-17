@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "buildmates": {
+      "type": "http",
+      "url": "https://buildmates-mcp.yashserai1.workers.dev/mcp",
+      "oauth_resource": "https://buildmates-mcp.yashserai1.workers.dev"
+    }
+  }
+}

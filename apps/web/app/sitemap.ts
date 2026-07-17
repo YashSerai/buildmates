@@ -3,7 +3,7 @@ import { getPlatformBindings } from "@/src/platform/bindings";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? "https://buildmates.yashns.chatgpt.site";
-  const staticEntries: MetadataRoute.Sitemap = ["", "/product", "/privacy", "/install", "/map", "/graph"].map((path) => ({ url: `${base}${path}`, changeFrequency: path === "" ? "weekly" : "daily" }));
+  const staticEntries: MetadataRoute.Sitemap = ["", "/product", "/privacy", "/terms", "/support", "/install", "/map", "/graph"].map((path) => ({ url: `${base}${path}`, changeFrequency: path === "" ? "weekly" : "daily" }));
   try {
     const { DB } = await getPlatformBindings();
     const [profiles, projects] = await Promise.all([

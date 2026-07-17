@@ -10,15 +10,17 @@ Source repository: https://github.com/YashSerai/buildmates
 
 When the user asks to install, set up, start, or resume Buildmates:
 
-1. If Buildmates is not connected, use the host's native Codex plugin-install confirmation. Never use Chrome or browser automation to navigate ChatGPT and install or connect the plugin.
-2. Installation is never silent. Let the user approve the native Codex confirmation. If native installation is unavailable, tell the user and offer the official Buildmates app link for manual installation; do not operate the website as a substitute.
-3. Call get_setup_state immediately after connection. Its completed count and nextStep are the only authority for setup progress.
-4. Never infer setup state from old ChatGPT conversations, browser tabs, website routes, local files, or prior task wording. Do not read or resume an old Buildmates conversation to determine progress.
-5. If get_setup_state remains unavailable, the app is not connected correctly. Stop and repair the connection instead of substituting another signal.
-6. Invoke the Buildmates onboarding workflow and advance one returned step at a time.
-7. When GitHub website identity is required, ask whether the user wants to complete OAuth themselves or wants guided browser help. Manual completion is the default. Browser help requires explicit approval and must pause for credentials, verification codes, and provider consent; never retrieve or enter those silently.
-8. Ask before using connected-app context or sharing a Work Signal.
-9. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
+1. If Buildmates is not connected, first use the host's native Codex plugin-install confirmation.
+2. Before the public directory release, install the complete beta from the repository marketplace: `codex plugin marketplace add YashSerai/buildmates --ref launch/buildmates`, then `codex plugin add buildmates@buildmates-beta`. Ask before running those commands. Start a new task after installation so Codex loads the skills and MCP configuration.
+3. If plugin installation is unavailable, offer the direct production MCP fallback: `codex mcp add buildmates --url https://buildmates-mcp.yashserai1.workers.dev/mcp --oauth-resource https://buildmates-mcp.yashserai1.workers.dev`, then `codex mcp login buildmates --scopes mcp:tools`. Direct MCP provides the tools but not the packaged skills, so continue to follow this guide.
+4. Installation is never silent. Never automate ChatGPT in Chrome to install or connect the plugin. A browser may open for the user to approve Buildmates account authorization; do not enter credentials or approve consent for them.
+5. Call get_setup_state immediately after connection. Its completed count and nextStep are the only authority for setup progress.
+6. Never infer setup state from old ChatGPT conversations, browser tabs, website routes, local files, or prior task wording. Do not read or resume an old Buildmates conversation to determine progress.
+7. If get_setup_state remains unavailable, the app or MCP connection is incomplete. Repair the connection instead of substituting another signal.
+8. Invoke the Buildmates onboarding workflow and advance one returned step at a time.
+9. When GitHub website identity is required, ask whether the user wants to complete OAuth themselves or wants guided browser help. Manual completion is the default. Browser help requires explicit approval and must pause for credentials, verification codes, and provider consent; never retrieve or enter those silently.
+10. Ask before using connected-app context or sharing a Work Signal.
+11. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
 
 ## Approval batching
 

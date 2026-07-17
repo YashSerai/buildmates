@@ -6,7 +6,21 @@ Buildmates is a Codex-native builder network. It turns user-approved connected-a
 
 ## Set up with Codex
 
-Normal users do not need this repository. Start from the [official setup guide](https://buildmates.yashns.chatgpt.site/install) and paste its prompt into a new Codex task. Once Buildmates is published and discoverable, Codex uses its native plugin-install confirmation; it does not need to automate the ChatGPT website. Until then, the guide provides the official manual app link.
+Start from the [official setup guide](https://buildmates.yashns.chatgpt.site/install) and paste its prompt into a new Codex task. Before the public directory release, Codex can install the complete repository beta or connect the production MCP server directly. Both routes require confirmation and account authorization.
+
+For the complete beta plugin:
+
+```powershell
+codex plugin marketplace add YashSerai/buildmates --ref launch/buildmates
+codex plugin add buildmates@buildmates-beta
+```
+
+For the MCP-only fallback:
+
+```powershell
+codex mcp add buildmates --url https://buildmates-mcp.yashserai1.workers.dev/mcp --oauth-resource https://buildmates-mcp.yashserai1.workers.dev
+codex mcp login buildmates --scopes mcp:tools
+```
 
 For Codex and other agents, the canonical machine-readable instructions are at [buildmates.yashns.chatgpt.site/llms.txt](https://buildmates.yashns.chatgpt.site/llms.txt). Once the Buildmates app is connected, an install, setup, start, or resume request must invoke the plugin's mandatory onboarding skill, call `get_setup_state` first, and use bounded batches of up to three fully described actions. Meaningful consent checkpoints remain separate. Do not infer permissions or send raw private source material; submit only user-approved structured summaries.
 
@@ -30,7 +44,8 @@ packages/database schema, migrations, repositories, D1 and service adapters
 packages/matching taxonomy, builder index, deterministic scoring
 packages/surfaces SurfaceSpec, trusted renderer, sanitization, Design Policy
 packages/mcp-core one transport-independent MCP tool registry
-plugin          Buildmates Codex plugin package
+plugin          public-submission plugin package bound to the development app
+plugins/buildmates repository beta package bound directly to production MCP
 ```
 
 ## Local development
