@@ -39,3 +39,11 @@ The public `/install` page needs a focused copy and rendered UI review after the
 3. Complete a true production data and identity reset.
 4. Re-run the copied prompt and require `0/11` with `identity_link` next.
 5. Repair the acquisition/onboarding instruction gaps and `/install` copy/UI findings, then repeat the affected checks.
+
+## Clean-reset proof
+
+- The original owner Buildmates account was deleted through the production privacy flow, removing the web session, GitHub provider mapping, MCP identity link, setup state, and user-owned product records.
+- Opening a protected route during verification reused the still-authenticated GitHub browser session and automatically created a new empty Buildmates account. That empty account was immediately deleted. Future reset verification must use `/account` and the MCP setup-state read, never a protected route.
+- The public `/account` page then showed **Sign in to Buildmates** with no authenticated Buildmates session.
+- The Buildmates entry was explicitly revoked from GitHub Authorized OAuth Apps; GitHub confirmed the revocation and the authorized-app count decreased from 15 to 14.
+- A final production `get_setup_state` returned `completedCount: 0`, `totalSteps: 11`, and `nextStep: identity_link`.

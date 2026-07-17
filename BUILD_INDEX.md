@@ -193,7 +193,7 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 
 ## Current next action
 
-Continue owner task `019f6f11-2fe0-75f1-90bc-8e6ffefdd9ea` from `2/11` as a resumability test and record every remaining divergence. Then perform the complete production identity/data reset and require a separate clean `0/11` run before closing first-run onboarding. The install-page copy/render audit and the observed acquisition-instruction gaps are logged in `docs/evidence/production-onboarding-2026-07-17.md`. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+Run the canonical prompt copied from the public landing page in a new personal Codex task. The verified starting state is signed out of Buildmates, the prior GitHub authorization is revoked, and MCP setup is `0/11` with `identity_link` next. Complete all 11 steps and preserve the full task as clean first-run evidence. The earlier `2/11` task remains resumability evidence only; do not continue it for the clean-run test. The install-page copy/render audit and observed acquisition-instruction gaps are logged in `docs/evidence/production-onboarding-2026-07-17.md`. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
 
 ## Codex acquisition path added 2026-07-16
 
