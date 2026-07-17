@@ -202,3 +202,4 @@ Run the clean 0/11 personal Codex onboarding with the owner account, then comple
 - `/llms.txt`, the root README, and the plugin README point agents to the same setup contract. The GitHub repository remains supporting documentation rather than a requirement for ordinary installation.
 - The plugin's existing mandatory onboarding skill remains authoritative after connection. Website onboarding remains an optional fallback.
 - Focused source checks pass lint, web typecheck/build, rendered HTML, and the affected desktop/phone Playwright paths. Screenshots confirm the landing and install guide have no horizontal overflow at the tested viewports.
+- ChatGPT Sites version 6 is live from exact code commit `e3d7348418eb56ee21329fc144430da7c69bc38f`. Production returned 200 for the landing, `/install`, and `/llms.txt`; the live HTML contains the Codex CTA, registered app link, and canonical agent setup contract.
