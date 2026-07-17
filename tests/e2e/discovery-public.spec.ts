@@ -8,6 +8,8 @@ test("landing explains the real product and exposes only current network surface
   await expect(
     page.getByRole("heading", { name: /find your people/i }),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: /Set up with Codex/ })).toHaveAttribute("href", "/install");
+  await expect(page.getByRole("button", { name: "Copy setup prompt" })).toBeVisible();
   await expect(page.getByText(/You decide what becomes part of your profile/i)).toBeVisible();
   await expect(page.getByRole("link", { name: "Discover" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Cohorts" })).toHaveCount(0);
@@ -15,7 +17,7 @@ test("landing explains the real product and exposes only current network surface
     path: testInfo.outputPath("landing.png"),
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Map" }).click();
+  await page.getByLabel("Footer").getByRole("link", { name: "Map" }).click();
   await expect(page).toHaveURL(/\/map$/);
   await expect(
     page.getByRole("heading", { name: "See where builders are gathering." }),
@@ -64,16 +66,44 @@ test("sitemap and robots expose no discovery or cohort URLs", async ({
   expect(robots).not.toContain("/cohorts");
 });
 
+test("Codex can read the public setup contract", async ({ request }) => {
+  const response = await request.get("/llms.txt");
+  expect(response.status()).toBe(200);
+  const instructions = await response.text();
+  expect(instructions).toContain("Canonical setup guide: https://buildmates.yashns.chatgpt.site/install");
+  expect(instructions).toContain("Call get_setup_state first");
+  expect(instructions).toContain("user-approved structured summaries only");
+});
+
 test("product, privacy, install, and account paths are complete", async ({
   page,
-}) => {
+}, testInfo) => {
   for (const [path, heading] of [
     ["/product", "Networking that starts with the work."],
     ["/privacy", "Your work stays yours."],
-    ["/install", "Start in Codex."],
+    ["/install", "Let Codex set it up."],
     ["/account", "Sign in to Buildmates."],
   ] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
   }
+
+  await page.goto("/install");
+  await expect(page.getByRole("link", { name: "Open the official Buildmates app" })).toHaveAttribute(
+    "href",
+    /plugin_asdk_app_6a57d2ff080481918659b3355a3d9c0e/,
+  );
+  await expect(page.getByLabel("Prompt to paste into Codex")).toHaveValue(
+    /buildmates\.yashns\.chatgpt\.site\/install/,
+  );
+  await page.getByRole("button", { name: "Copy prompt for Codex" }).click();
+  await expect(page.getByRole("status")).toContainText(/Copied|Copy was blocked/);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+  );
+  expect(overflow, "/install has no horizontal overflow").toBe(false);
+  await page.screenshot({
+    path: testInfo.outputPath("install.png"),
+    fullPage: true,
+  });
 });

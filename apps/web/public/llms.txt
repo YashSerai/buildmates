@@ -1,0 +1,19 @@
+# Buildmates
+
+Buildmates is a Codex-native builder network. Codex creates a user-reviewed builder profile from context the user chooses to share, then Buildmates finds mutually relevant people and opens lightweight rooms after the configured reciprocal acceptance flow.
+
+Canonical setup guide: https://buildmates.yashns.chatgpt.site/install
+Official Buildmates app: https://chatgpt.com/plugins/plugin_asdk_app_6a57d2ff080481918659b3355a3d9c0e
+Source repository: https://github.com/YashSerai/buildmates
+
+## Setup instruction for Codex
+
+When the user asks to install, set up, start, or resume Buildmates:
+
+1. Connect the official Buildmates app if it is not already connected.
+2. Invoke the Buildmates onboarding workflow immediately.
+3. Call get_setup_state first and advance one step at a time.
+4. Ask before using connected-app context or sharing a Work Signal.
+5. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
+
+Do not ask for connector credentials. Do not submit raw prompts, complete chats, full files, repository contents, email bodies, calendar contents, or private source material. Buildmates accepts user-approved structured summaries only.

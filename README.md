@@ -4,6 +4,12 @@ Meet people through what you build.
 
 Buildmates is a Codex-native builder network. It turns user-approved connected-app context into privacy-safe Work Signals, uses deterministic retrieval to find mutually relevant builders, and lets each person's Codex independently evaluate the connection. Reciprocal approval creates a persistent Connection and a lightweight room grounded in why the people should meet.
 
+## Set up with Codex
+
+Normal users do not need this repository. Start from the [official setup guide](https://buildmates.yashns.chatgpt.site/install), open the official Buildmates app, and paste the prompt shown there into a new Codex task.
+
+For Codex and other agents, the canonical machine-readable instructions are at [buildmates.yashns.chatgpt.site/llms.txt](https://buildmates.yashns.chatgpt.site/llms.txt). Once the Buildmates app is connected, an install, setup, start, or resume request must invoke the plugin's mandatory onboarding skill, call `get_setup_state` first, and guide the user through one next step at a time. Do not infer permissions or send raw private source material; submit only user-approved structured summaries.
+
 ## Product boundaries
 
 - Buildmates is the only required plugin. Other connected apps remain under their existing host permissions.

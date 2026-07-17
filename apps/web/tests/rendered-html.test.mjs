@@ -20,9 +20,10 @@ test("server-renders the Buildmates public landing page", async () => {
   const html = await response.text();
   assert.match(html, /<title>Buildmates<\/title>/i);
   assert.match(html, /Find your people/);
-  assert.match(html, /Build your profile/);
-  assert.match(html, /You approve the work summaries that leave your conversation/);
-  assert.match(html, /Each side follows its saved acceptance rules/);
+  assert.match(html, /Set up with Codex/);
+  assert.match(html, /Codex turns the work you choose to share/);
+  assert.match(html, /one Buildmates app/);
+  assert.match(html, /Review every introduction or let Full Autopilot/);
   assert.match(html, /your work changes. your network keeps up./);
   assert.doesNotMatch(html, /Browse coarse locations/);
   assert.doesNotMatch(html, /Your site is taking shape|Codex is working|react-loading-skeleton/);
@@ -34,7 +35,7 @@ test("ships product metadata and removes the starter preview", async () => {
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
-  assert.match(page, /a connection, from signal to room/i);
+  assert.match(page, /find your people/i);
   assert.match(layout, /title: \{ default: "Buildmates"/);
   assert.match(layout, /summary_large_image/);
   assert.match(layout, /export const viewport: Viewport/);
@@ -60,8 +61,8 @@ test("privacy and error copy stay aligned with the product boundaries", async ()
     readFile(new URL("../components/profile-projects/RevisionPreview.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/onboarding/OnboardingClient.tsx", import.meta.url), "utf8"),
   ]);
-  assert.match(profileReview, /key === "current_work" \|\| key === "networking_intent" \? "suggested_connections"/);
-  assert.match(graph, /at least two builders/);
+  assert.match(profileReview, /key === "current_work" \|\|\s+key === "networking_intent"\s+\? "suggested_connections"/);
+  assert.match(graph, /projects that builders deliberately made public/);
   assert.match(errors, /export function userFacingError/);
   assert.doesNotMatch(errors, /return value/);
   assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);

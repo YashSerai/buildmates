@@ -194,3 +194,11 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 ## Current next action
 
 Run the clean 0/11 personal Codex onboarding with the owner account, then complete the remaining authenticated production interaction checks. The public Site and external MCP boundary are live; a second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+
+## Codex acquisition path added 2026-07-16
+
+- The landing page now states that Codex creates the profile and routes the primary action through a canonical public setup guide instead of assuming visitors already know or have installed Buildmates.
+- The setup guide provides the registered Buildmates app link, one copyable prompt containing the guide URL, a manual text-selection fallback, and a concise description of the completed first run.
+- `/llms.txt`, the root README, and the plugin README point agents to the same setup contract. The GitHub repository remains supporting documentation rather than a requirement for ordinary installation.
+- The plugin's existing mandatory onboarding skill remains authoritative after connection. Website onboarding remains an optional fallback.
+- Focused source checks pass lint, web typecheck/build, rendered HTML, and the affected desktop/phone Playwright paths. Screenshots confirm the landing and install guide have no horizontal overflow at the tested viewports.

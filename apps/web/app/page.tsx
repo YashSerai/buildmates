@@ -4,6 +4,7 @@ import {
   ProductFooter,
   ProductHeader,
 } from "../components/discovery/ProductHeader";
+import { CodexHandoff } from "../components/discovery/CodexHandoff";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -22,14 +23,15 @@ export default function Home() {
             <span>through what you build.</span>
           </h1>
           <p>
-            Buildmates turns the work you choose to share into a living profile,
-            then finds people whose work, ambition, stage, or location gives you
-            a reason to talk.
+            Codex turns the work you choose to share into a living profile, then
+            Buildmates finds people whose work, ambition, stage, or location
+            gives you a reason to talk.
           </p>
           <div className={styles.heroActions}>
-            <Link className={styles.primary} href="/onboarding">
-              Build your profile <span aria-hidden="true">↗</span>
+            <Link className={styles.primary} href="/install">
+              Set up with Codex <span aria-hidden="true">↗</span>
             </Link>
+            <CodexHandoff className={styles.copyPrompt} />
           </div>
         </div>
         <div
@@ -67,7 +69,7 @@ export default function Home() {
           you choose what to share.
         </p>
         <div>
-          <strong>Build a profile with Codex</strong>
+          <strong>Codex builds your profile</strong>
           <span>
             Turn the work you care about into a page that feels like you.
           </span>

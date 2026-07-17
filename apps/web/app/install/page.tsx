@@ -6,6 +6,7 @@ import {
 } from "../../components/discovery/ProductHeader";
 import { getCurrentUser } from "../../src/auth/require-user";
 import styles from "../info.module.css";
+import { CodexInstallActions } from "./CodexInstallActions";
 
 export const metadata: Metadata = {
   title: "Install",
@@ -18,26 +19,26 @@ export default async function InstallPage() {
     <main className={styles.page}>
       <ProductHeader signedIn={Boolean(user)} />
       <article className={styles.article}>
-        <h1>Start in Codex.</h1>
+        <h1>Let Codex set it up.</h1>
         <p className={styles.lead}>
-          Install Buildmates, answer a few questions, then review the profile
-          and page Codex makes for you.
+          Open the official Buildmates app, give Codex the prompt below, and it
+          will guide you from an empty account to a profile you have reviewed.
         </p>
         <section>
-          <h2>Bring your own context</h2>
+          <h2>Start here</h2>
           <div>
             <p>
-              You can start with the apps already connected to Codex, a project
-              link, a portfolio, or a short description. You decide what
-              Buildmates may use.
+              The prompt includes this page, so Codex has the official setup
+              instructions even if it has never heard of Buildmates.
             </p>
+            <CodexInstallActions />
           </div>
         </section>
         <section>
-          <h2>Your first run</h2>
+          <h2>What Codex will do</h2>
           <div>
             <ol className={styles.steps}>
-              <li>Connect Buildmates to your account.</li>
+              <li>Connect the official Buildmates app to your account.</li>
               <li>Choose what Codex may use to understand your work.</li>
               <li>Review what belongs on your profile.</li>
               <li>Preview the page Codex creates for you.</li>
@@ -47,17 +48,13 @@ export default async function InstallPage() {
               </li>
             </ol>
             <p>
-              If there is not enough context yet, Codex asks a few focused
-              questions and improves the profile over time.
+              You can start with connected apps, a project or portfolio link,
+              or a short description. If context is sparse, Codex asks focused
+              questions. Nothing is shared with Buildmates until you approve
+              the summary.
             </p>
-            <Link
-              className={styles.action}
-              href={user ? "/settings/connections" : "/account"}
-            >
-              {user ? "Connect Codex" : "Sign in first"}
-            </Link>
             <Link className={styles.secondary} href="/onboarding">
-              Start setup
+              {user ? "Use manual setup instead" : "Set up on the website instead"}
             </Link>
           </div>
         </section>

@@ -2,6 +2,10 @@
 
 This package is the single Codex entry point for Buildmates. It references one remote Buildmates app and does not register the MCP endpoint a second time.
 
+Public setup guide: https://buildmates.yashns.chatgpt.site/install
+
+Agent-readable setup contract: https://buildmates.yashns.chatgpt.site/llms.txt
+
 ## Registration boundary
 
 `plugin/.app.json` contains the registered Buildmates ChatGPT app ID. The plugin references that single remote app and does not register the MCP endpoint a second time. If the app is replaced, bind only the new ID returned by ChatGPT:
