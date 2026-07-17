@@ -93,7 +93,8 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(response.status()).toBe(200);
   const instructions = await response.text();
   expect(instructions).toContain("Canonical setup guide: https://buildmates.yashns.chatgpt.site/install");
-  expect(instructions).toContain("Call get_setup_state first");
+  expect(instructions).toContain("Call get_setup_state immediately");
+  expect(instructions).toContain("Never infer setup state from old ChatGPT conversations");
   expect(instructions).toContain("user-approved structured summaries only");
 });
 
@@ -103,7 +104,7 @@ test("product, privacy, install, and account paths are complete", async ({
   for (const [path, heading] of [
     ["/product", "Networking that starts with the work."],
     ["/privacy", "Your work stays yours."],
-    ["/install", "Let Codex set it up."],
+    ["/install", "Give Codex one link."],
     ["/account", "Sign in to Buildmates."],
   ] as const) {
     await page.goto(path);
@@ -111,15 +112,18 @@ test("product, privacy, install, and account paths are complete", async ({
   }
 
   await page.goto("/install");
-  await expect(page.getByRole("link", { name: "Open the official Buildmates app" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "official Buildmates app" })).toHaveAttribute(
     "href",
     /plugin_asdk_app_6a57d2ff080481918659b3355a3d9c0e/,
   );
-  await expect(page.getByLabel("Prompt to paste into Codex")).toHaveValue(
-    /buildmates\.yashns\.chatgpt\.site\/install/,
+  await page.getByRole("button", { name: /Set up with Codex/ }).click();
+  const installDialog = page.getByRole("dialog", { name: "Buildmates setup prompt" });
+  await expect(installDialog).toBeVisible();
+  await expect(page.getByLabel("Copied Buildmates setup prompt")).toHaveValue(
+    "Set up Buildmates for me using the official guide: https://buildmates.yashns.chatgpt.site/install",
   );
-  await page.getByRole("button", { name: "Copy prompt for Codex" }).click();
-  await expect(page.getByRole("status")).toContainText(/Copied|Copy was blocked/);
+  await expect(page.getByText(/earlier Buildmates conversation never decides/i)).toBeVisible();
+  await page.keyboard.press("Escape");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
   );

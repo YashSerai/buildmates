@@ -11,9 +11,11 @@ Source repository: https://github.com/YashSerai/buildmates
 When the user asks to install, set up, start, or resume Buildmates:
 
 1. Connect the official Buildmates app if it is not already connected.
-2. Invoke the Buildmates onboarding workflow immediately.
-3. Call get_setup_state first and advance one step at a time.
-4. Ask before using connected-app context or sharing a Work Signal.
-5. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
+2. Call get_setup_state immediately. Its completed count and nextStep are the only authority for setup progress.
+3. Never infer setup state from old ChatGPT conversations, browser tabs, website routes, local files, or prior task wording. Do not read or resume an old Buildmates conversation to determine progress.
+4. If get_setup_state is unavailable, the app is not connected correctly. Complete the app connection instead of substituting another signal.
+5. Invoke the Buildmates onboarding workflow and advance one returned step at a time.
+6. Ask before using connected-app context or sharing a Work Signal.
+7. Finish only after the user has reviewed their profile and generated page, chosen networking and automation preferences, and received one useful next action.
 
 Do not ask for connector credentials. Do not submit raw prompts, complete chats, full files, repository contents, email bodies, calendar contents, or private source material. Buildmates accepts user-approved structured summaries only.

@@ -19,31 +19,30 @@ export default async function InstallPage() {
     <main className={styles.page}>
       <ProductHeader signedIn={Boolean(user)} />
       <article className={styles.article}>
-        <h1>Let Codex set it up.</h1>
+        <h1>Give Codex one link.</h1>
         <p className={styles.lead}>
-          Open the official Buildmates app, give Codex the prompt below, and it
-          will guide you from an empty account to a profile you have reviewed.
+          Codex connects Buildmates, then guides you through a profile and
+          networking preferences you have reviewed.
         </p>
         <section>
-          <h2>Start here</h2>
+          <h2>Start in Codex</h2>
           <div>
             <p>
-              The prompt includes this page, so Codex has the official setup
-              instructions even if it has never heard of Buildmates.
+              Copy one short prompt into a new Codex task. This page carries the
+              setup instructions, so the prompt does not have to.
             </p>
             <CodexInstallActions />
           </div>
         </section>
         <section>
-          <h2>What Codex will do</h2>
+          <h2>What happens next</h2>
           <div>
             <ol className={styles.steps}>
-              <li>Connect the official Buildmates app to your account.</li>
-              <li>Choose what Codex may use to understand your work.</li>
-              <li>Review what belongs on your profile.</li>
-              <li>Preview the page Codex creates for you.</li>
+              <li>Codex connects the official app and checks your Buildmates account.</li>
+              <li>You choose what Codex may use to understand your work.</li>
+              <li>You review your profile and the page Codex creates.</li>
               <li>
-                Choose who you want to meet and how often Buildmates should
+                You choose who to meet and how often Buildmates should
                 look.
               </li>
             </ol>
@@ -56,6 +55,21 @@ export default async function InstallPage() {
             <Link className={styles.secondary} href="/onboarding">
               {user ? "Use manual setup instead" : "Set up on the website instead"}
             </Link>
+          </div>
+        </section>
+        <section>
+          <h2>The setup rule</h2>
+          <div className={styles.status}>
+            <p>
+              <strong>Buildmates checks the account, not your chat history.</strong>
+              {" "}An earlier Buildmates conversation never decides where setup resumes.
+            </p>
+            <p className={styles.mono}>
+              Codex: connect the official app, call get_setup_state, and trust
+              only its completed count and nextStep. Then follow the Buildmates
+              onboarding workflow one step at a time.
+            </p>
+            <Link href="/llms.txt">Read the full agent instructions</Link>
           </div>
         </section>
       </article>

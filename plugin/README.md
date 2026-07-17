@@ -20,7 +20,7 @@ The binder rejects missing or malformed IDs and verifies that `.app.json` remain
 
 ## First run
 
-Codex leads onboarding. An install or setup request begins by checking progress, explains the visible finish line, and advances one ordered step at a time. The first run is not complete until the user has reviewed a profile and its generated preview, source choices, a Networking Pulse, an acceptance mode, an automation choice, and one real next action. The website is the companion for account linking, profile preview and publishing, direct shared profiles and projects, chat, rooms, and account controls. Manual website setup remains an optional fallback.
+Codex leads onboarding. An install or setup request begins by connecting the official app and calling `get_setup_state`. That response is the only setup-progress authority; old ChatGPT conversations, browser tabs, website routes, and local files must never be treated as resumable state. Codex then explains the visible finish line and advances one ordered step at a time. The first run is not complete until the user has reviewed a profile and its generated preview, source choices, a Networking Pulse, an acceptance mode, an automation choice, and one real next action. The website is the companion for account linking, profile preview and publishing, direct shared profiles and projects, chat, rooms, and account controls. Manual website setup remains an optional fallback.
 
 1. Connecting the app creates a private Buildmates connection identity.
 2. `get_link_url` opens the HTTPS Buildmates web sign-in flow.

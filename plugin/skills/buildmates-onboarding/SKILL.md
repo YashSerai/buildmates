@@ -7,7 +7,7 @@ description: Complete or resume the mandatory Buildmates first run with explicit
 
 This is the required Buildmates first-run flow. When the user asks to install, set up, start, or resume Buildmates, begin this workflow immediately. Do not answer with a broad menu or ask what they want Buildmates to do.
 
-Call `get_setup_state` first and show the completed count, total, and next step. This read is safe before linking and returns `identity_link` without exposing user data. Complete only the next step and call the state tool again after each write. Give the user one concrete decision or action at a time so the workflow always feels directed.
+Call `get_setup_state` first and show the completed count, total, and next step. Its response is the only authority for setup progress. Never infer state from old ChatGPT conversations, browser tabs, website routes, local files, or prior task wording, and never read or resume an old conversation to determine progress. If the tool is unavailable, complete the official app connection instead of substituting another signal. This read is safe before linking and returns `identity_link` without exposing user data. Complete only the next step and call the state tool again after each write. Give the user one concrete decision or action at a time so the workflow always feels directed.
 
 Set a concrete expectation before asking questions: the first run ends with a reviewed profile, reviewed source policies, a current Networking Pulse, an acceptance mode, an automation choice, and one useful next action. Recommend Luna Extra High for this first profile-and-surface pass and Luna High for routine refreshes, but state that this is a recommendation and never claim Buildmates changed or enforced the user's model.
 
