@@ -41,6 +41,9 @@ export async function POST(request: Request) {
     keyId: process.env.MCP_WEB_AUTHORIZATION_KEY_ID || "web-current",
   });
   callback.searchParams.set("assertion", assertion);
+  if (request.headers.get("accept")?.includes("application/json")) {
+    return Response.json({ location: callback.toString() }, { headers: { "cache-control": "no-store" } });
+  }
   return new Response(null, {
     status: 302,
     headers: { location: callback.toString(), "cache-control": "no-store", "referrer-policy": "no-referrer" },

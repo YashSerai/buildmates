@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ProductFooter, ProductHeader } from "../../../components/discovery/ProductHeader";
 import { getCurrentUser } from "../../../src/auth/require-user";
 import styles from "../../info.module.css";
+import { McpAuthorizeButton } from "./McpAuthorizeButton";
 
 export const metadata: Metadata = { title: "Authorize Codex", description: "Authorize a local Codex connection to Buildmates." };
 
@@ -22,10 +23,7 @@ export default async function McpAuthorizePage({ searchParams }: { searchParams:
             <li>Keep third-party app credentials and raw connected-app contents outside Buildmates.</li>
           </ul>
           <p>This request came from a local loopback callback. Buildmates does not treat the client name as verified identity.</p>
-          <form action="/api/identity/mcp-authorization" method="post">
-            <input type="hidden" name="return_to" value={returnTo} />
-            <button className={styles.action} type="submit" disabled={!user || !returnTo}>Authorize connection</button>
-          </form>
+          <McpAuthorizeButton returnTo={returnTo} disabled={!user || !returnTo} />
           {!user && <p>Sign in before approving this connection.</p>}
         </div>
       </section>
