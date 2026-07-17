@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: clean-room onboarding QA repairs implemented and passing focused source gates; deployment and production re-verification remain
+Status: clean-room onboarding QA repairs deployed; production reset complete and next 0/11 run ready
 Last updated: 2026-07-17
 Product line: Meet people through what you build.
 
@@ -88,6 +88,8 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - Surface generation returns a known-valid starter, exposes the active schema, supports field-level dry-run validation, and keeps the starter as a recovery path.
 - Work Signal wording, profile status wording, aggregate-map/indexing explanations, example metrics, and the connection-page first viewport were corrected.
 - Remaining brand task: generate the final Buildmates logo with ImageGen and replace the temporary B/C connection nodes with approved Buildmates and Codex marks, including reduced-motion behavior.
+- Exact source commit `7b93a9b96e0396f7779c5e38da3aec04ed49d00d` is live as ChatGPT Sites version 17 and Worker version `534d8a18-5c4e-4a68-a573-262794948822`. Production returned 200 for `/`, `/install`, `/llms.txt`, OAuth metadata, and protected-resource metadata; unauthenticated MCP access returned 401 as required.
+- The production test account reached terminal deletion, external MCP OAuth/principal/handoff/replay/rate-limit state was cleared, and GitHub confirmed the Buildmates OAuth grant was revoked. The next authorization must therefore create a new Buildmates account and begin from the server-authoritative `0/11` state.
 
 ## Continuous launch validation
 
