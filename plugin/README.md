@@ -20,7 +20,7 @@ The binder rejects missing or malformed IDs and verifies that `.app.json` remain
 
 ## First run
 
-Codex leads onboarding. An install or setup request begins by connecting the official app and calling `get_setup_state`. That response is the only setup-progress authority; old ChatGPT conversations, browser tabs, website routes, and local files must never be treated as resumable state. Codex then explains the visible finish line and advances one ordered step at a time. The first run is not complete until the user has reviewed a profile and its generated preview, source choices, a Networking Pulse, an acceptance mode, an automation choice, and one real next action. The website is the companion for account linking, profile preview and publishing, direct shared profiles and projects, chat, rooms, and account controls. Manual website setup remains an optional fallback.
+Codex leads onboarding. An install request uses the host's native plugin-install confirmation and requires the user's approval; Codex never automates ChatGPT in Chrome to install the plugin. If native installation is unavailable, the user receives the official manual app link. After connection, Codex calls `get_setup_state`. That response is the only setup-progress authority; old ChatGPT conversations, browser tabs, website routes, and local files must never be treated as resumable state. Codex then explains the visible finish line and advances one ordered step at a time. The first run is not complete until the user has reviewed a profile and its generated preview, source choices, a Networking Pulse, an acceptance mode, an automation choice, and one real next action. The website is the companion for account linking, profile preview and publishing, direct shared profiles and projects, chat, rooms, and account controls. Manual website setup remains an optional fallback.
 
 1. Connecting the app creates a private Buildmates connection identity.
 2. `get_link_url` opens the HTTPS Buildmates web sign-in flow.
@@ -29,6 +29,8 @@ Codex leads onboarding. An install or setup request begins by connecting the off
 5. The remaining tools unlock and `get_setup_state` provides a visible, resumable finish line.
 
 GitHub sign-in creates the Buildmates website account and requests no repository access. The one-time link then connects that website account to Buildmates in Codex; neither step connects a source repository. Buildmates never receives connector credentials. Codex may use sources it can confidently identify in the current conversation, optional connected apps such as Google Calendar, and sources the user names. The list may not include every installed app. Source choices affect Buildmates only and do not modify ChatGPT, Codex, or provider permissions.
+
+GitHub OAuth is an external identity handoff, not plugin installation. Codex asks whether the user wants to complete it themselves or wants guided browser help. Manual completion is the default. Guided help is opt-in and pauses for credentials, verification codes, and provider consent unless the user explicitly authorizes the relevant action.
 
 `Ask each time` requires a fresh, single-use source approval before the next Work Signal. `Allow approved Work Signals` authorizes recurring Work Pulse extraction from that source until the user changes the policy; each run reports what changed and the resulting signals remain revocable. `Actions only` permits applicable provider actions but never context extraction.
 

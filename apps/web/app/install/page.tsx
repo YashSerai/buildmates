@@ -38,7 +38,7 @@ export default async function InstallPage() {
           <h2>What happens next</h2>
           <div>
             <ol className={styles.steps}>
-              <li>Codex connects the official app and checks your Buildmates account.</li>
+              <li>Codex asks you to install Buildmates inside Codex, then checks your account.</li>
               <li>You choose what Codex may use to understand your work.</li>
               <li>You review your profile and the page Codex creates.</li>
               <li>
@@ -61,8 +61,17 @@ export default async function InstallPage() {
           <h2>The setup rule</h2>
           <div className={styles.status}>
             <p>
-              <strong>Buildmates checks the account, not your chat history.</strong>
-              {" "}An earlier Buildmates conversation never decides where setup resumes.
+              <strong>Buildmates installs inside Codex.</strong>{" "}Codex asks for
+              your confirmation there. It does not drive Chrome through the
+              ChatGPT website.
+            </p>
+            <p>
+              GitHub opens only to establish your Buildmates website identity.
+              You can complete it yourself or ask Codex for guided browser help.
+            </p>
+            <p>
+              <strong>Your account decides where setup resumes.</strong>{" "}An
+              earlier Buildmates conversation does not.
             </p>
             <p className={styles.mono}>
               Codex: connect the official app, call get_setup_state, and trust
