@@ -87,3 +87,10 @@ The public `/install` page needs a focused copy and rendered UI review after the
 - Direct MCP remains a smaller fallback and uses the same production endpoint with an explicit OAuth resource override.
 - Codex CLI 0.142 completed dynamic client registration and OAuth login against the production Worker after the OAuth audience was normalized to the canonical Buildmates resource.
 - Dynamic clients are limited to exact loopback IP callbacks, use PKCE S256, receive no client secret, and require an explicit Buildmates website authorization confirmation. The development app ID is no longer a dependency for beta testers.
+
+## Beta install and clean-room reset proof
+
+- Codex CLI installed the repository marketplace from `YashSerai/buildmates` at `launch/buildmates`, then installed `buildmates@buildmates-beta` version `0.3.0-beta.1`. The installed plugin exposed the production `buildmates` MCP server and correctly reported OAuth as not yet authorized.
+- A separate production OAuth run completed dynamic client registration, displayed the Buildmates-owned consent page, returned through the loopback callback, and reported a successful Codex MCP login.
+- The QA identity was then reset at every owned boundary: the Buildmates account reached the terminal deletion page, the Buildmates GitHub OAuth grant was revoked, remote MCP tokens/principals/handoffs/replay markers/rate-limit rows were deleted, and the local beta plugin, marketplace, MCP configuration, and OAuth credentials were removed.
+- The registered ChatGPT development plugin now presents **Install plugin**, confirming it is not installed for the test account. The next QA run must install or connect Buildmates again and must use `get_setup_state` as its only progress authority.
