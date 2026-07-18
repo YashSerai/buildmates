@@ -2,7 +2,7 @@
 
 import "maplibre-gl/dist/maplibre-gl.css";
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapLibreMap, Marker, Popup } from "maplibre-gl";
+import type { GeoJSONSource, Map as MapLibreMap, Popup } from "maplibre-gl";
 import type { MapStatistics } from "../../src/discovery/map-statistics";
 import styles from "./BuilderMap.module.css";
 
@@ -18,6 +18,11 @@ export type CityAggregate = {
 
 type MapStatus = "loading" | "ready" | "error";
 const OPEN_FREE_MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const CITY_SOURCE = "builder-city-activity";
+const CLUSTER_LAYER = "builder-city-clusters";
+const CLUSTER_COUNT_LAYER = "builder-city-cluster-count";
+const CITY_LAYER = "builder-city-points";
+const CITY_COUNT_LAYER = "builder-city-point-count";
 
 export function BuilderMap({ places, statistics, mapHidden = false }: { places: CityAggregate[]; statistics: MapStatistics; mapHidden?: boolean }) {
   const mapRoot = useRef<HTMLDivElement>(null);
@@ -28,7 +33,6 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
     let disposed = false;
     let map: MapLibreMap | undefined;
     let popup: Popup | undefined;
-    const markers: Marker[] = [];
     const validPlaces = places.filter(isMappableCity);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -43,27 +47,49 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
         map.getCanvas().setAttribute("role", "img");
         map.once("load", () => {
           if (disposed || !map) return;
+          map.addSource(CITY_SOURCE, {
+            type: "geojson",
+            data: cityFeatureCollection(validPlaces),
+            cluster: true,
+            clusterMaxZoom: 9,
+            clusterRadius: 64,
+            clusterProperties: {
+              builderTotal: ["+", ["get", "builderCount"]],
+              projectTotal: ["+", ["get", "projectCount"]],
+              connectionTotal: ["+", ["get", "connectionCount"]],
+            },
+          });
+          addCityLayers(map);
           setStatus("ready");
           frameCities(map, validPlaces, maplibregl.LngLatBounds, reduceMotion);
         });
         map.on("error", () => { if (!disposed) setStatus("error"); });
-
-        for (const place of validPlaces) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.className = styles.marker;
-          button.style.setProperty("--marker-size", `${markerSize(place.builderCount)}px`);
-          button.textContent = String(place.builderCount);
-          button.setAttribute("aria-label", aggregateSummary(place));
-          button.addEventListener("click", (event) => {
-            event.stopPropagation();
-            if (!map) return;
-            popup?.remove();
-            popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 22 }).setLngLat([place.longitude, place.latitude]).setDOMContent(popupContent(place)).addTo(map);
-            if (reduceMotion) map.jumpTo({ center: [place.longitude, place.latitude], zoom: Math.max(map.getZoom(), 3) });
-            else map.easeTo({ center: [place.longitude, place.latitude], zoom: Math.max(map.getZoom(), 3), duration: 550 });
-          });
-          markers.push(new maplibregl.Marker({ element: button, anchor: "center" }).setLngLat([place.longitude, place.latitude]).addTo(map));
+        map.on("click", CLUSTER_LAYER, async (event) => {
+          const feature = event.features?.[0];
+          if (!map || !feature || feature.geometry.type !== "Point") return;
+          const clusterId = Number(feature.properties?.cluster_id);
+          const source = map.getSource(CITY_SOURCE) as GeoJSONSource | undefined;
+          if (!source || !Number.isFinite(clusterId)) return;
+          popup?.remove();
+          const zoom = await source.getClusterExpansionZoom(clusterId);
+          const center = feature.geometry.coordinates as [number, number];
+          if (reduceMotion) map.jumpTo({ center, zoom });
+          else map.easeTo({ center, zoom, duration: 420 });
+        });
+        map.on("click", CITY_LAYER, (event) => {
+          const feature = event.features?.[0];
+          if (!map || !feature || feature.geometry.type !== "Point") return;
+          const properties = feature.properties ?? {};
+          const place = cityFromProperties(properties, feature.geometry.coordinates as [number, number]);
+          popup?.remove();
+          popup = new maplibregl.Popup({ closeButton: true, closeOnClick: true, offset: 20 })
+            .setLngLat([place.longitude, place.latitude])
+            .setDOMContent(popupContent(place))
+            .addTo(map);
+        });
+        for (const layer of [CLUSTER_LAYER, CITY_LAYER]) {
+          map.on("mouseenter", layer, () => { if (map) map.getCanvas().style.cursor = "pointer"; });
+          map.on("mouseleave", layer, () => { if (map) map.getCanvas().style.cursor = ""; });
         }
       } catch {
         if (!disposed) setStatus("error");
@@ -74,7 +100,6 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
     return () => {
       disposed = true;
       popup?.remove();
-      markers.forEach((marker) => marker.remove());
       map?.remove();
     };
   }, [mapHidden, places]);
@@ -85,6 +110,7 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
       {!mapHidden ? (
         <div className={styles.mapFrame} aria-busy={status === "loading"}>
           <div ref={mapRoot} className={styles.map} />
+          {status === "ready" ? <p className={styles.mapHint}>Select a cluster to zoom in. Nearby cities separate as you get closer.</p> : null}
           {status === "loading" ? <p className={styles.mapState}>Loading city activity…</p> : null}
           {status === "error" ? <p className={styles.mapState} role="status">The map could not load. City totals are still available below.</p> : null}
           <p className={styles.srOnly} aria-live="polite">{status === "ready" ? "City activity map loaded." : ""}</p>
@@ -92,7 +118,7 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
       ) : null}
       {places.length ? (
         <div className={styles.transcript}>
-          <header className={styles.transcriptHead}><h2>Builders by city</h2><p>See the communities taking shape across Buildmates.</p></header>
+          <header className={styles.transcriptHead}><h2>Builders by city</h2><p>Nearby cities combine on the map at wider zoom levels. This list keeps every city total available.</p></header>
           <ol className={styles.cityList}>{places.map((place) => <li className={styles.city} key={place.cityId}><h3>{place.label}</h3><AggregateStat value={place.builderCount} noun="builder" /><AggregateStat value={place.projectCount} noun="project" /><AggregateStat value={place.connectionCount} noun="connection" /></li>)}</ol>
         </div>
       ) : null}
@@ -107,8 +133,41 @@ function Statistics({ statistics }: { statistics: MapStatistics }) {
 
 function AggregateStat({ value, noun }: { value: number; noun: string }) { return <span className={styles.stat}><strong>{value}</strong><span>{pluralize(value, noun)}</span></span>; }
 function isMappableCity(place: CityAggregate) { return Number.isFinite(place.latitude) && Number.isFinite(place.longitude) && place.latitude >= -90 && place.latitude <= 90 && place.longitude >= -180 && place.longitude <= 180; }
-function markerSize(builderCount: number) { return Math.max(42, Math.min(76, 34 + Math.sqrt(Math.max(0, builderCount)) * 5)); }
-function aggregateSummary(place: CityAggregate) { return `${place.label}: ${place.builderCount} ${pluralize(place.builderCount, "builder")}, ${place.projectCount} active ${pluralize(place.projectCount, "project")}, ${place.connectionCount} ${pluralize(place.connectionCount, "connection")} made`; }
+function cityFeatureCollection(places: CityAggregate[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: places.map((place) => ({
+      type: "Feature" as const,
+      id: place.cityId,
+      geometry: { type: "Point" as const, coordinates: [place.longitude, place.latitude] },
+      properties: { ...place },
+    })),
+  };
+}
+function addCityLayers(map: MapLibreMap) {
+  map.addLayer({ id: CLUSTER_LAYER, type: "circle", source: CITY_SOURCE, filter: ["has", "point_count"], paint: {
+    "circle-color": ["step", ["get", "builderTotal"], "#53604c", 20, "#366348", 50, "#244f39", 100, "#183a2a"],
+    "circle-radius": ["step", ["get", "builderTotal"], 24, 20, 29, 50, 35, 100, 42],
+    "circle-stroke-width": 3, "circle-stroke-color": "#f3f0e7", "circle-opacity": 0.96,
+  }});
+  map.addLayer({ id: CLUSTER_COUNT_LAYER, type: "symbol", source: CITY_SOURCE, filter: ["has", "point_count"], layout: {
+    "text-field": ["to-string", ["get", "builderTotal"]], "text-font": ["Noto Sans Bold"], "text-size": 13,
+  }, paint: { "text-color": "#fffdf7" } });
+  map.addLayer({ id: CITY_LAYER, type: "circle", source: CITY_SOURCE, filter: ["!", ["has", "point_count"]], paint: {
+    "circle-color": "#244f39", "circle-radius": ["step", ["get", "builderCount"], 19, 5, 22, 10, 26],
+    "circle-stroke-width": 3, "circle-stroke-color": "#f3f0e7", "circle-opacity": 0.97,
+  }});
+  map.addLayer({ id: CITY_COUNT_LAYER, type: "symbol", source: CITY_SOURCE, filter: ["!", ["has", "point_count"]], layout: {
+    "text-field": ["to-string", ["get", "builderCount"]], "text-font": ["Noto Sans Bold"], "text-size": 12,
+  }, paint: { "text-color": "#fffdf7" } });
+}
+function cityFromProperties(properties: Record<string, unknown>, coordinates: [number, number]): CityAggregate {
+  return {
+    cityId: String(properties.cityId ?? "city"), label: String(properties.label ?? "City"),
+    longitude: coordinates[0], latitude: coordinates[1], builderCount: Number(properties.builderCount ?? 0),
+    projectCount: Number(properties.projectCount ?? 0), connectionCount: Number(properties.connectionCount ?? 0),
+  };
+}
 function popupContent(place: CityAggregate) {
   const root = document.createElement("div");
   const heading = document.createElement("h3");

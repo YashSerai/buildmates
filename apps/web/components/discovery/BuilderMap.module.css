@@ -75,28 +75,20 @@
   color: #181b17;
   font-size: 1.35rem;
 }
-.marker {
-  width: var(--marker-size);
-  height: var(--marker-size);
-  display: grid;
-  place-items: center;
-  border: 2px solid #f3f0e7;
-  border-radius: 50%;
-  background: #244f39;
-  color: #fffdf7;
-  box-shadow:
-    0 0 0 2px #244f39,
-    0 3px 4px rgba(24, 27, 23, 0.3);
-  cursor: pointer;
-  font: 750 0.8rem/1 var(--font-body);
-  transition: background-color 140ms ease;
-}
-.marker:hover {
-  background: #53604c;
-}
-.marker:focus-visible {
-  outline: 4px solid #e87543;
-  outline-offset: 4px;
+.mapHint {
+  position: absolute;
+  z-index: 2;
+  top: 0.75rem;
+  left: 0.75rem;
+  max-width: 20rem;
+  margin: 0;
+  border: 1px solid rgba(70, 80, 67, 0.78);
+  background: rgba(255, 253, 247, 0.94);
+  color: #30362d;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  pointer-events: none;
 }
 .popupTitle {
   margin: 0 2rem 0.55rem 0;
@@ -247,15 +239,14 @@
     left: 0.75rem;
     bottom: 0.75rem;
   }
+  .mapHint {
+    right: 3.8rem;
+    max-width: none;
+  }
   .city {
     grid-template-columns: 1fr 1fr;
   }
   .city h3 {
     grid-column: 1/-1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .marker {
-    transition: none;
   }
 }

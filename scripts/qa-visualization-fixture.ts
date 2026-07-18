@@ -15,7 +15,7 @@ async function main() {
   try {
   const DB = await miniflare.getD1Database("DB") as D1Database;
   const migrations = (await readdir("apps/web/drizzle"))
-    .filter((name) => name.endsWith(".sql") && name <= "0025_visualization_qa_fixture.sql")
+    .filter((name) => name.endsWith(".sql") && name <= "0026_expand_visualization_qa_fixture.sql")
     .sort();
 
   for (const migration of migrations) {
@@ -36,15 +36,23 @@ async function main() {
     FROM profiles WHERE id LIKE 'qa_visual_profile_%'`).first<Record<string, number>>();
   const handles = await DB.prepare("SELECT count(*) AS count FROM handles WHERE user_id LIKE 'qa_visual_user_%'").first<{ count: number }>();
 
-  assert.deepEqual(cities.map((city) => city.builderCount), [8, 7, 6, 5, 4, 3, 2, 1]);
-  assert.equal(statistics.publishedBuilderCount, 36);
-  assert.equal(statistics.mappedBuilderCount, 36);
-  assert.equal(statistics.qualifyingCityCount, 8);
-  assert.equal(statistics.publicProjectCount, 36);
-  assert.ok(statistics.publicTopicCount >= 20);
-  assert.ok(graph.topics.length >= 20);
-  assert.ok(graph.edges.length >= 20);
-  assert.ok(graph.relationships.length >= 15);
+  const cityCounts = new Map(cities.map((city) => [city.cityId, city.builderCount]));
+  assert.equal(cityCounts.get("vancouver-ca"), 16);
+  assert.equal(cityCounts.get("burnaby-ca"), 7);
+  assert.equal(cityCounts.get("san-francisco-us"), 14);
+  assert.equal(cityCounts.get("oakland-us"), 7);
+  assert.equal(cityCounts.get("new-york-us"), 12);
+  assert.equal(cityCounts.get("jersey-city-us"), 6);
+  assert.equal(cityCounts.get("tokyo-jp"), 2);
+  assert.equal(cityCounts.get("yokohama-jp"), 5);
+  assert.equal(statistics.publishedBuilderCount, 253);
+  assert.equal(statistics.mappedBuilderCount, 253);
+  assert.equal(statistics.qualifyingCityCount, 47);
+  assert.equal(statistics.publicProjectCount, 253);
+  assert.ok(statistics.publicTopicCount >= 55);
+  assert.ok(graph.topics.length >= 55);
+  assert.ok(graph.edges.length >= 100);
+  assert.ok(graph.relationships.length >= 45);
   assert.deepEqual(privacy, { visible: 0, indexed: 0, matching: 0, published: 0 });
   assert.equal(Number(handles?.count ?? -1), 0);
 
