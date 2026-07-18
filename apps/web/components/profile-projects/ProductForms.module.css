@@ -42,29 +42,41 @@
 .designWorkspace > h2 {
   margin-top: 2.5rem;
 }
+.currentDesign {
+  margin-top: 1rem;
+  border-block: 1px solid #c9c4b8;
+  background: #fff;
+}
+.currentDesignActions {
+  width: min(880px, calc(100% - clamp(2rem, 8vw, 8rem)));
+  min-height: 68px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .75rem 1rem;
+}
+.currentDesignActions span { color: #55524c; font-size: .82rem; }
 .designHistory {
   list-style: none;
-  margin: 1rem 0 0;
+  width: min(880px, calc(100% - clamp(2rem, 8vw, 8rem)));
+  margin: 1rem auto 3rem;
   padding: 0;
 }
 .designHistory > li {
-  padding-top: 1rem;
+  min-height: 54px;
+  padding: .5rem 0;
   border-top: 1px solid #c9c4b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
 }
-.designHistory > li > p,
+.designHistory > li > p { margin: 0; display: flex; gap: .75rem; align-items: baseline; }
+.designHistory > li > p span { color: #6b6a64; font-size: .78rem; }
 .designHistory > li > button {
-  width: min(880px, calc(100% - clamp(2rem, 8vw, 8rem)));
-  margin-inline: auto;
-}
-.designHistory > li > button {
-  display: block;
   width: fit-content;
   min-height: 44px;
-  margin-top: 1rem;
-}
-.designSurfacePreview {
-  width: 100%;
-  margin-top: 1rem;
 }
 .eyebrow {
   font-size: 0.78rem !important;
@@ -142,6 +154,24 @@
 }
 .form button:disabled {
   opacity: 0.6;
+}
+.formActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem 1.5rem;
+  margin-top: 1rem;
+}
+.formActions button {
+  margin-top: 0;
+}
+.formActions a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: #274c39;
+  font-weight: 700;
+  text-underline-offset: 4px;
 }
 .error {
   border-left: 4px solid #9f2f25;

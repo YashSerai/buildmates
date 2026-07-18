@@ -12,7 +12,6 @@ const signedInPrimary: ProductNavItem[] = [
 ];
 
 const signedInMenu: ProductNavItem[] = [
-  ...signedInPrimary,
   { href: "/profile", label: "Profile" },
   { href: "/invite", label: "Invite" },
   { href: "/settings/privacy", label: "Settings" },
@@ -53,6 +52,9 @@ export function ProductHeader({ signedIn = false }: { signedIn?: boolean }) {
         >
           <summary>Menu</summary>
           <nav aria-label="Account menu">
+            <span className={styles.mobileMenuLinks}>
+              <ProductNavLinks items={signedInPrimary} />
+            </span>
             <ProductNavLinks items={signedInMenu} />
           </nav>
         </details>

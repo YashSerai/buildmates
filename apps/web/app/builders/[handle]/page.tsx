@@ -128,8 +128,20 @@ export default async function BuilderPage({
   const { handle } = await params;
   const profile = await load(handle);
   if (!profile) notFound();
+  const factLabels: Record<string, string> = {
+    current_work: "Building now",
+    previous_work: "Previous work",
+    interests: "Interests",
+    ambitions: "Ambitions",
+    stage: "Current stage",
+    exploring: "Exploring",
+    offers: "Happy to share",
+    needs: "Would value",
+    networking_intent: "Interested in meeting",
+    cohorts: "Communities",
+  };
   const facts = profile.fields.map((field) => ({
-    label: String(field.key).replaceAll("_", " "),
+    label: factLabels[String(field.key)] ?? String(field.key).replaceAll("_", " "),
     value: Array.isArray(field.value)
       ? field.value.join(", ")
       : String(field.value),
@@ -171,7 +183,6 @@ export default async function BuilderPage({
   if (profile.publishedSpec)
     return (
       <main className={styles.profileShell}>
-        <ProductHeader signedIn={Boolean(profile.viewerId)} />
         {trustedActions}
         <SurfaceRenderer
           className={styles.publishedSurface}

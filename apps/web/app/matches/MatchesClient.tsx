@@ -134,7 +134,7 @@ export function MatchesClient({
               <p className={styles.kicker}>Your shortlist</p>
               <h2 id="candidates-title">People to consider</h2>
             </div>
-            <span>Review in Codex</span>
+            <span>Private recommendations</span>
           </div>
           {shortlist.length ? (
             <div className={styles.stack}>
@@ -173,11 +173,11 @@ export function MatchesClient({
                   </div>
                   <dl className={styles.reviewState}>
                     <div>
-                      <dt>Your Codex review</dt>
+                      <dt>Your recommendation</dt>
                       <dd>{evaluationLabel(proposal.myEvaluation)}</dd>
                     </div>
                     <div>
-                      <dt>Their Codex review</dt>
+                      <dt>Their recommendation</dt>
                       <dd>{evaluationLabel(proposal.theirEvaluation)}</dd>
                     </div>
                   </dl>
@@ -261,23 +261,26 @@ function Candidate({
       </div>
       <div className={polish.candidateActions}>
         <a href={`codex://open?prompt=${encodeURIComponent(prompt)}`}>
-          Review in Codex
+          Review recommendation in Codex
         </a>
-        <button
-          type="button"
-          onClick={() =>
-            void navigator.clipboard
-              .writeText(prompt)
-              .then(() => setNotice("Codex prompt copied."))
-              .catch(() =>
-                setNotice(
-                  "Copy was blocked. Open Codex and ask it to review your Buildmates shortlist.",
-                ),
-              )
-          }
-        >
-          Copy prompt
-        </button>
+        <details>
+          <summary>Can&apos;t open Codex?</summary>
+          <button
+            type="button"
+            onClick={() =>
+              void navigator.clipboard
+                .writeText(prompt)
+                .then(() => setNotice("Codex prompt copied."))
+                .catch(() =>
+                  setNotice(
+                    "Copy was blocked. Open Codex and ask it to review your Buildmates shortlist.",
+                  ),
+                )
+            }
+          >
+            Copy prompt instead
+          </button>
+        </details>
       </div>
     </article>
   );

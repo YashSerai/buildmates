@@ -265,8 +265,7 @@ export function AutomationClient({
                 : "stale"
             }
           >
-            {initialSnapshot.automation?.capability.replaceAll("_", " ") ??
-              "not checked"}
+            {automationStatusLabel(initialSnapshot.automation?.capability)}
           </span>
         </header>
         <AutomationCadence value={cadence} onChange={setCadence} />
@@ -310,4 +309,12 @@ export function AutomationClient({
 
 function emptySubscribe() {
   return () => undefined;
+}
+
+function automationStatusLabel(value?: string) {
+  return ({
+    available: "Background runs ready",
+    approval_required: "Confirmation needed",
+    automation_unavailable: "Background runs unavailable",
+  } as Record<string, string>)[value ?? ""] ?? "Not checked yet";
 }

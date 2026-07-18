@@ -48,7 +48,19 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
     if (kind === "connection_private_note") return ownedRow<T>(DB, kind, id, actor, "connection_private_notes", "owner_user_id", connectionNoteValue);
     if (kind === "connection_reminder") return ownedRow<T>(DB, kind, id, actor, "connection_reminders", "user_id", connectionReminderValue);
     if (kind === "room") {
-      const row = await first(DB, "SELECT r.* FROM rooms r JOIN room_memberships rm ON rm.room_id=r.id WHERE r.id=? AND rm.user_id=? AND rm.left_at IS NULL", requestedId, actor);
+      const row = await first(DB, `SELECT r.*,
+        (SELECT COUNT(*) FROM messages m WHERE m.room_id=r.id AND m.deleted_at IS NULL) AS message_count,
+        (SELECT COUNT(DISTINCT m.sender_user_id) FROM messages m WHERE m.room_id=r.id AND m.deleted_at IS NULL) AS active_participant_count,
+        (SELECT MAX(m.created_at) FROM messages m WHERE m.room_id=r.id AND m.deleted_at IS NULL) AS last_activity_at,
+        EXISTS(SELECT 1 FROM introduction_feedback f WHERE f.connection_id=r.connection_id AND f.user_id=?) AS feedback_submitted,
+        EXISTS(SELECT 1 FROM introduction_feedback f WHERE f.connection_id=r.connection_id AND f.user_id=? AND f.useful=1) AS positive_feedback,
+        CASE
+          WHEN EXISTS(SELECT 1 FROM room_upgrade_proposals p WHERE p.room_id=r.id AND p.status='proposed') THEN 'pending'
+          WHEN EXISTS(SELECT 1 FROM room_upgrade_proposals p WHERE p.room_id=r.id AND p.status='activated') THEN 'active'
+          ELSE 'none'
+        END AS upgrade_state
+        FROM rooms r JOIN room_memberships rm ON rm.room_id=r.id
+        WHERE r.id=? AND rm.user_id=? AND rm.left_at IS NULL`, actor, actor, requestedId, actor);
       if (!row) return null;
       const members = await all(DB, "SELECT rm.user_id,p.display_name,p.timezone FROM room_memberships rm LEFT JOIN profiles p ON p.user_id=rm.user_id WHERE rm.room_id=? AND rm.left_at IS NULL ORDER BY rm.joined_at,rm.user_id", requestedId);
       const other = members.find((member) => String(member.user_id) !== actor);
@@ -439,7 +451,19 @@ async function listCanonicalPage<T>(DB: Database, kind: string, actor: string, o
       : await all(DB, "SELECT *,id AS record_id FROM connection_reminders WHERE user_id=? AND id>? ORDER BY id LIMIT ?", actor, cursor, take);
     mapRow = (row) => record(kind, String(row.record_id), actor, [], connectionReminderValue(row) as T, Number(row.created_at ?? 1), at);
   } else if (kind === "room") {
-    rows = await all(DB, "SELECT r.*,r.id AS record_id FROM room_memberships rm JOIN rooms r ON r.id=rm.room_id WHERE rm.user_id=? AND rm.left_at IS NULL AND r.id>? ORDER BY r.id LIMIT ?", actor, cursor, take);
+    rows = await all(DB, `SELECT r.*,r.id AS record_id,
+      (SELECT COUNT(*) FROM messages m WHERE m.room_id=r.id AND m.deleted_at IS NULL) AS message_count,
+      (SELECT COUNT(DISTINCT m.sender_user_id) FROM messages m WHERE m.room_id=r.id AND m.deleted_at IS NULL) AS active_participant_count,
+      (SELECT MAX(m.created_at) FROM messages m WHERE m.room_id=r.id AND m.deleted_at IS NULL) AS last_activity_at,
+      EXISTS(SELECT 1 FROM introduction_feedback f WHERE f.connection_id=r.connection_id AND f.user_id=?) AS feedback_submitted,
+      EXISTS(SELECT 1 FROM introduction_feedback f WHERE f.connection_id=r.connection_id AND f.user_id=? AND f.useful=1) AS positive_feedback,
+      CASE
+        WHEN EXISTS(SELECT 1 FROM room_upgrade_proposals p WHERE p.room_id=r.id AND p.status='proposed') THEN 'pending'
+        WHEN EXISTS(SELECT 1 FROM room_upgrade_proposals p WHERE p.room_id=r.id AND p.status='activated') THEN 'active'
+        ELSE 'none'
+      END AS upgrade_state
+      FROM room_memberships rm JOIN rooms r ON r.id=rm.room_id
+      WHERE rm.user_id=? AND rm.left_at IS NULL AND r.id>? ORDER BY r.id LIMIT ?`, actor, actor, actor, cursor, take);
     mapRow = (row) => record(kind, String(row.record_id), actor, [], roomValue(row) as T, Number(row.updated_at ?? 1), at);
   } else if (kind === "circle") {
     rows = await all(DB, "SELECT c.*,c.id AS record_id,(SELECT s.id FROM surfaces s WHERE s.kind='circle' AND s.subject_id=c.id LIMIT 1) AS surface_id FROM circle_memberships cm JOIN circles c ON c.id=cm.circle_id WHERE cm.user_id=? AND cm.status='active' AND c.id>? ORDER BY c.id LIMIT ?", actor, cursor, take);
@@ -627,7 +651,26 @@ async function visibleProfileTarget(DB:Database,actor:string,targetId:string){re
 function candidateBatchValue(row: Row) { return { batchId: row.id, indexVersion: row.index_version, taxonomyVersion: row.taxonomy_version, candidateIds: JSON.parse(String(row.candidate_ids_json ?? "[]")), expiresAt: new Date(Number(row.expires_at)).toISOString() }; }
 function connectionNoteValue(row: Row) { return { connectionId: row.connection_id, body: row.body, createdAt: new Date(Number(row.created_at)).toISOString(), updatedAt: new Date(Number(row.updated_at)).toISOString() }; }
 function connectionReminderValue(row: Row) { return { connectionId: row.connection_id, remindAt: new Date(Number(row.remind_at)).toISOString(), status: row.status }; }
-function roomValue(row: Row) { return { roomId: row.id, status: row.status, themeTopicId: row.theme_topic_id ?? null }; }
+function roomValue(row: Row) {
+  const messageCount = Number(row.message_count ?? 0);
+  const activeParticipantCount = Number(row.active_participant_count ?? 0);
+  return {
+    roomId: row.id,
+    connectionId: row.connection_id,
+    status: row.status,
+    themeTopicId: row.theme_topic_id ?? null,
+    conversation: {
+      messageCount,
+      meaningful: messageCount >= 4 && activeParticipantCount >= 2,
+      lastActivityAt: row.last_activity_at == null ? null : new Date(Number(row.last_activity_at)).toISOString(),
+    },
+    feedback: {
+      submittedByViewer: Boolean(row.feedback_submitted),
+      positiveFromViewer: Boolean(row.positive_feedback),
+    },
+    upgradeState: row.upgrade_state ?? "none",
+  };
+}
 function circleValue(row: Row) { return { circleId: row.id, surfaceId: row.surface_id ?? null, name: row.name, purpose: row.purpose, status: row.status, governanceMode: row.governance_mode, governanceVersion: row.governance_version }; }
 function calendarValue(row: Row) { return { roomId: row.room_id, meetingProposalId: row.meeting_proposal_id, provider: row.provider, providerEventId: row.provider_event_id, startsAt: new Date(Number(row.starts_at)).toISOString(), endsAt: new Date(Number(row.ends_at)).toISOString(), participantLabels: JSON.parse(String(row.participant_labels_json)), status: row.status }; }
 function automationValue(row: Row) { const state = JSON.parse(String(row.state_json)); return { ...state, kind: row.kind, cursor: row.cursor, state: state.state, lastOutcome: state.lastOutcome, enabled: state.enabled ?? state.state !== "disabled", cadence: state.cadence ?? null, sourceLivenessReviewed: state.sourceLivenessReviewed ?? false, nextRunAt: row.next_run_at ? new Date(Number(row.next_run_at)).toISOString() : null }; }

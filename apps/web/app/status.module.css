@@ -43,6 +43,14 @@
   cursor: pointer;
   box-shadow: 4px 4px 0 #d3cfc4;
 }
+.actions .primaryLink {
+  border: 1px solid var(--moss);
+  background: var(--leaf);
+  color: var(--ink);
+  padding: 0.75rem 1rem;
+  text-decoration: none;
+  box-shadow: 4px 4px 0 #d3cfc4;
+}
 .actions a {
   min-height: 44px;
   display: inline-flex;

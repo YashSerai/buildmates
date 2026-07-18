@@ -171,10 +171,10 @@ export async function seedPopulatedNetwork(
     upsertSurface(DB, `${invitationCircleId}_surface`, pendingUserId, invitationCircleId, now),
     DB.prepare(
       "INSERT INTO notifications(id,user_id,kind,delivery,payload_json,read_at,created_at) VALUES(?,?,'new_message','immediate',?,NULL,?) ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json,read_at=NULL,created_at=excluded.created_at",
-    ).bind(`${roomId}_notification`, viewerUserId, JSON.stringify({ roomId, connectionId }), now - 15_000),
+    ).bind(`${roomId}_notification`, viewerUserId, JSON.stringify({ roomId, connectionId, senderName: "Rowan Patel" }), now - 15_000),
     DB.prepare(
       "INSERT INTO notifications(id,user_id,kind,delivery,payload_json,read_at,created_at) VALUES(?,?,'circle_invitation','immediate',?,NULL,?) ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json,read_at=NULL,created_at=excluded.created_at",
-    ).bind(`${invitationCircleId}_notification`, viewerUserId, JSON.stringify({ circleId: invitationCircleId }), now - 10_000),
+    ).bind(`${invitationCircleId}_notification`, viewerUserId, JSON.stringify({ circleId: invitationCircleId, circleName: "RAG Field Notes" }), now - 10_000),
   ]);
 
   return {

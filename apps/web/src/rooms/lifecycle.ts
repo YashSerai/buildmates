@@ -70,7 +70,7 @@ export async function materializeRelationshipNotifications(DB:D1Database,userId:
     statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'connection_reminder','immediate',?,? WHERE EXISTS (SELECT 1 FROM connection_reminders WHERE id=? AND user_id=? AND status='scheduled')").bind(`connection-reminder:${reminder.id}`,userId,JSON.stringify({connectionId:reminder.connectionId,reminderId:reminder.id}),now,reminder.id,userId));
     statements.push(DB.prepare("UPDATE connection_reminders SET status='sent' WHERE id=? AND user_id=? AND status='scheduled'").bind(reminder.id,userId));
   }
-  const relevant=await DB.prepare(`SELECT side.connection_id AS connectionId,project_update.id AS updateId,project.id AS projectId
+  const relevant=await DB.prepare(`SELECT side.connection_id AS connectionId,project_update.id AS updateId,project.id AS projectId,project.title AS projectTitle
     FROM connection_sides side JOIN connections connection_row ON connection_row.id=side.connection_id AND connection_row.state='active'
     JOIN match_pairs pair ON pair.id=connection_row.match_pair_id
     JOIN projects project ON project.owner_user_id=CASE WHEN pair.user_a_id=? THEN pair.user_b_id ELSE pair.user_a_id END
@@ -78,8 +78,8 @@ export async function materializeRelationshipNotifications(DB:D1Database,userId:
     WHERE side.user_id=? AND side.muted=0 AND side.renewed_relevance_enabled=1 AND project.status='active' AND project.audience='public' AND project.published_at IS NOT NULL AND project.deleted_at IS NULL AND project_update.audience='public'
       AND project_update.created_at>COALESCE(side.renewed_relevance_acknowledged_at,side.created_at)
       AND NOT EXISTS (SELECT 1 FROM blocks block WHERE block.revoked_at IS NULL AND ((block.blocker_user_id=? AND block.blocked_user_id=project.owner_user_id) OR (block.blocker_user_id=project.owner_user_id AND block.blocked_user_id=?)))
-    ORDER BY project_update.created_at DESC LIMIT 50`).bind(userId,userId,userId,userId).all<{connectionId:string;updateId:string;projectId:string}>();
-  for(const item of relevant.results)statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) VALUES (?,?,'renewed_relevance','immediate',?,?)").bind(`renewed-relevance:${item.connectionId}:${item.updateId}:${userId}`,userId,JSON.stringify({connectionId:item.connectionId,projectId:item.projectId,updateId:item.updateId}),now));
+    ORDER BY project_update.created_at DESC LIMIT 50`).bind(userId,userId,userId,userId).all<{connectionId:string;updateId:string;projectId:string;projectTitle:string}>();
+  for(const item of relevant.results)statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) VALUES (?,?,'renewed_relevance','immediate',?,?)").bind(`renewed-relevance:${item.connectionId}:${item.updateId}:${userId}`,userId,JSON.stringify({connectionId:item.connectionId,projectId:item.projectId,projectTitle:item.projectTitle,updateId:item.updateId}),now));
   if(statements.length)await DB.batch(statements);
 }
 

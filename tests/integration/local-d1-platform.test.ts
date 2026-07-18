@@ -76,7 +76,7 @@ describe("real local D1 platform boundaries", () => {
     expect(await DB.prepare("SELECT expires_at AS expiresAt FROM identity_link_codes WHERE id='alice-pending'").first<{ expiresAt: number }>()).toEqual({ expiresAt: now + 2_000 });
   });
 
-  it("enforces PKCE, audience, refresh single-use, and family revocation in D1", async () => {
+  it("enforces PKCE, audience, refresh single-use, and safe concurrent rotation in D1", async () => {
     const store = createD1OAuthStore(DB, "test-subject-secret-at-least-32-bytes");
     const verifier = "v".repeat(64);
     const challenge = createHash("sha256").update(verifier).digest("base64url");
@@ -93,9 +93,9 @@ describe("real local D1 platform boundaries", () => {
     const second = await store.rotateRefreshToken({ refreshToken: first!.refreshToken, clientId: "codex", audience: "https://mcp.example/mcp", accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 3600 });
     expect(second).not.toBeNull();
     await expect(store.rotateRefreshToken({ refreshToken: first!.refreshToken, clientId: "codex", audience: "https://mcp.example/mcp", accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 3600 })).resolves.toBeNull();
-    await expect(store.validateAccessToken(first!.accessToken, "https://mcp.example/mcp")).resolves.toBeNull();
-    await expect(store.validateAccessToken(second!.accessToken, "https://mcp.example/mcp")).resolves.toBeNull();
-    await expect(store.rotateRefreshToken({ refreshToken: second!.refreshToken, clientId: "codex", audience: "https://mcp.example/mcp", accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 3600 })).resolves.toBeNull();
+    await expect(store.validateAccessToken(first!.accessToken, "https://mcp.example/mcp")).resolves.toMatchObject({ clientId: "codex" });
+    await expect(store.validateAccessToken(second!.accessToken, "https://mcp.example/mcp")).resolves.toMatchObject({ clientId: "codex" });
+    await expect(store.rotateRefreshToken({ refreshToken: second!.refreshToken, clientId: "codex", audience: "https://mcp.example/mcp", accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 3600 })).resolves.not.toBeNull();
 
     const concurrentCode = await store.issueAuthorizationCode({
       webIdentity: { issuer: "chatgpt_sites", subject: "stable-web-bob" }, clientId: "codex",
@@ -108,7 +108,7 @@ describe("real local D1 platform boundaries", () => {
       store.rotateRefreshToken({ refreshToken: concurrentBase!.refreshToken, clientId: "codex", audience: "https://mcp.example/mcp", accessTokenTtlSeconds: 900, refreshTokenTtlSeconds: 3600 }),
     ]);
     expect(concurrent.filter(Boolean)).toHaveLength(1);
-    await expect(store.validateAccessToken(concurrent.find(Boolean)!.accessToken, "https://mcp.example/mcp")).resolves.toBeNull();
+    await expect(store.validateAccessToken(concurrent.find(Boolean)!.accessToken, "https://mcp.example/mcp")).resolves.toMatchObject({ clientId: "codex" });
   });
 
   it("denies Alice access to Bob's private capability record", async () => {

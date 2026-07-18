@@ -11,6 +11,7 @@ import { isAuthResponse, requireApiUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { requireSameOriginMutation } from "@/src/platform/same-origin";
 import { listApprovedProfileMedia } from "@/src/platform/surface-assets";
+import { isHiddenRecoverySurfaceSpec } from "@/src/platform/profile-surface-preview";
 import { consumeWebRateLimit } from "@/src/security/rate-limit";
 
 type ProfileSurface = { id: string; publishedRevisionId: string | null; publishedRevisionNumber: number | null; governanceVersion: number };
@@ -78,7 +79,7 @@ export async function GET() {
       history: history.results.flatMap((row) => {
         const value = row as Record<string, unknown>;
         const spec = safeJson(String(value.spec));
-        return spec && !isHiddenRecoveryStarter(spec) ? [{ ...value, spec }] : [];
+        return spec && !isHiddenRecoverySurfaceSpec(spec) ? [{ ...value, spec }] : [];
       }),
     }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
       if (!body.revisionId) throw new Error("revision_required");
       const candidate = await DB.prepare("SELECT spec_json AS spec FROM surface_revisions WHERE id=? AND surface_id=?")
         .bind(body.revisionId, surface.id).first<{ spec: string }>();
-      if (!candidate || isHiddenRecoveryStarter(safeJson(candidate.spec))) throw new Error("starter_spec_not_publishable");
+      if (!candidate || isHiddenRecoverySurfaceSpec(safeJson(candidate.spec))) throw new Error("starter_spec_not_publishable");
       await repositories.surfaces.publishRevision({ actorId: user.id, surfaceId: surface.id, revisionId: body.revisionId, expectedPublishedRevisionNumber: body.expectedPublishedRevisionNumber ?? null, governanceVersion: surface.governanceVersion, at: new Date() });
       return Response.json({ published: true });
     }
@@ -149,19 +150,6 @@ export async function POST(request: Request) {
 function safeJson(value: string): unknown {
   try { return JSON.parse(value); }
   catch { return null; }
-}
-
-function isHiddenRecoveryStarter(spec: unknown): boolean {
-  if (!spec || typeof spec !== "object") return false;
-  const candidate = spec as {
-    title?: unknown;
-    root?: { type?: unknown; children?: unknown };
-    bindingManifest?: { content?: unknown };
-  };
-  if (candidate.title === "Buildmates recovery seed") return true;
-  return candidate.title === "Buildmates page" && candidate.root?.type === "section" &&
-    Array.isArray(candidate.root.children) && candidate.root.children.length === 2 &&
-    Array.isArray(candidate.bindingManifest?.content) && candidate.bindingManifest.content.length === 2;
 }
 
 function surfaceFactValue(valueJson: string): string {

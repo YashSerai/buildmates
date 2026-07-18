@@ -5,6 +5,9 @@ describe("Activity notification presentation", () => {
   it("gives each supported notification a clear label and summary", () => {
     expect(notificationLabel("new_message")).toBe("New message");
     expect(notificationSummary({ kind: "meeting_response", payload: { response: "accepted" } })).toBe("Your meeting proposal was accepted.");
+    expect(notificationSummary({ kind: "new_message", payload: { senderName: "Rowan Patel" } })).toBe("Rowan Patel sent you a message.");
+    expect(notificationSummary({ kind: "circle_invitation", payload: { circleName: "RAG Field Notes" } })).toBe("You were invited to RAG Field Notes.");
+    expect(notificationSummary({ kind: "match_interest", payload: { builderName: "Mira Chen" } })).toBe("Mira Chen is interested in meeting you.");
     expect(notificationSummary({ kind: "unknown", payload: {} })).toBe("There is new activity in Buildmates.");
   });
 

@@ -469,36 +469,24 @@ button:disabled {
 .modelNote p {
   margin: 5px 0 0;
 }
-.profilePreview {
+.previewGate {
   margin: 24px 0;
-  padding: clamp(25px, 6vw, 56px);
-  min-height: 260px;
-  border-radius: 12px;
-  background: #1d2b25;
-  color: #f5f2e8;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  padding: 20px;
+  border: 1px solid #cad1c8;
+  border-left: 5px solid var(--moss, #214f3b);
+  background: #f7f8f3;
 }
-.profilePreview > span {
-  color: #9fc1ae;
-  font-size: 0.82rem;
-}
-.profilePreview h2 {
-  font-size: clamp(2rem, 6vw, 4rem);
-  margin: 8px 0 10px;
-}
-.profilePreview p {
+.previewGate p {
   max-width: 620px;
-  color: #d7ded9;
+  color: #59635d;
   line-height: 1.55;
+  margin: 8px 0 12px;
 }
-.profilePreview strong {
-  color: #9fc1ae;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-top: 14px;
+.previewGate a,
+.inlineNote a {
+  color: #245940;
+  font-weight: 700;
+  text-underline-offset: 3px;
 }
 .rangeGrid {
   display: grid;

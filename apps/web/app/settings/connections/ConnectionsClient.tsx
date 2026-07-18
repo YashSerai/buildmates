@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { IdentityConnectionStatus } from "@/src/platform/identity-connections";
+import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 import styles from "./connections.module.css";
 
 type LinkCode = { code: string; expiresAt: string };
@@ -15,6 +16,7 @@ export function ConnectionsClient({ initialStatus }: { initialStatus: IdentityCo
   const [message, setMessage] = useState("");
   const [secondsLeft, setSecondsLeft] = useState(0);
   const codeRef = useRef<HTMLElement>(null);
+  const { confirm, confirmationDialog } = useConfirmDialog();
 
   useEffect(() => {
     if (!linkCode || status.connected) return;
@@ -77,7 +79,12 @@ export function ConnectionsClient({ initialStatus }: { initialStatus: IdentityCo
   }
 
   async function disconnect() {
-    if (!window.confirm("Disconnect Buildmates from Codex? Existing Buildmates data stays in your account.")) return;
+    if (!(await confirm({
+      title: "Disconnect Codex?",
+      description: "Your Buildmates profile and network will stay intact. You can connect Codex again later.",
+      confirmLabel: "Disconnect",
+      tone: "danger",
+    }))) return;
     setRequestState("working");
     setMessage("");
     try {
@@ -97,6 +104,7 @@ export function ConnectionsClient({ initialStatus }: { initialStatus: IdentityCo
 
   return (
     <section className={styles.connectionPanel} aria-labelledby="connection-status-title" data-hydrated={hydrated}>
+      {confirmationDialog}
       <div className={styles.connectionLine} aria-hidden="true">
         <span className={styles.siteNode}>Buildmates</span>
         <span className={`${styles.line} ${status.connected ? styles.lineConnected : linkCode ? styles.linePending : ""}`} />

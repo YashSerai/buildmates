@@ -40,6 +40,24 @@
   color: var(--ink);
 }
 
+.candidateActions details {
+  position: relative;
+  text-align: center;
+}
+
+.candidateActions summary {
+  padding: 0.55rem 0.75rem;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.candidateActions details[open] summary {
+  color: var(--ink);
+}
+
 @media (max-width: 680px) {
   .candidateActions {
     width: 100%;

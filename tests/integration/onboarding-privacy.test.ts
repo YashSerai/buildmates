@@ -1,6 +1,13 @@
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createD1Repositories } from "@buildmates/database";
+import {
+  DESIGN_POLICY_ID,
+  DESIGN_POLICY_VERSION,
+  EDITORIAL_RESEARCH_PROFILE,
+  seedDesignPolicy,
+} from "@buildmates/surfaces";
 import {
   ConflictError,
   getOnboardingSnapshot,
@@ -9,6 +16,7 @@ import {
   revokeSource,
   runPrivacyCommand,
   saveSourcePolicies,
+  updateWorkSignal,
 } from "../../apps/web/src/platform/onboarding-data";
 import { getProfileByHandle, saveProject } from "../../apps/web/src/profile-projects/service";
 
@@ -43,7 +51,12 @@ describe("onboarding and privacy persistence", () => {
     await mutateOnboarding(DB, userId, "Avery", { action: "save_profile", handle: "avery_builder", displayName: "Avery", summary: "I build practical retrieval tools for small teams.", projectOrInterest: "Retrieval evaluation", audience: "public", allowMatching: true });
     expect((await getOnboardingSnapshot(DB,userId,"Avery")).profile?.projectOrInterest).toBe("Retrieval evaluation");
     expect(await getProfileByHandle(DB,"avery_builder",null)).toBeNull();
-    await mutateOnboarding(DB, userId, "Avery", { action: "approve_preview", approved: true });
+    const recoveryRevisionId = await createPrivateProfilePreview(DB, userId, { ...EDITORIAL_RESEARCH_PROFILE, title: "Buildmates recovery seed" });
+    expect((await getOnboardingSnapshot(DB,userId,"Avery")).profilePreview).toBeNull();
+    await expect(mutateOnboarding(DB, userId, "Avery", { action: "approve_preview", approved: true, revisionId: recoveryRevisionId })).rejects.toThrow("Create and review a private profile design");
+    const previewRevisionId = await createPrivateProfilePreview(DB, userId);
+    expect((await getOnboardingSnapshot(DB,userId,"Avery")).profilePreview).toMatchObject({ revisionId: previewRevisionId, revisionNumber: 2 });
+    await mutateOnboarding(DB, userId, "Avery", { action: "approve_preview", approved: true, revisionId: previewRevisionId });
     expect(await getProfileByHandle(DB,"avery_builder",null)).toMatchObject({handle:"avery_builder",allowMatching:true});
     const signalNow=Date.now();await DB.prepare("INSERT INTO taxonomy_versions(id,version,status,created_at,activated_at) VALUES ('tax-profile',9,'active',?,?)").bind(signalNow,signalNow).run();await DB.batch([DB.prepare("INSERT INTO work_signals(id,user_id,taxonomy_version_id,free_text_summary,audience,allow_matching,approved_at,expires_at,created_at,updated_at) VALUES ('suggested-signal',?,'tax-profile','Suggested connection context','suggested_connections',1,?,?,?,?)").bind(userId,signalNow,signalNow+86400000,signalNow,signalNow),DB.prepare("INSERT INTO work_signals(id,user_id,taxonomy_version_id,free_text_summary,audience,allow_matching,approved_at,expires_at,created_at,updated_at) VALUES ('private-signal',?,'tax-profile','Private current work','private',1,?,?,?,?)").bind(userId,signalNow,signalNow+86400000,signalNow,signalNow),DB.prepare("INSERT INTO work_signals(id,user_id,taxonomy_version_id,free_text_summary,audience,allow_matching,approved_at,expires_at,created_at,updated_at) VALUES ('expired-signal',?,'tax-profile','Expired work','suggested_connections',1,?,?,?,?)").bind(userId,signalNow-86400000,signalNow-1,signalNow,signalNow)]);expect((await getProfileByHandle(DB,"avery_builder",null))?.workSignals).toEqual([]);expect((await getProfileByHandle(DB,"avery_builder",userId))?.workSignals.map((signal)=>signal.summary)).toEqual(["Suggested connection context","Private current work"]);
     await mutateOnboarding(DB, userId, "Avery", { action: "save_networking", intentSummary: "Meet people comparing retrieval systems", similarAdjacent: 50, localGlobal: 50, serendipity: 30, maximumIntroductionsPerWeek: 3, builderSimilarity: "balanced", geography: "balanced", timezone: "UTC", quietStart: "22:00", quietEnd: "08:00", exclusions: [], avoidRepeatedClusters: true, expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString() });
@@ -88,12 +101,15 @@ describe("onboarding and privacy persistence", () => {
     const before = await getOnboardingSnapshot(DB, userId, "River");
     expect(before.signals[0]?.sourceDisplayName).toBe("GitHub");
     expect(before.signals.map(({ id, status }) => ({ id, status }))).toEqual([{ id: "signal-current", status: "available" }, { id: "signal-stale", status: "stale" }]);
+    const expandedSummary = "Detailed approved context. ".repeat(100);
+    await updateWorkSignal(DB,userId,{ id:"signal-current",summary:expandedSummary,audience:"private",allowMatching:true,expiresAt:new Date(now+86_400_000).toISOString() });
+    expect((await getOnboardingSnapshot(DB,userId,"River")).signals.find((signal)=>signal.id==="signal-current")?.summary).toBe(expandedSummary.trim());
     await revokeSource(DB, userId, "github");
     const after = await getOnboardingSnapshot(DB, userId, "River");
     expect(after.sources).toEqual([]);
     expect(after.signals.every((signal) => signal.status === "revoked")).toBe(true);
     expect((await DB.prepare("SELECT COUNT(*) AS count FROM work_signals WHERE user_id=? AND revoked_at IS NOT NULL").bind(userId).first<{ count: number }>())?.count).toBe(2);
-    expect(await DB.prepare("SELECT version,topics_json AS topics FROM builder_match_index WHERE user_id=?").bind(userId).first()).toMatchObject({version:2,topics:"[]"});
+    expect(await DB.prepare("SELECT version,topics_json AS topics FROM builder_match_index WHERE user_id=?").bind(userId).first()).toMatchObject({version:3,topics:"[]"});
     expect((await DB.prepare("SELECT COUNT(*) AS count FROM pair_scores WHERE user_a_id=? OR user_b_id=?").bind(userId,userId).first<{count:number}>())?.count).toBe(0);
     expect((await DB.prepare("SELECT COUNT(*) AS count FROM candidate_batches WHERE id='batch-revoke'").first<{count:number}>())?.count).toBe(0);
     expect(await DB.prepare("SELECT state FROM match_proposals WHERE id='proposal-revoke'").first()).toMatchObject({state:"invalidated"});
@@ -102,7 +118,7 @@ describe("onboarding and privacy persistence", () => {
 
   it("replaces canonical networking controls and deletes projects from the privacy inventory",async()=>{
     const userId="user-controls";await getOnboardingSnapshot(DB,userId,"Sky");await linkUser(DB,userId);await getOnboardingSnapshot(DB,userId,"Sky");
-    await mutateOnboarding(DB,userId,"Sky",{action:"acknowledge_storage",acknowledged:true});await saveSourcePolicies(DB,userId,[],true);await mutateOnboarding(DB,userId,"Sky",{action:"save_context",method:"manual_profile",summary:"Building developer collaboration tools with careful privacy controls.",projectOrInterest:"Builder networks",links:[]});await mutateOnboarding(DB,userId,"Sky",{action:"review_signals",signalIds:[]});await mutateOnboarding(DB,userId,"Sky",{action:"save_profile",handle:"sky_builder",displayName:"Sky",summary:"Building developer collaboration tools with careful privacy controls.",projectOrInterest:"Builder networks",audience:"public",allowMatching:true});await mutateOnboarding(DB,userId,"Sky",{action:"approve_preview",approved:true});
+    await mutateOnboarding(DB,userId,"Sky",{action:"acknowledge_storage",acknowledged:true});await saveSourcePolicies(DB,userId,[],true);await mutateOnboarding(DB,userId,"Sky",{action:"save_context",method:"manual_profile",summary:"Building developer collaboration tools with careful privacy controls.",projectOrInterest:"Builder networks",links:[]});await mutateOnboarding(DB,userId,"Sky",{action:"review_signals",signalIds:[]});await mutateOnboarding(DB,userId,"Sky",{action:"save_profile",handle:"sky_builder",displayName:"Sky",summary:"Building developer collaboration tools with careful privacy controls.",projectOrInterest:"Builder networks",audience:"public",allowMatching:true});const skyPreviewId=await createPrivateProfilePreview(DB,userId);await mutateOnboarding(DB,userId,"Sky",{action:"approve_preview",approved:true,revisionId:skyPreviewId});
     const base={action:"save_networking",intentSummary:"Meet nearby builder network founders",similarAdjacent:50,localGlobal:50,serendipity:25,maximumIntroductionsPerWeek:2,builderSimilarity:"balanced",geography:"balanced",timezone:"UTC",avoidRepeatedClusters:true,expiresAt:new Date(Date.now()+86400000).toISOString()};
     await mutateOnboarding(DB,userId,"Sky",{...base,quietStart:"22:00",quietEnd:"08:00",exclusions:["hidden_user"],snoozedUntil:new Date(Date.now()+3600000).toISOString()});
     expect((await DB.prepare("SELECT COUNT(*) AS count FROM quiet_hours WHERE user_id=?").bind(userId).first<{count:number}>())?.count).toBe(7);expect((await DB.prepare("SELECT COUNT(*) AS count FROM matching_exclusions WHERE user_id=?").bind(userId).first<{count:number}>())?.count).toBe(1);expect((await DB.prepare("SELECT COUNT(*) AS count FROM matching_snoozes WHERE user_id=?").bind(userId).first<{count:number}>())?.count).toBe(1);
@@ -116,3 +132,17 @@ describe("onboarding and privacy persistence", () => {
 });
 
 async function linkUser(DB:D1Database,userId:string){const now=Date.now();const principal=`principal-${userId}`;await DB.batch([DB.prepare("INSERT INTO identity_principals(id,channel,issuer,subject,workspace_scope,created_at) VALUES (?,'mcp','buildmates_mcp',?,'global',?)").bind(principal,userId,now),DB.prepare("INSERT INTO identity_links(id,user_id,principal_id,provider_channel,provider_issuer,provider_subject,workspace_scope,linked_at) VALUES (?,?,?,'mcp','buildmates_mcp',?,'global',?)").bind(`link-${userId}`,userId,principal,userId,now)]);}
+
+async function createPrivateProfilePreview(DB:D1Database,userId:string,spec:unknown=EDITORIAL_RESEARCH_PROFILE){
+  const profile=await DB.prepare("SELECT id FROM profiles WHERE user_id=?").bind(userId).first<{id:string}>();
+  if(!profile)throw new Error("profile_required");
+  const now=Date.now();
+  const surfaceId=`surface-${userId}`;
+  await seedDesignPolicy(createD1Repositories(DB as never));
+  await DB.prepare("INSERT OR IGNORE INTO surfaces(id,owner_user_id,kind,subject_id,published_revision_id,governance_version,created_at,updated_at) VALUES(?,?,'profile',?,NULL,1,?,?)").bind(surfaceId,userId,profile.id,now,now).run();
+  const maximum=await DB.prepare("SELECT COALESCE(MAX(revision_number),0) AS value FROM surface_revisions WHERE surface_id=?").bind(surfaceId).first<{value:number}>();
+  const revisionNumber=Number(maximum?.value??0)+1;
+  const revisionId=`preview-${userId}-${revisionNumber}`;
+  await DB.prepare("INSERT INTO surface_revisions(id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,design_policy_version,visibility,spec_json,status,created_at) VALUES(?,?,?,NULL,?,?,?,?,?,'draft',?)").bind(revisionId,surfaceId,revisionNumber,userId,DESIGN_POLICY_ID,DESIGN_POLICY_VERSION,"private_preview",JSON.stringify(spec),now).run();
+  return revisionId;
+}

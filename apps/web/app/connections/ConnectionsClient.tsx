@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { SafetyReportDialog } from "@/components/safety/SafetyReportDialog";
+import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 import type { ConnectionListItem } from "@/src/rooms/service";
 import styles from "./connections.module.css";
 
@@ -27,6 +28,7 @@ export function ConnectionsClient({
   const [notice, setNotice] = useState("");
   const [loadErrors, setLoadErrors] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
+  const { confirm, confirmationDialog } = useConfirmDialog();
 
   async function refresh(id: string) {
     try {
@@ -76,12 +78,12 @@ export function ConnectionsClient({
     }
   }
   async function block(connection: ConnectionListItem) {
-    if (
-      !window.confirm(
-        `Block ${connection.otherName}? They will no longer be able to contact you.`,
-      )
-    )
-      return;
+    if (!(await confirm({
+      title: `Block ${connection.otherName}?`,
+      description: "They will no longer be able to contact you, and this Connection will be removed from your list.",
+      confirmLabel: "Block builder",
+      tone: "danger",
+    }))) return;
     const body = { action: "block", targetUserId: connection.otherUserId };
     const response = await fetch("/api/safety", {
       method: "POST",
@@ -101,6 +103,7 @@ export function ConnectionsClient({
 
   return (
     <section className={styles.list} aria-label="Connections">
+      {confirmationDialog}
       {connections.map((connection) => {
         const detail = details[connection.id];
         const state = detail?.state ?? connection.state;
@@ -128,12 +131,15 @@ export function ConnectionsClient({
                   </ul>
                 )}
                 <span suppressHydrationWarning>
-                  Connected{" "}
-                  {new Date(connection.createdAt).toLocaleDateString("en-US")} /{" "}
-                  {state === "active" ? "Active" : "Ended"}
+                  {state === "active" ? "Connected" : "Connection ended"} on{" "}
+                  {new Date(connection.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                   {(detail?.muted ?? connection.muted)
-                    ? " / Notifications muted"
-                    : ""}
+                    ? ". Notifications are muted."
+                    : "."}
                 </span>
               </div>
               <div className={styles.actions}>
@@ -290,16 +296,19 @@ export function ConnectionsClient({
                         <button
                           type="button"
                           disabled={busy}
-                          onClick={() =>
-                            window.confirm(
-                              "End this Connection? Its room will close, and reconnecting will require a new request.",
-                            ) &&
+                          onClick={async () => {
+                            if (!(await confirm({
+                              title: "End this Connection?",
+                              description: "Its room will close. Either person can request to reconnect later.",
+                              confirmLabel: "End connection",
+                              tone: "danger",
+                            }))) return;
                             void command(
                               connection.id,
                               { action: "end" },
                               "Connection ended. Its room is now closed.",
-                            )
-                          }
+                            );
+                          }}
                         >
                           End connection
                         </button>

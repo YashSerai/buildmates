@@ -192,12 +192,12 @@ export function OnboardingClient({
               ? "Codex setup complete"
               : step === "identity_link"
                 ? "Website preparation saved"
-                : "Current step"}
+                : "Profile setup in progress"}
           </span>
           <span>
             {snapshot.codexConnected
               ? "Codex connected"
-              : "Codex connection pending"}
+              : "Connect Codex to continue"}
           </span>
         </div>
         {step === "identity_link" && (
@@ -250,9 +250,14 @@ export function OnboardingClient({
         )}
         {step === "source_selection" && (
           <Step
-            title="Choose each source individually"
-            description="Codex shows the connected sources it can identify in this conversation. You can also name a source yourself."
+            title="Choose how Codex understands your work"
+            description="Recommended: continue in Codex and choose Use my Codex workspace. Codex reviews only the tasks, project folders, and local context you approve, then sends Buildmates only the profile you review."
           >
+            <div className={styles.inlineNote}>
+              <strong>Use your Codex workspace</strong>
+              <p>Return to the guided Codex setup for the most complete profile, or choose individual connected sources below.</p>
+              <a href="/onboarding">Continue in Codex</a>
+            </div>
             <div className={styles.stack}>
               {sources.map((source, index) => (
                 <AppPermissionRow
@@ -365,24 +370,24 @@ export function OnboardingClient({
         )}
         {step === "page_preview" && (
           <Step
-            title="Preview your profile"
-            description="Only you can see this version. Keep shaping it until it feels like you, then publish when you are ready."
+            title="Review your private profile design"
+            description="Codex creates the page itself, not a generic profile card. Only a valid private design can be published."
           >
-            <article className={styles.profilePreview}>
-              <span>@{snapshot.profile?.handle ?? "builder"}</span>
-              <h2>{snapshot.profile?.displayName}</h2>
-              <p>{snapshot.profile?.summary}</p>
-              <strong>Currently</strong>
-              <p>{snapshot.profile?.projectOrInterest}</p>
-            </article>
-            <button
-              onClick={() =>
-                onboarding({ action: "approve_preview", approved: true })
-              }
-              disabled={busy}
-            >
-              Continue with this profile
-            </button>
+            <div className={styles.previewGate}>
+              <strong>{snapshot.profilePreview ? `Private design ${snapshot.profilePreview.revisionNumber} is ready` : "Your page still needs a private design"}</strong>
+              <p>{snapshot.profilePreview ? "Open the full-page preview, check the content and layout, then return here to publish this exact revision." : "Ask Codex to design the page, or open the design workspace and use its Codex prompt. A basic summary card cannot complete this step."}</p>
+              <a href="/profile/design">{snapshot.profilePreview ? "Review private preview" : "Design profile with Codex"}</a>
+            </div>
+            {snapshot.profilePreview ? (
+              <button
+                onClick={() =>
+                  onboarding({ action: "approve_preview", approved: true, revisionId: snapshot.profilePreview?.revisionId })
+                }
+                disabled={busy}
+              >
+                Publish this design and continue
+              </button>
+            ) : null}
           </Step>
         )}
         {step === "networking_pulse" && (

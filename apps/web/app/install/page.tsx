@@ -39,7 +39,7 @@ export default async function InstallPage() {
           <div>
             <ol className={styles.steps}>
               <li>Codex connects Buildmates and checks whether you are starting fresh or returning.</li>
-              <li>You choose what Codex may use to understand your work.</li>
+              <li>With your permission, Codex reviews the workspace sources you choose.</li>
               <li>You review your profile and the page Codex creates.</li>
               <li>
                 You choose who to meet and how often Buildmates should
@@ -47,16 +47,15 @@ export default async function InstallPage() {
               </li>
             </ol>
             <p>
-              Start with what Codex already knows in this task, add a connected
-              app that is actually available, or tell Codex directly with a
-              project, portfolio link, or short description. You can combine
-              all three. Nothing is shared with Buildmates until you approve
-              the summary.
+              The recommended path is <strong>Use my Codex workspace</strong>.
+              Codex can review the recent tasks, project folders, GBrain, and
+              local memory sources you approve. That research stays in Codex.
+              Buildmates receives only the profile you review. You can also add
+              an available connected app or answer focused questions.
             </p>
             <p>
-              Routine setup actions come in short batches of up to three. You
-              see what each action uses and changes, then approve the batch once.
-              Codex pauses again when there is something new to review.
+              Codex explains what it will use before it starts, then pauses when
+              your profile or another meaningful decision is ready to review.
             </p>
             <Link className={styles.secondary} href="/onboarding">
               {user ? "Use manual setup instead" : "Set up on the website instead"}

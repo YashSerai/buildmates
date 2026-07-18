@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 
 type Collaborator = { userId: string; displayName: string; handle: string; role: string; approvedAt: number | null };
 
@@ -9,6 +10,7 @@ export function ProjectControls({ slug, status, isOwner, canEdit }: { slug: stri
   const router = useRouter();
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [notice, setNotice] = useState("");
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const endpoint = `/api/projects/${encodeURIComponent(slug)}`;
   const loadCollaborators = useCallback(async () => {
     if (!canEdit) return;
@@ -29,21 +31,36 @@ export function ProjectControls({ slug, status, isOwner, canEdit }: { slug: stri
     if (response.ok) { event.currentTarget.reset(); await loadCollaborators(); }
   }
   async function lifecycle(action: "archive" | "restore" | "delete") {
-    if (action === "delete" && !window.confirm("Delete this project? This removes it from your profile, shared links, and matching.")) return;
+    if (action === "delete" && !(await confirm({
+      title: "Delete this project?",
+      description: "It will be removed from your profile, shared links, and matching. This cannot be undone.",
+      confirmLabel: "Delete project",
+      tone: "danger",
+    }))) return;
     const response = await fetch(endpoint, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ action }) });
     if (!response.ok) { setNotice("Project status could not be changed."); return; }
     if (action === "delete") router.push("/profile");
     else router.refresh();
   }
   async function collaboratorAction(userId: string, action: "remove" | "transfer") {
-    if (!window.confirm(action === "transfer" ? "Transfer project ownership to this collaborator?" : "Remove this collaborator?")) return;
+    if (!(await confirm(action === "transfer" ? {
+      title: "Transfer project ownership?",
+      description: "This collaborator will become the owner and control future access and project settings.",
+      confirmLabel: "Transfer ownership",
+      tone: "danger",
+    } : {
+      title: "Remove this collaborator?",
+      description: "They will lose access to private project details and collaborator controls.",
+      confirmLabel: "Remove collaborator",
+      tone: "danger",
+    }))) return;
     const response = await fetch(action === "transfer" ? `${endpoint}/collaborators` : `${endpoint}/collaborators?userId=${encodeURIComponent(userId)}`, { method: action === "transfer" ? "PUT" : "DELETE", headers: { "content-type": "application/json" }, body: action === "transfer" ? JSON.stringify({ newOwnerUserId: userId }) : undefined });
     setNotice(response.ok ? (action === "transfer" ? "Ownership transferred." : "Collaborator removed.") : "That collaborator change could not be saved.");
     if (response.ok) { await loadCollaborators(); router.refresh(); }
   }
 
   if (!canEdit) return null;
-  return <section aria-labelledby="project-controls"><h2 id="project-controls">Project controls</h2>
+  return <section aria-labelledby="project-controls">{confirmationDialog}<h2 id="project-controls">Project controls</h2>
     <form onSubmit={postUpdate}><label>Share an update<textarea name="body" maxLength={2000} rows={4} required /></label><label>Who can see it?<select name="audience"><option value="public">Public</option><option value="signed_in">Signed-in builders</option><option value="mutual_connections">Mutual connections</option><option value="private">Only collaborators</option></select></label><button>Publish update</button></form>
     {isOwner && <><p><a href={`/projects/${encodeURIComponent(slug)}/edit`}>Edit project details</a></p><form onSubmit={invite}><label>Invite collaborator by handle<input name="handle" placeholder="builder-handle" required /></label><label>Role<select name="role"><option value="editor">Editor</option><option value="viewer">Viewer</option></select></label><button>Invite</button></form>{collaborators.length > 0 && <ul>{collaborators.map((collaborator) => <li key={collaborator.userId}><strong>{collaborator.displayName}</strong> @{collaborator.handle} · {collaborator.approvedAt ? collaborator.role : "invited"} <button onClick={() => void collaboratorAction(collaborator.userId, "remove")}>Remove</button>{collaborator.approvedAt && <button onClick={() => void collaboratorAction(collaborator.userId, "transfer")}>Transfer ownership</button>}</li>)}</ul>}<div>{status === "archived" ? <button onClick={() => void lifecycle("restore")}>Restore project</button> : <button onClick={() => void lifecycle("archive")}>Archive project</button>}<button onClick={() => void lifecycle("delete")}>Delete project</button></div></>}
     <p role="status">{notice}</p>

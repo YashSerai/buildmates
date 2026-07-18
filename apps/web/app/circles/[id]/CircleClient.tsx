@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { ModuleWorkspace } from "@/components/modules/ModuleWorkspace";
+import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 import { SafetyReportDialog } from "@/components/safety/SafetyReportDialog";
 import { SurfaceRenderer } from "@/components/surfaces/SurfaceRenderer";
 import type {
@@ -28,6 +29,7 @@ export function CircleClient({
   const [chatBody, setChatBody] = useState("");
   const [proposalKind, setProposalKind] = useState("module");
   const [busy, setBusy] = useState(false);
+  const { confirm, confirmationDialog } = useConfirmDialog();
 
   async function command(body: Record<string, unknown>, success?: string) {
     setMessage("");
@@ -78,19 +80,21 @@ export function CircleClient({
 
   async function invite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     if (
       await command(
         { action: "invite", handle: data.get("handle") },
         "Circle invitation sent.",
       )
     )
-      event.currentTarget.reset();
+      form.reset();
   }
 
   async function propose(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const kind = String(data.get("kind"));
     let payload: Record<string, unknown>;
     if (kind === "module")
@@ -113,7 +117,7 @@ export function CircleClient({
         "Proposal submitted for member review.",
       )
     )
-      event.currentTarget.reset();
+      form.reset();
   }
 
   async function send(event: FormEvent) {
@@ -231,6 +235,7 @@ export function CircleClient({
   };
   return (
     <div className={styles.layout} aria-busy={busy}>
+      {confirmationDialog}
       <section className={styles.chatPanel}>
         <div className={styles.heading}>
           <h2>Circle chat</h2>
@@ -338,32 +343,38 @@ export function CircleClient({
                       {circle.role === "owner" && (
                         <button
                           disabled={busy}
-                          onClick={() =>
-                            window.confirm(
-                              `Transfer Circle ownership to ${member.displayName}?`,
-                            ) &&
+                          onClick={async () => {
+                            if (!(await confirm({
+                              title: `Make ${member.displayName} the Circle owner?`,
+                              description: "They will control membership, roles, and shared Circle settings. You will remain a member.",
+                              confirmLabel: "Transfer ownership",
+                              tone: "danger",
+                            }))) return;
                             void command({
                               action: "manage_member",
                               targetUserId: member.userId,
                               memberAction: "transfer",
-                            })
-                          }
+                            });
+                          }}
                         >
                           Transfer ownership
                         </button>
                       )}
                       <button
                         disabled={busy}
-                        onClick={() =>
-                          window.confirm(
-                            `Remove ${member.displayName} from this Circle?`,
-                          ) &&
+                        onClick={async () => {
+                          if (!(await confirm({
+                            title: `Remove ${member.displayName}?`,
+                            description: "They will lose access to this Circle and its shared conversations and tools.",
+                            confirmLabel: "Remove member",
+                            tone: "danger",
+                          }))) return;
                           void command({
                             action: "manage_member",
                             targetUserId: member.userId,
                             memberAction: "remove",
-                          })
-                        }
+                          });
+                        }}
                       >
                         Remove
                       </button>
@@ -386,10 +397,15 @@ export function CircleClient({
             <button
               disabled={busy}
               className={styles.leaveButton}
-              onClick={() =>
-                window.confirm("Leave this Circle?") &&
-                void command({ action: "leave" })
-              }
+              onClick={async () => {
+                if (!(await confirm({
+                  title: "Leave this Circle?",
+                  description: "You will lose access to its conversations and shared tools. An admin can invite you again later.",
+                  confirmLabel: "Leave Circle",
+                  tone: "danger",
+                }))) return;
+                void command({ action: "leave" });
+              }}
             >
               Leave Circle
             </button>
@@ -399,7 +415,7 @@ export function CircleClient({
       <details className={styles.disclosure}>
         <summary>
           <span>Design and shared-tool proposals</span>
-          <small>{circle.proposals.length} proposed</small>
+          <small>{openProposalCount(circle.proposals)} awaiting a decision</small>
         </summary>
         <section className={styles.disclosureBody}>
           <div className={styles.heading}>
@@ -504,13 +520,7 @@ export function CircleClient({
                 <article key={proposal.id}>
                   <div>
                     <p>{proposalKindLabel(proposal.kind)}</p>
-                    <h3>
-                      {String(
-                        proposal.payload.title ??
-                          proposal.payload.summary ??
-                          "Member proposal",
-                      )}
-                    </h3>
+                    <h3>{proposalTitle(proposal.payload)}</h3>
                     <span>{proposalStatusLabel(proposal.status)}</span>
                     {proposal.previewSpec && (
                       <SurfaceRenderer
@@ -683,6 +693,12 @@ function proposalKindLabel(value: string) {
     )[value] ?? "Member proposal"
   );
 }
+function proposalTitle(payload: Record<string, unknown>) {
+  const config = payload.config && typeof payload.config === "object"
+    ? payload.config as Record<string, unknown>
+    : null;
+  return String(payload.title ?? config?.title ?? payload.summary ?? "Member proposal");
+}
 function proposalStatusLabel(value: string) {
   return (
     (
@@ -695,6 +711,11 @@ function proposalStatusLabel(value: string) {
       } as Record<string, string>
     )[value] ?? "Under review"
   );
+}
+function openProposalCount(proposals: CircleDetail["proposals"]) {
+  return proposals.filter((proposal) =>
+    ["proposed", "voting", "approved"].includes(proposal.status),
+  ).length;
 }
 function sharedToolLabel(value: string) {
   return (

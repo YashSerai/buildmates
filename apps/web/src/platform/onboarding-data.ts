@@ -1,6 +1,8 @@
+import { createD1Repositories } from "@buildmates/database";
 import { getSetupState, SETUP_STEPS, type SetupStep } from "@buildmates/domain";
 import type { D1Like } from "./d1";
 import type { R2Like } from "./r2";
+import { findValidPrivateProfilePreview } from "./profile-surface-preview";
 import {
   changeProjectLifecycle,
   normalizeHandle,
@@ -55,6 +57,10 @@ export type OnboardingSnapshot = {
     audience: Audience;
     allowMatching: boolean;
     acceptanceMode: AcceptanceMode;
+  };
+  profilePreview: null | {
+    revisionId: string;
+    revisionNumber: number;
   };
   networking: null | {
     id: string;
@@ -204,6 +210,7 @@ export async function getOnboardingSnapshot(
   const automationState = automationRow
     ? safeObject(automationRow.stateJson)
     : null;
+  const profilePreview = await findValidPrivateProfilePreview(DB, userId);
   const sourceRows = sourceResult.results as Array<Record<string, unknown>>;
   const signalRows = signalResult.results as Array<Record<string, unknown>>;
   const lifecycleRows = lifecycleResult.results as Array<
@@ -259,6 +266,12 @@ export async function getOnboardingSnapshot(
           audience: profileRow.audience as Audience,
           allowMatching: Boolean(profileRow.allowMatching),
           acceptanceMode: profileRow.acceptanceMode as AcceptanceMode,
+        }
+      : null,
+    profilePreview: profilePreview
+      ? {
+          revisionId: profilePreview.revisionId,
+          revisionNumber: profilePreview.revisionNumber,
         }
       : null,
     networking: pulseRow
@@ -521,6 +534,20 @@ export async function mutateOnboarding(
       .first<{ id: string; audience: Audience; allowMatching: number }>();
     if (!profile || body.approved !== true)
       throw new InputError("Approve the private preview to continue.");
+    const revisionId = identifier(body.revisionId, "profile preview revision");
+    const preview = await findValidPrivateProfilePreview(DB, userId, revisionId);
+    if (!preview)
+      throw new InputError("Create and review a private profile design before continuing.");
+    if (!preview.alreadyPublished) {
+      await createD1Repositories(DB).surfaces.publishRevision({
+        actorId: userId as never,
+        surfaceId: preview.surfaceId,
+        revisionId: preview.revisionId,
+        expectedPublishedRevisionNumber: preview.publishedRevisionNumber,
+        governanceVersion: preview.governanceVersion,
+        at: new Date(),
+      });
+    }
     await publishProfile(DB,userId);
     await completeStepInOrder(DB, userId, "page_preview");
     return audit(
@@ -529,7 +556,7 @@ export async function mutateOnboarding(
       "profile.preview_approved",
       "profile",
       profile.id,
-      {},
+      { surfaceRevisionId: preview.revisionId },
     );
   }
   if (action === "save_networking") {
@@ -705,7 +732,7 @@ export async function updateWorkSignal(
     if (!results[0].meta.changes) throw new NotFoundError();
     return audit(DB, userId, `work_signal.${action}`, "work_signal", id, {});
   }
-  const summary = text(body.summary, 1, 1200, "signal summary");
+  const summary = text(body.summary, 1, 12000, "signal summary");
   const audience = workSignalAudienceValue(body.audience);
   const expiresAt = dateAfter(body.expiresAt, now, "Signal expiry");
   const results = await DB.batch([

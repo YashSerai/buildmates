@@ -91,6 +91,14 @@ export function RevisionPreview() {
     }
   }
 
+  const privatePreview = data?.history.find(
+    (revision) => revision.id !== data.surface.publishedRevisionId,
+  );
+  const previewCanPublish = Boolean(
+    privatePreview &&
+      privatePreview.baseRevisionNumber === data?.surface.publishedRevisionNumber,
+  );
+
   return (
     <main className={`${styles.form} ${styles.designWorkspace}`}>
       <header>
@@ -127,51 +135,62 @@ export function RevisionPreview() {
               Copy Codex prompt
             </button>
           </div>
-          <h2>Design history</h2>
+          <h2>{privatePreview ? "Private preview" : "Design history"}</h2>
+          {privatePreview ? (
+            <section className={styles.currentDesign} aria-label="Current private preview">
+              <SurfaceRenderer
+                spec={privatePreview.spec}
+                bindings={previewSurfaceBindings(data.brief, privatePreview.spec)}
+              />
+              <div className={styles.currentDesignActions}>
+                {previewCanPublish ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      mutate(
+                        {
+                          action: "publish",
+                          revisionId: privatePreview.id,
+                          expectedPublishedRevisionNumber:
+                            data.surface.publishedRevisionNumber,
+                        },
+                        "Profile design published.",
+                      )
+                    }
+                  >
+                    Publish this design
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() =>
+                      mutate(
+                        { action: "restore", revisionId: privatePreview.id },
+                        "A new private preview was created from that design.",
+                      )
+                    }
+                  >
+                    Update this preview
+                  </button>
+                )}
+                <span>Only you can see this preview until you publish it.</span>
+              </div>
+            </section>
+          ) : null}
+          <h2>Earlier designs</h2>
           {data.history.length ? (
             <ol className={styles.designHistory}>
               {data.history.map((revision) => {
                 const published = data.surface.publishedRevisionId === revision.id;
-                const currentBase =
-                  revision.baseRevisionNumber ===
-                  data.surface.publishedRevisionNumber;
                 const label = published
                   ? "Published page"
                   : `Private preview ${revision.revisionNumber}`;
                 return (
                   <li key={revision.id}>
-                    <p>
-                      <strong>{label}</strong>
-                    </p>
-                    <section
-                      className={styles.designSurfacePreview}
-                      aria-label={label}
-                    >
-                      <SurfaceRenderer
-                        spec={revision.spec}
-                        bindings={previewSurfaceBindings(data.brief, revision.spec)}
-                      />
-                    </section>
-                    {!published && currentBase ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          mutate(
-                            {
-                              action: "publish",
-                              revisionId: revision.id,
-                              expectedPublishedRevisionNumber:
-                                data.surface.publishedRevisionNumber,
-                            },
-                            "Profile design published.",
-                          )
-                        }
-                      >
-                        Publish this design
-                      </button>
-                    ) : null}
-                    {!published && !currentBase ? (
+                    <p><strong>{label}</strong><span>{new Date(revision.createdAt).toLocaleDateString()}</span></p>
+                    {!published && revision.id !== privatePreview?.id ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -182,7 +201,7 @@ export function RevisionPreview() {
                           )
                         }
                       >
-                        Preview this design again
+                        Use as a new preview
                       </button>
                     ) : null}
                   </li>

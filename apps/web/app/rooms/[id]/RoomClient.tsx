@@ -1,7 +1,15 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { ModuleWorkspace } from "@/components/modules/ModuleWorkspace";
+import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 import { SafetyReportDialog } from "@/components/safety/SafetyReportDialog";
 import { userFacingError } from "@/src/client/user-facing-error";
 import type { RoomMessage, RoomSummary } from "@/src/rooms/service";
@@ -74,6 +82,8 @@ export type RoomEnhancements = {
   availabilityIntersections: AvailabilityIntersection[];
 };
 
+const subscribeToHydration = () => () => {};
+
 export function RoomClient({
   room,
   initialMessages,
@@ -85,6 +95,11 @@ export function RoomClient({
 }) {
   const [messages, setMessages] = useState(initialMessages);
   const [enhancements, setEnhancements] = useState(initialEnhancements);
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [body, setBody] = useState("");
   const [notice, setNotice] = useState("");
   const [scheduleStart, setScheduleStart] = useState("");
@@ -93,6 +108,7 @@ export function RoomClient({
   const [sending, setSending] = useState(false);
   const [module, setModule] = useState("resource_shelf");
   const [upgradeWhy, setUpgradeWhy] = useState("");
+  const { confirm, confirmationDialog } = useConfirmDialog();
   const cursor = useRef<string | null>(
     initialMessages.length
       ? cursorFor(initialMessages[initialMessages.length - 1]!)
@@ -278,8 +294,12 @@ export function RoomClient({
     }
   }
   async function block() {
-    if (!window.confirm(`Block ${room.otherName}? This room will close.`))
-      return;
+    if (!(await confirm({
+      title: `Block ${room.otherName}?`,
+      description: "This room will close, and they will no longer be able to contact you.",
+      confirmLabel: "Block builder",
+      tone: "danger",
+    }))) return;
     const request = { action: "block", targetUserId: room.otherUserId };
     const response = await fetch("/api/safety", {
       method: "POST",
@@ -298,6 +318,7 @@ export function RoomClient({
       className={styles.chat}
       aria-label={`Conversation with ${room.otherName}`}
     >
+      {confirmationDialog}
       <div
         className={styles.messages}
         role="log"
@@ -337,27 +358,28 @@ export function RoomClient({
         )}
         <div ref={end} />
       </div>
-      <form className={styles.composer} aria-busy={sending} onSubmit={submit}>
+      <form className={styles.composer} aria-busy={sending || !hydrated} onSubmit={submit}>
         <label htmlFor="message">Message {room.otherName}</label>
         <textarea
           id="message"
           value={body}
           onChange={(event) => setBody(event.target.value)}
+          disabled={!hydrated || sending}
           rows={3}
           maxLength={4000}
           placeholder="Share the current edge of your work..."
         />
         <div>
           <span>{body.length}/4000</span>
-          <button type="submit" disabled={sending || !body.trim()}>
-            {sending ? "Sending..." : "Send message"}
+          <button type="submit" disabled={!hydrated || sending || !body.trim()}>
+            {!hydrated ? "Loading..." : sending ? "Sending..." : "Send message"}
           </button>
         </div>
         <p role="status" aria-live="polite">
-          {notice}
+          {!hydrated ? "Message composer loading..." : notice}
         </p>
       </form>
-      <details className={styles.disclosure}>
+      <details className={styles.disclosure} inert={!hydrated ? true : undefined}>
         <summary>
           <span>Shared room tools</span>
           <small>{enhancements.modules.length} active</small>
@@ -483,7 +505,7 @@ export function RoomClient({
           </section>
         </div>
       </details>
-      <details className={styles.disclosure}>
+      <details className={styles.disclosure} inert={!hydrated ? true : undefined}>
         <summary>
           <span>Plan a meeting</span>
           <small>

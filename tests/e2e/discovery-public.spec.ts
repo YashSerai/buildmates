@@ -144,8 +144,8 @@ test("product, privacy, install, and account paths are complete", async ({
   );
   await expect(page.getByText(/handles the Buildmates connection inside Codex/i)).toBeVisible();
   await expect(page.getByText(/continue an unfinished setup/i)).toBeVisible();
-  await expect(page.getByText(/short batches of up to three/i)).toBeVisible();
-  await expect(page.getByText(/what Codex already knows in this task/i)).toBeVisible();
+  await expect(page.getByText(/Use my Codex workspace/i)).toBeVisible();
+  await expect(page.getByText(/research stays in Codex/i)).toBeVisible();
   await expect(page.getByText("Testing before publication")).toHaveCount(0);
   await expect(page.getByText(/buildmates-mcp\.yashserai1/i)).toHaveCount(0);
   await page.screenshot({

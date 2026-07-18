@@ -52,9 +52,9 @@ function SignalEditor({
   return (
     <article className={styles.signalCard}>
       <div className={styles.signalHeader}>
-        <span><span className={styles.statusBadge} data-status={signal.status}>{signal.status}</span> From {signal.sourceDisplayName}</span>
+        <span><span className={styles.statusBadge} data-status={signal.status}>{statusLabel(signal.status)}</span> From {signal.sourceDisplayName}</span>
         <time dateTime={signal.expiresAt}>
-          Expires {formatDate(signal.expiresAt)}
+          Review by {formatDate(signal.expiresAt)}
         </time>
       </div>
       <label>
@@ -62,7 +62,7 @@ function SignalEditor({
         <textarea
           value={draft.summary}
           rows={3}
-          maxLength={1200}
+          maxLength={12000}
           onChange={(event) => {
             setDraft({ ...draft, summary: event.target.value });
           }}
@@ -123,4 +123,10 @@ function formatDate(value: string) {
     dateStyle: "medium",
     timeZone: "UTC",
   }).format(new Date(value));
+}
+
+function statusLabel(status: Signal["status"]) {
+  if (status === "available") return "Ready to review";
+  if (status === "stale") return "Needs a refresh";
+  return "Removed";
 }

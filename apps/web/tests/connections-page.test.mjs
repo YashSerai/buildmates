@@ -34,7 +34,9 @@ test("connection UI includes explicit approval, privacy copy, and accessible sta
   assert.match(page, /does not grant Buildmates access to your raw chats/);
   assert.match(client, /Approve and create code/);
   assert.match(client, /role="status" aria-live="polite"/);
-  assert.match(client, /window\.confirm\("Disconnect Buildmates from Codex\?/);
+  assert.match(client, /useConfirmDialog/);
+  assert.match(client, /title: "Disconnect Codex\?"/);
+  assert.doesNotMatch(client, /window\.confirm/);
   assert.match(css, /:focus-visible/);
   assert.match(css, /prefers-reduced-motion:\s*reduce/);
   assert.match(css, /@media \(max-width: 620px\)/);

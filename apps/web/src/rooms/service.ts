@@ -17,6 +17,7 @@ function parseMessageCursor(value:string|null){if(!value)return{createdAt:0,id:"
 
 export async function sendMessage(DB:D1Database,input:{roomId:string;userId:string;clientMessageId:string;body:string;now:number}){
   const room=await getRoomSummary(DB,input.roomId,input.userId);if(!room||room.status!=="active")throw new Error("room_not_available");
+  const sender=await DB.prepare("SELECT display_name AS displayName FROM profiles WHERE user_id=? LIMIT 1").bind(input.userId).first<{displayName:string}>();
   const blocked=await DB.prepare("SELECT 1 AS blocked FROM blocks WHERE revoked_at IS NULL AND ((blocker_user_id=? AND blocked_user_id=?) OR (blocker_user_id=? AND blocked_user_id=?)) LIMIT 1").bind(input.userId,room.otherUserId,room.otherUserId,input.userId).first();if(blocked)throw new Error("room_blocked");
   const window=Math.floor(input.now/60_000);const key=`message:${input.userId}:${window}`;
   await DB.prepare("INSERT INTO mcp_rate_limits (key,attempt_count,window_expires_at) VALUES (?,1,?) ON CONFLICT(key) DO UPDATE SET attempt_count=attempt_count+1").bind(key,(window+1)*60_000).run();
@@ -25,7 +26,7 @@ export async function sendMessage(DB:D1Database,input:{roomId:string;userId:stri
   await DB.batch([
     DB.prepare("INSERT INTO messages (id,room_id,sender_user_id,client_message_id,body,created_at) VALUES (?,?,?,?,?,?) ON CONFLICT(room_id,sender_user_id,client_message_id) DO NOTHING").bind(id,input.roomId,input.userId,input.clientMessageId,input.body,input.now),
     DB.prepare("UPDATE connection_sides SET unread_at=?,updated_at=? WHERE connection_id=? AND user_id=? AND EXISTS (SELECT 1 FROM messages WHERE id=?)").bind(input.now,input.now,room.connectionId,room.otherUserId,id),
-    DB.prepare("INSERT INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'new_message','immediate',?,? WHERE EXISTS (SELECT 1 FROM messages WHERE id=?) AND EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(crypto.randomUUID(),room.otherUserId,JSON.stringify({roomId:input.roomId,connectionId:room.connectionId}),input.now,id,room.connectionId,room.otherUserId),
+    DB.prepare("INSERT INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'new_message','immediate',?,? WHERE EXISTS (SELECT 1 FROM messages WHERE id=?) AND EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(crypto.randomUUID(),room.otherUserId,JSON.stringify({roomId:input.roomId,connectionId:room.connectionId,senderName:sender?.displayName??"Buildmate"}),input.now,id,room.connectionId,room.otherUserId),
   ]);
   const stored=await DB.prepare("SELECT id,created_at AS createdAt FROM messages WHERE room_id=? AND sender_user_id=? AND client_message_id=?").bind(input.roomId,input.userId,input.clientMessageId).first<{id:string;createdAt:number}>();if(!stored)throw new Error("message_failed");return stored;
 }

@@ -28,7 +28,7 @@ export function McpAuthorizeButton({ returnTo }: { returnTo: string }) {
     <div className={styles.actionArea}>
       <button type="button" disabled={status === "working"} onClick={authorize}>
         <span>{status === "working" ? "Connecting..." : "Connect Codex"}</span>
-        <i aria-hidden="true">↗</i>
+        <i aria-hidden="true">→</i>
       </button>
       <p className={styles.actionHelp}>You will return to Codex automatically when the connection is ready.</p>
       {status === "error" && <p className={styles.error} role="alert">The connection did not finish. Return to Codex and start it again.</p>}

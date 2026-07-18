@@ -2,6 +2,7 @@
 import { useState, useSyncExternalStore } from "react";
 import type { OnboardingSnapshot } from "@/src/platform/onboarding-data";
 import { userFacingError } from "@/src/client/user-facing-error";
+import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 import styles from "../settings.module.css";
 
 class RequestError extends Error {}
@@ -21,6 +22,7 @@ export function PrivacyClient({
   );
   const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const hydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const { confirm, confirmationDialog } = useConfirmDialog();
   async function command(body: Record<string, unknown>) {
     setBusy(true);
     setMessage("");
@@ -54,12 +56,12 @@ export function PrivacyClient({
     }
   }
   async function revokeSource(appId: string) {
-    if (
-      !window.confirm(
-        "Revoke this source? Its active Work Signals will also be removed from future matching.",
-      )
-    )
-      return;
+    if (!(await confirm({
+      title: "Remove this connected source?",
+      description: "Its active Work Signals will also stop contributing to future matching.",
+      confirmLabel: "Remove source",
+      tone: "danger",
+    }))) return;
     setBusy(true);
     try {
       const response = await fetch("/api/connected-apps", {
@@ -83,7 +85,12 @@ export function PrivacyClient({
     }
   }
   async function deleteSignal(id: string) {
-    if (!window.confirm("Delete this Work Signal from Buildmates?")) return;
+    if (!(await confirm({
+      title: "Delete this Work Signal?",
+      description: "Buildmates will stop using it for matching. This does not delete anything from the original source.",
+      confirmLabel: "Delete Work Signal",
+      tone: "danger",
+    }))) return;
     setBusy(true);
     try {
       const response = await fetch("/api/work-signals", {
@@ -116,6 +123,7 @@ export function PrivacyClient({
   }
   return (
     <div className={styles.settingsGrid} data-hydrated={hydrated} aria-busy={!hydrated || busy}>
+      {confirmationDialog}
       <aside className={styles.summary}>
         <div>
           <strong>{snapshot.sources.length}</strong>
@@ -335,13 +343,14 @@ export function PrivacyClient({
           </dl>
           <button
             className={styles.dangerButton}
-            onClick={() => {
-              if (
-                window.confirm(
-                  "Disconnect all Codex syncing and revoke all active source signals?",
-                )
-              )
-                void command({ command: "disconnect_all" });
+            onClick={async () => {
+              if (!(await confirm({
+                title: "Disconnect all Codex syncing?",
+                description: "Scheduled syncing will stop, and active source signals will no longer contribute to matching.",
+                confirmLabel: "Disconnect syncing",
+                tone: "danger",
+              }))) return;
+              void command({ command: "disconnect_all" });
             }}
             disabled={busy}
           >
@@ -357,15 +366,15 @@ export function PrivacyClient({
             <div><dt>Projects</dt><dd>{snapshot.holdings.projects}</dd></div>
             <div><dt>Rooms</dt><dd>{snapshot.holdings.rooms}</dd></div>
             <div><dt>Circles</dt><dd>{snapshot.holdings.circles}</dd></div>
-            <div><dt>My Codex evaluations</dt><dd>{snapshot.holdings.evaluations}</dd></div>
-            <div><dt>Activity items</dt><dd>{snapshot.holdings.notifications}</dd></div>
+            <div><dt>Recommendations reviewed for me</dt><dd>{snapshot.holdings.evaluations}</dd></div>
+            <div><dt>Activity updates</dt><dd>{snapshot.holdings.notifications}</dd></div>
           </dl>
           {snapshot.projects.length ? (
             <div className={styles.list}>
               {snapshot.projects.map((project)=>(
                 <article key={project.slug}>
                   <div><strong>{project.title}</strong><span>{statusLabel(project.status)} · {visibilityLabel(project.audience)}</span><p>Updated {formatDate(project.updatedAt)}</p></div>
-                  <button className={styles.dangerText} onClick={()=>{if(window.confirm(`Delete ${project.title} from Buildmates?`))void command({command:"delete_project",slug:project.slug})}} disabled={busy}>Delete project</button>
+                  <button className={styles.dangerText} onClick={async ()=>{if(!(await confirm({title:`Delete ${project.title}?`,description:"It will be removed from your profile, shared links, and matching.",confirmLabel:"Delete project",tone:"danger"})))return;void command({command:"delete_project",slug:project.slug})}} disabled={busy}>Delete project</button>
                 </article>
               ))}
             </div>
@@ -373,10 +382,14 @@ export function PrivacyClient({
           <div className={styles.controlRow}>
             <button
               className={styles.dangerButton}
-              onClick={() => {
-                if (window.confirm("Remove the approved shared facts you contributed from every Buildmates connection summary? Messages and another member's private notes are not changed.")) {
-                  void command({ command: "redact_shared_context" });
-                }
+              onClick={async () => {
+                if (!(await confirm({
+                  title: "Remove your shared connection context?",
+                  description: "Approved facts you contributed will be removed from connection summaries. Messages and another member's private notes will not change.",
+                  confirmLabel: "Remove shared context",
+                  tone: "danger",
+                }))) return;
+                void command({ command: "redact_shared_context" });
               }}
               disabled={busy}
             >

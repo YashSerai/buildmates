@@ -1,0 +1,23 @@
+.dialog {
+  width: min(30rem, calc(100% - 2rem));
+  max-width: none;
+  margin: auto;
+  padding: 0;
+  border: 1px solid rgb(24 27 23 / 28%);
+  background: #f7f8f2;
+  color: #1e201d;
+}
+.dialog::backdrop { background: rgb(16 20 17 / 64%); }
+.panel { padding: clamp(1.25rem, 5vw, 2rem); }
+.eyebrow { margin: 0 0 .65rem; color: #536052; font-size: .72rem; font-weight: 750; }
+.panel h2 { margin: 0; font: 600 clamp(1.65rem, 5vw, 2.25rem)/1 Georgia, serif; letter-spacing: -.035em; }
+.panel > p:not(.eyebrow) { margin: 1rem 0 0; color: #555b53; line-height: 1.55; }
+.field { margin-top: 1.25rem; display: grid; gap: .45rem; font-size: .8rem; font-weight: 700; }
+.field input { min-height: 44px; border: 1px solid #8a8f86; background: #fff; padding: .7rem .8rem; color: inherit; font: inherit; }
+.actions { margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: .65rem; }
+.actions button { min-height: 44px; padding: .65rem .9rem; border: 1px solid #30372f; background: transparent; color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.actions .primary { background: #214f3b; border-color: #214f3b; color: #fff; }
+.actions .danger { background: #8a361f; border-color: #8a361f; color: #fff; }
+.actions button:focus-visible { outline: 3px solid #d08a59; outline-offset: 3px; }
+@media (max-width: 430px) { .actions { display: grid; grid-template-columns: 1fr 1fr; } }
+@media (prefers-reduced-motion: reduce) { .dialog { scroll-behavior: auto; } }

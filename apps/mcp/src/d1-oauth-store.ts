@@ -30,18 +30,19 @@ export function createD1OAuthStore(DB: D1Database, subjectSecret: string): Durab
       const now = Date.now();
       const row = await findToken(DB, hashOAuthSecret(input.code), "authorization_code");
       if (!row || row.clientId !== input.clientId || row.redirectUri !== input.redirectUri || row.audience !== input.audience || row.expiresAt <= now || !row.pkceChallenge || !verifyPkceS256(input.codeVerifier, row.pkceChallenge)) return null;
-      return rotateFrom(DB, row, now, input.accessTokenTtlSeconds, input.refreshTokenTtlSeconds, false);
+      return rotateFrom(DB, row, now, input.accessTokenTtlSeconds, input.refreshTokenTtlSeconds);
     },
 
     async rotateRefreshToken(input) {
       const now = Date.now();
       const row = await findRefreshTokenIncludingConsumed(DB, hashOAuthSecret(input.refreshToken));
       if (!row || row.clientId !== input.clientId || row.audience !== input.audience || row.expiresAt <= now || row.revokedAt !== null) return null;
-      if (row.consumedAt !== null) {
-        await revokeFamily(DB, row.familyId, now);
-        return null;
-      }
-      return rotateFrom(DB, row, now, input.accessTokenTtlSeconds, input.refreshTokenTtlSeconds, true);
+      // A public native client can race two refreshes when overlapping MCP calls
+      // notice the same expired access token. The consumed token remains unusable,
+      // but rejecting that stale request must not revoke the successor already
+      // returned to the winning call.
+      if (row.consumedAt !== null) return null;
+      return rotateFrom(DB, row, now, input.accessTokenTtlSeconds, input.refreshTokenTtlSeconds);
     },
 
     async validateAccessToken(token, audience) {
@@ -69,11 +70,7 @@ async function findRefreshTokenIncludingConsumed(DB: D1Database, hash: string): 
     .bind(hash).first<Row>();
 }
 
-async function revokeFamily(DB: D1Database, familyId: string, now: number): Promise<void> {
-  await DB.prepare("UPDATE oauth_tokens SET revoked_at = COALESCE(revoked_at, ?) WHERE family_id = ?").bind(now, familyId).run();
-}
-
-async function rotateFrom(DB: D1Database, row: Row, now: number, accessTtl: number, refreshTtl: number, revokeOnCasFailure: boolean): Promise<OAuthTokenPair | null> {
+async function rotateFrom(DB: D1Database, row: Row, now: number, accessTtl: number, refreshTtl: number): Promise<OAuthTokenPair | null> {
   const accessToken = randomBytes(32).toString("base64url");
   const refreshToken = randomBytes(32).toString("base64url");
   const accessId = randomUUID();
@@ -91,6 +88,8 @@ async function rotateFrom(DB: D1Database, row: Row, now: number, accessTtl: numb
   } catch {
     // A concurrent winner may have consumed this refresh before this batch.
   }
-  if (revokeOnCasFailure) await revokeFamily(DB, row.familyId, Date.now());
+  // Losing a compare-and-set race is equivalent to presenting an already-used
+  // refresh token: reject it without invalidating the winner's token family.
+  // Explicit revocation still revokes the complete family through revoke().
   return null;
 }

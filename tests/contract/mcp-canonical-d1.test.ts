@@ -137,6 +137,43 @@ describe("canonical MCP D1 execution", () => {
     await expect(call(ALICE_SUB, "update_connection", { connectionId: "connection-1", state: "active", idempotencyKey: "connection-reactivate-01" })).rejects.toMatchObject({ issues: [expect.objectContaining({ code: "invalid_value", path: ["state"] })] });
   }, 60_000);
 
+  it("exposes only privacy-safe room activity and the viewer's own feedback state", async () => {
+    await DB.batch([
+      DB.prepare("INSERT INTO match_pairs (id,user_a_id,user_b_id,created_at) VALUES ('feedback-pair','user_alice','user_bob',?)").bind(at),
+      DB.prepare("INSERT INTO match_proposals (id,match_pair_id,attempt_number,evidence_version_a,evidence_version_b,acceptance_mode_a,acceptance_mode_b,explanation_a_json,explanation_b_json,state,expires_at,created_at) VALUES ('feedback-match-proposal','feedback-pair',1,1,1,'manual','manual','{}','{}','matched',?,?)").bind(at + 60_000, at),
+      DB.prepare("INSERT INTO matches (id,match_pair_id,proposal_id,matched_at) VALUES ('feedback-match','feedback-pair','feedback-match-proposal',?)").bind(at),
+      DB.prepare("INSERT INTO connections (id,match_pair_id,match_id,state,created_at,updated_at) VALUES ('feedback-connection','feedback-pair','feedback-match','active',?,?)").bind(at, at),
+      DB.prepare("INSERT INTO rooms (id,match_pair_id,connection_id,status,created_at,updated_at) VALUES ('feedback-room','feedback-pair','feedback-connection','active',?,?)").bind(at, at),
+      DB.prepare("INSERT INTO room_memberships (room_id,user_id,joined_at) VALUES ('feedback-room','user_alice',?),('feedback-room','user_bob',?)").bind(at, at),
+      DB.prepare("INSERT INTO messages (id,room_id,sender_user_id,client_message_id,body,created_at) VALUES ('feedback-message-1','feedback-room','user_alice','client-1','Private message one',?),('feedback-message-2','feedback-room','user_bob','client-2','Private message two',?),('feedback-message-3','feedback-room','user_alice','client-3','Private message three',?),('feedback-message-4','feedback-room','user_bob','client-4','Private message four',?)").bind(at + 1_000, at + 2_000, at + 3_000, at + 4_000),
+      DB.prepare("INSERT INTO introduction_feedback (id,connection_id,user_id,useful,reasons_json,created_at) VALUES ('bob-private-feedback','feedback-connection','user_bob',1,'[\"good_conversation\"]',?)").bind(at + 5_000),
+    ]);
+
+    const before = await call(ALICE_SUB, "get_room_summaries", { roomId: "feedback-room" });
+    expect(before).toMatchObject({ rooms: [{
+      roomId: "feedback-room",
+      connectionId: "feedback-connection",
+      conversation: { messageCount: 4, meaningful: true, lastActivityAt: new Date(at + 4_000).toISOString() },
+      feedback: { submittedByViewer: false, positiveFromViewer: false },
+      upgradeState: "none",
+    }] });
+    expect(JSON.stringify(before)).not.toContain("Private message");
+    expect(JSON.stringify(before)).not.toContain("good_conversation");
+    await expect(call(CAROL_SUB, "get_room_summaries", { roomId: "feedback-room" })).rejects.toThrow("object_not_found_or_not_authorized");
+
+    await call(ALICE_SUB, "submit_intro_feedback", { feedbackId: "alice-feedback-response", connectionId: "feedback-connection", useful: true, reasons: ["relevant_work", "good_conversation"], preferenceSummary: "More builders working on evaluation", idempotencyKey: "alice-feedback-response-01" });
+    await DB.prepare("INSERT INTO room_upgrade_proposals (id,room_id,proposer_user_id,modules_json,explanation,status,created_at) VALUES ('feedback-upgrade','feedback-room','user_alice','[\"experiment_tracker\"]','Track retrieval experiments together','proposed',?)").bind(at + 6_000).run();
+    await expect(call(ALICE_SUB, "get_room_summaries", { limit: 10 })).resolves.toMatchObject({ rooms: [expect.objectContaining({
+      roomId: "feedback-room",
+      feedback: { submittedByViewer: true, positiveFromViewer: true },
+      upgradeState: "pending",
+    })] });
+    await expect(call(BOB_SUB, "get_room_summaries", { roomId: "feedback-room" })).resolves.toMatchObject({ rooms: [{
+      feedback: { submittedByViewer: true, positiveFromViewer: true },
+      upgradeState: "pending",
+    }] });
+  }, 60_000);
+
   it("returns authorized room availability in Calendar handoffs and rejects ended rooms", async () => {
     const startsAt = at + 3_600_000;
     const endsAt = at + 7_200_000;

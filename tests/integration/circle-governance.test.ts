@@ -77,6 +77,7 @@ describe("Circle governance and privacy", () => {
     await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
     await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+2});
     expect((await DB.prepare("SELECT COUNT(*) AS count FROM notifications WHERE user_id='member' AND kind='circle_invitation'").first<{count:number}>())?.count).toBe(1);
+    expect(await DB.prepare("SELECT json_extract(payload_json,'$.circleName') AS circleName FROM notifications WHERE user_id='member' LIMIT 1").first()).toEqual({circleName:"Retrieval builders"});
     const invited = await getCircle(DB,circle.id,"member");
     expect(invited?.membershipStatus).toBe("invited");
     expect(invited?.members).toEqual([]);

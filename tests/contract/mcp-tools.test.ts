@@ -83,6 +83,39 @@ describe("Buildmates MCP contract", () => {
     await server.close();
   });
 
+  it("publishes a consent-safe Work Pulse feedback contract", async () => {
+    const rooms = buildmatesToolRegistry.find((tool) => tool.name === "get_room_summaries");
+    const feedback = buildmatesToolRegistry.find((tool) => tool.name === "submit_intro_feedback");
+    expect(rooms?.description).toContain("privacy-safe activity");
+    expect(rooms?.description).toContain("never returns raw messages");
+    expect(rooms?.description).toContain("conversation.meaningful");
+    expect(feedback?.description).toContain("only after the linked user answers");
+    expect(feedback?.description).toContain("never infer an answer");
+
+    const { services, links, repository } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation", "source_selection", "context_collection", "signal_privacy_review", "basic_profile", "page_preview", "networking_pulse", "acceptance_mode"], updatedAt: "2026-07-17T12:00:00.000Z" }, now: "2026-07-17T12:00:00.000Z" });
+    const state = await invoke(services, "get_setup_state", {});
+    expect(state).toMatchObject({ nextStep: "automation" });
+    expect(state.guidance.nextAction).toContain("meaningful two-way conversation");
+    expect(state.guidance.nextAction).toContain("saves feedback only after the user answers");
+    expect(state.guidance.nextAction).toContain("both room members must approve");
+    expect(state.guidance.nextAction).toContain("nothing changed");
+
+    const [pulseSkill, onboardingSkill, publicInstructions] = await Promise.all([
+      readFile("plugins/buildmates/skills/buildmates-work-pulse/SKILL.md", "utf8"),
+      readFile("plugins/buildmates/skills/buildmates-onboarding/SKILL.md", "utf8"),
+      readFile("apps/web/public/llms.txt", "utf8"),
+    ]);
+    expect(pulseSkill).toContain("conversation.meaningful");
+    expect(pulseSkill).toContain("Do not call `submit_intro_feedback` until the user actually answers");
+    expect(pulseSkill).toContain("Choose at most one module");
+    expect(pulseSkill).toContain("both active room members to approve");
+    expect(pulseSkill).toContain("If sources, signals, candidates, matches, room activity, feedback state, and watches are unchanged");
+    expect(onboardingSkill).toContain("when privacy-safe metadata shows a meaningful two-way room conversation");
+    expect(publicInstructions).toContain("An unchanged run says nothing changed and never invents updates");
+  });
+
   it("delegates setup-state reads to the website in the external MCP topology", async () => {
     const { services } = fixture();
     services.executeRemoteTool = async () => ({ completedCount: 0, totalSteps: 10, nextStep: "identity_link" });

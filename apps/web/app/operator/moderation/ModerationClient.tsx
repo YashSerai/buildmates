@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTextPromptDialog } from "@/components/discovery/ConfirmDialog";
 import type { ModerationCaseView } from "@/src/moderation/service";
 import styles from "./moderation.module.css";
 
@@ -12,6 +13,7 @@ export function ModerationClient({ initialCases }: { initialCases: ModerationCas
   const [status, setStatus] = useState<QueueStatus>("open");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const { prompt, promptDialog } = useTextPromptDialog();
 
   async function load(nextStatus: QueueStatus) {
     setBusy(true);
@@ -28,7 +30,11 @@ export function ModerationClient({ initialCases }: { initialCases: ModerationCas
   }
 
   async function act(caseId: string, action: Action) {
-    const reasonCode = window.prompt("Record the policy reason for this action (required):")?.trim();
+    const reasonCode = await prompt({
+      title: "Record a policy reason",
+      description: "This note becomes part of the moderation record and should explain the policy basis for the action.",
+      confirmLabel: "Record action",
+    });
     if (!reasonCode) return;
     setBusy(true);
     const response = await fetch("/api/operator/moderation", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ caseId, action, reasonCode }) });
@@ -41,7 +47,7 @@ export function ModerationClient({ initialCases }: { initialCases: ModerationCas
     setBusy(false);
   }
 
-  return <section className={styles.queue} aria-busy={busy}>
+  return <section className={styles.queue} aria-busy={busy}>{promptDialog}
     <nav aria-label="Moderation queue">
       {(["open", "reviewing", "appealed"] as const).map((value) => <button key={value} type="button" aria-current={status === value ? "page" : undefined} disabled={busy || status === value} onClick={() => void load(value)}>{value === "open" ? "New reports" : value === "reviewing" ? "In review" : "Appeals"}</button>)}
     </nav>

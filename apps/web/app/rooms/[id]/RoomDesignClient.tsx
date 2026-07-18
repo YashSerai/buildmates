@@ -132,7 +132,7 @@ export function RoomDesignClient({ roomId }: { roomId: string }) {
               </button>
             </div>
             <h3>Private preview history</h3>
-            <ol className={styles.designHistory}>
+            {data.history.length ? <ol className={styles.designHistory}>
               {data.history.map((revision) => {
                 const published =
                   data.surface.publishedRevisionId === revision.id;
@@ -230,7 +230,12 @@ export function RoomDesignClient({ roomId }: { roomId: string }) {
                   </li>
                 );
               })}
-            </ol>
+            </ol> : (
+              <div className={styles.designEmpty}>
+                <p>No room designs yet.</p>
+                <p>Use Design with Codex to create the first private preview.</p>
+              </div>
+            )}
           </>
         )}
       </div>

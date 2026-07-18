@@ -1,6 +1,8 @@
 "use client";
-import { useState } from "react";
+
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import type { ProjectTaxonomyChoices } from "../../src/profile-projects/service";
 import { userFacingError } from "../../src/client/user-facing-error";
 import styles from "./ProductForms.module.css";
@@ -29,10 +31,12 @@ export function ProjectEditor({
   existingSlug,
   initial,
   taxonomyChoices,
+  cancelHref,
 }: {
   existingSlug?: string;
   initial?: InitialProject;
   taxonomyChoices: ProjectTaxonomyChoices;
+  cancelHref: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -125,8 +129,10 @@ export function ProjectEditor({
         </label>
         <Field
           name="stage"
-          label="Stage"
+          label="Current stage"
           defaultValue={initial?.stage ?? "exploring"}
+          maxLength={60}
+          placeholder="Exploring, prototyping, launched..."
           required
         />
         <Select
@@ -178,7 +184,12 @@ export function ProjectEditor({
         />
         Allow search engine indexing when public
       </label>
-      <button disabled={busy}>{busy ? "Saving..." : "Save project"}</button>
+      <div className={styles.formActions}>
+        <button disabled={busy}>{busy ? "Saving..." : "Save project"}</button>
+        <Link href={cancelHref}>
+          {existingSlug ? "Back to project" : "Back to profile"}
+        </Link>
+      </div>
     </form>
   );
 }
@@ -252,10 +263,15 @@ function Select({
       <select name={name} defaultValue={defaultValue}>
         {values.map((value) => (
           <option key={value} value={value}>
-            {visibilityLabels[value] ?? value.replaceAll("_", " ")}
+            {selectLabel(value)}
           </option>
         ))}
       </select>
     </label>
   );
+}
+
+function selectLabel(value: string) {
+  const label = visibilityLabels[value] ?? value.replaceAll("_", " ");
+  return label[0]?.toUpperCase() + label.slice(1);
 }

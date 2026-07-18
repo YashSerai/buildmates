@@ -125,6 +125,7 @@
 .accountMenu nav a:hover {
   background: #394136;
 }
+.mobileMenuLinks { display: none; }
 .footer {
   background: var(--night);
   color: var(--paper);
@@ -191,6 +192,7 @@
   .accountMenu {
     grid-column: 3;
   }
+  .mobileMenuLinks { display: contents; }
   .header:has(.accountMenu) .primaryNav {
     display: none;
   }
