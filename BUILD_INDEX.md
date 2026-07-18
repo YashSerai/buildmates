@@ -235,7 +235,8 @@ Continue the active first-run QA through the generated profile preview and prese
 - Setup and recurring Work Pulses classify only reviewed work into canonical topic IDs. The graph aggregates those IDs from reviewed profiles, active project taxonomy, and approved unexpired Work Signals; raw text, source excerpts, prompts, handles, project titles, and user IDs never enter its response.
 - The graph returns topic nodes, weighted co-occurrence edges, and canonical parent/child relationships. Its interactive field opens on broad/root topics, supports click-to-focus drill-down, and shows the strongest child and neighboring topics with keyboard and reduced-motion support.
 - A built-in versioned topic hierarchy gives Codex stable IDs from `list_topic_taxonomy`; setup and Work Pulse skills must read it before classification. The migration backfills only canonical IDs from already-approved profile summaries so existing builders are not left out after launch.
-- Focused source proof: workspace typechecks pass, anonymous Map/Graph Miniflare tests pass 4/4, lint exits without new errors, and the production web build passes. Production deployment and rendered browser truth remain separate until published and inspected.
+- Focused source proof: workspace typechecks pass, anonymous Map/Graph Miniflare tests pass, the canonical taxonomy contract passes, lint exits without new errors, and the production web build passes.
+- Production truth: exact code commit `18cd08371f54a839c465de69b757694b7d914451` is live as ChatGPT Sites version 23 and MCP Worker version `0f9173f8-016a-4d50-9b1c-1d507c65586b`. The public graph rendered the existing approved profile as AI, Automation, and Productivity and workflows; click-to-focus and back navigation worked, and the 2560px browser check had no horizontal overflow. No Map city was fabricated because this profile has not deliberately supplied one.
 
 ## Codex acquisition path added 2026-07-16
 
