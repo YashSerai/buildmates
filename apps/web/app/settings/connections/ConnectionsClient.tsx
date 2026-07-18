@@ -98,9 +98,9 @@ export function ConnectionsClient({ initialStatus }: { initialStatus: IdentityCo
   return (
     <section className={styles.connectionPanel} aria-labelledby="connection-status-title" data-hydrated={hydrated}>
       <div className={styles.connectionLine} aria-hidden="true">
-        <span className={styles.siteNode}>B</span>
+        <span className={styles.siteNode}>Buildmates</span>
         <span className={`${styles.line} ${status.connected ? styles.lineConnected : linkCode ? styles.linePending : ""}`} />
-        <span className={`${styles.codexNode} ${status.connected ? styles.nodeConnected : ""}`}>C</span>
+        <span className={`${styles.codexNode} ${status.connected ? styles.nodeConnected : ""}`}>Codex</span>
       </div>
 
       <div className={styles.panelBody}>
@@ -120,7 +120,7 @@ export function ConnectionsClient({ initialStatus }: { initialStatus: IdentityCo
         {status.connected ? (
           <div className={styles.connectedActions}>
             <p>
-              The Buildmates plugin can now use this account when you ask it to or when your approved Work Pulse runs.
+              Buildmates in Codex can now use this account when you ask it to or when your approved Work Pulse runs.
               {status.linkedAt ? <> Linked <time dateTime={status.linkedAt}>{formatLinkedDate(status.linkedAt)}</time>.</> : null}
             </p>
             <button className={styles.dangerButton} type="button" onClick={disconnect} disabled={!hydrated || requestState === "working"}>

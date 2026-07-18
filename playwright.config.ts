@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
-const e2eEnvironment = { ...process.env, BUILDMATES_E2E: "1" };
+const e2eEnvironment = {
+  ...process.env,
+  BUILDMATES_E2E: "1",
+  NEXT_PUBLIC_SITE_URL: "http://localhost:3100",
+};
 
 export default defineConfig({
   testDir: "./tests/e2e",

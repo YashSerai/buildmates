@@ -410,7 +410,7 @@ export function OnboardingClient({
         {step === "automation" && (
           <Step
             title="Set up your Work Pulse"
-            description="Recommended: Tuesdays and Fridays. On each scheduled run, Codex refreshes only approved sources, keeps your profile context current, checks a small relevant-builder shortlist and your relevance watch, then posts a concise update here."
+            description="Recommended: Tuesdays and Fridays. This saves your preferred Work Pulse. In Codex, confirm the recurring task that refreshes only approved sources, checks a small relevant-builder shortlist and your relevance watch, then posts a concise update here."
           >
             <AutomationCadence value={cadence} onChange={setCadence} />
             <label className={styles.checkLabel}>
@@ -431,7 +431,7 @@ export function OnboardingClient({
               }}
               disabled={busy}
             >
-              Save automation
+              Save Work Pulse preferences
             </button>
           </Step>
         )}
@@ -790,7 +790,7 @@ function CompletionStep({ handle }: { handle?: string | null }) {
   return (
     <Step
       title="Your Buildmates profile is ready"
-      description="Your profile is published, and your Work Pulse will keep its approved context and networking intent current. Return to Codex any time you want to redesign your page or change how Buildmates represents your work."
+      description="Your profile is published. Confirm the recurring Work Pulse in Codex to keep approved context and networking intent current, and return there any time you want to redesign your page or change how Buildmates represents your work."
     >
       <div className={styles.completion}>
         <strong>Choose where to go next</strong>

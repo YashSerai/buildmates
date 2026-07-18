@@ -51,6 +51,31 @@ test("connection approval has a visible keyboard focus state and honors reduced 
   expect(await pendingLine.evaluate((element) => getComputedStyle(element, "::after").animationName)).toBe("none");
 });
 
+test("settings keeps every section visible and marks the current destination", async ({ page }, testInfo) => {
+  await useIsolatedIdentity(page, `settings-nav-${testInfo.project.name}-${Date.now()}`);
+  const sections = [
+    ["/settings/privacy", "Profile & privacy"],
+    ["/settings/automation", "Networking & Work Pulse"],
+    ["/settings/connections", "Codex connection"],
+    ["/settings/safety", "Safety"],
+  ] as const;
+
+  for (const [route, currentLabel] of sections) {
+    await page.goto(route);
+    const navigation = page.getByRole("navigation", { name: "Settings sections" });
+    await expect(navigation).toBeVisible();
+    for (const [, label] of sections) {
+      await expect(navigation.getByRole("link", { name: label })).toBeVisible();
+    }
+    await expect(navigation.getByRole("link", { name: currentLabel })).toHaveAttribute("aria-current", "page");
+    const layout = await page.locator("main").evaluate((element) => ({
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+    }));
+    expect(layout.scrollWidth - layout.clientWidth).toBeLessThanOrEqual(1);
+  }
+});
+
 async function useIsolatedIdentity(page: import("@playwright/test").Page, subject: string) {
   await signInTestUser(page, subject);
 }

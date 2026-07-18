@@ -1,7 +1,7 @@
 # Buildmates Build Index
 
-Status: SurfaceSpec v2 and completed-onboarding repair deployed; clean 0/10 Codex QA is the next gate
-Last updated: 2026-07-17
+Status: Network information architecture, safety/settings, copy, and responsive UI repair verified in source; deploy and clean 0/10 Codex QA are next
+Last updated: 2026-07-18
 Product line: Meet people through what you build.
 
 ## Read order
@@ -59,24 +59,35 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Agentic first run | Visible 10-step setup, rich/sparse context branches, privacy/profile preview, preferences, and automation | Smarter adaptive questioning | Completion ends after automation; optional referral follows setup rather than gating it |
 | Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Implemented; live connector proof pending |
 | Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Implemented; unattended production proof pending |
-| Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Implemented; integration review pending |
+| Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Implemented; D1 integration and desktop/phone settings QA pass |
 | Profiles | Profile review, field-level visibility, projects, generative responsive full-page surface, optional connection/build stats, canonical share link | Broader module library and isolated custom code | SurfaceSpec v2 implemented with five structurally distinct responsive portfolio compositions, governed media, real preview/public parity, and canonical `/builders/{handle}` publication |
 | Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Implemented in source; integrated review pending |
 | Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
 | Aggregate network views | No people/database search; MapLibre/OpenFreeMap city bubbles and anonymous canonical-topic bubbles expose counts only, never rosters | Richer aggregate filters after network density is proven | Implemented and sparse live smoke passed; pre-launch dummy-data QA is required for multi-city density, topic hierarchy, weighted links, drill-down, responsive layout, and privacy boundaries |
 | Matching | Deterministic shortlist, independent Codex evaluations, reciprocal handshake | Optional embeddings only after measured need | Implemented; integrated source regression passed |
 | Acceptance | Manual or Full Autopilot modes | Per-context acceptance rules | Implemented; live unattended capability proof pending |
-| Rooms | Mutual-interest lightweight chat themed around the connection reason | Consent-based room upgrade modules | Implemented in source; integrated review pending |
-| Connections | Persistent mutual relationship, why/when met, private notes, reminders, updates, mute/end | Longitudinal relationship intelligence | Implemented with shared visual system; production smoke pending |
+| Rooms | Mutual-interest lightweight chat themed around the connection reason | Consent-based room upgrade modules | Implemented; populated chat, safety, tools, scheduling, and responsive QA pass |
+| Connections | Persistent mutual relationship, why/when met, private notes, reminders, updates, mute/end | Longitudinal relationship intelligence | Implemented as the durable people layer with attached rooms; D1 and desktop/phone QA pass |
 | Intro memory | Private structured feedback and match-preference learning | Longitudinal relationship health | Implemented; integrated review pending |
 | Scheduling | Calendar-aware suggestions through permitted apps and ICS fallback | More scheduling connectors | Implemented in source; live Calendar/deep-link proof pending |
 | Cohorts | Deferred from the current product and navigation; dormant domain support remains isolated | Reconsider after Circles and network density are proven | Deferred by product decision |
-| Circles | Consent-gated triadic suggestions, group chat, creator-admin governance, roles, voting, Codex-generated shared surfaces, approved modules and member entries | Richer tracker templates and shipping-room analytics | Implemented in source; integrated review pending |
+| Circles | Consent-gated triadic suggestions, group chat, creator-admin governance, roles, voting, Codex-generated shared surfaces, approved modules and member entries | Richer tracker templates and shipping-room analytics | Implemented; governance, chat, invitation, admin, module, and responsive QA pass |
 | Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Implemented; recovery seeds are never revisions or publication candidates, and generated content is limited to authorized bindings/assets and trusted action slots |
 | Privacy and safety | Canonical visibility, source ledger, block/shared-context redaction, immediate export, physical R2 deletion, rate limits and audit trail | Organization policy tooling | Implemented; production smoke pending |
 | Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
-| Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
+| Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Activity feed implemented with safe presentation, hidden-tab polling pause, and desktop/phone QA; production polling smoke pending |
 | Product validation | Reproducible multi-user flow plus genuine connected-context onboarding on phone and desktop | Broader beta cohorts and production analytics | Public smoke complete; authenticated production and separate-account proof pending |
+
+## Network IA, copy, and responsive QA - 2026-07-18
+
+- The signed-in product now uses four distinct relationship states: **Introductions** is the candidate and reciprocal-interest desk; **Connections** is the durable people layer and entry point to one-to-one rooms; **Circles** is the group layer; **Activity** is an action-oriented update feed rather than another messaging surface.
+- Introductions refreshes safely while visible, keeps pending reciprocal proposals available to the other person, and suppresses duplicate presentation only for the current viewer. Full Autopilot still converges two independent approvals into exactly one Connection and room.
+- Connections, one-to-one rooms, Circles, Circle chat, Activity, all four settings sections, and typed private reporting share the same responsive product shell, working empty/error/loading states, keyboard focus, reduced-motion behavior, and at least 44px touch targets.
+- Settings now distinguish saved Work Pulse preferences from a host-confirmed recurring Codex task. Tuesdays and Fridays remain the recommended cadence; manual-only behavior is not presented as the default.
+- User-facing copy uses Introductions and Activity consistently, removes fallback/process language from web onboarding, explains actions in product terms, and keeps technical identifiers, schemas, checkpoints, raw payloads, and implementation notes out of ordinary surfaces.
+- Final rendered evidence covers populated and empty states at desktop and phone dimensions. The populated end-to-end fixture exercises an introduction, a Connection and room conversation, two Activity items, an active Circle chat, and a Circle invitation without leaking into production.
+- Source verification: clean lint and workspace typechecks; 13/13 rendered web assertions; 91/91 unit tests; 82/82 integration tests after SurfaceSpec v2 fixture repair; 35/35 contract assertions after current-time/order fixture repair; 12/12 security tests; production workspace build; 12/12 focused settings/safety desktop-phone checks; and 2/2 final populated-network desktop-phone journeys with zero console errors or horizontal overflow.
+- **Still required before launch:** deploy this exact source, run production smoke, then reset the test account and local Buildmates installation for one clean 0/10 Codex onboarding QA. Map and Build Graph remain explicitly pending the privacy-safe multi-density dummy-data QA already recorded below.
 
 ## Clean-room onboarding QA repair - 2026-07-17
 
@@ -87,7 +98,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - An approved private profile satisfies the basic-profile checkpoint. Intended public visibility no longer publishes before generated-page approval.
 - Surface generation returns a known-valid starter, exposes the active schema, supports field-level dry-run validation, and keeps the starter as a recovery path.
 - Work Signal wording, profile status wording, aggregate-map/indexing explanations, example metrics, and the connection-page first viewport were corrected.
-- Remaining brand task: generate the final Buildmates logo with ImageGen and replace the temporary B/C connection nodes with approved Buildmates and Codex marks, including reduced-motion behavior.
+- Remaining brand task: generate the final Buildmates logo with ImageGen and replace the current Buildmates/Codex text labels with approved marks where permitted. No placeholder initials remain.
 - Exact source commit `7b93a9b96e0396f7779c5e38da3aec04ed49d00d` is live as ChatGPT Sites version 17 and Worker version `534d8a18-5c4e-4a68-a573-262794948822`. Production returned 200 for `/`, `/install`, `/llms.txt`, OAuth metadata, and protected-resource metadata; unauthenticated MCP access returned 401 as required.
 - The production test account reached terminal deletion, external MCP OAuth/principal/handoff/replay/rate-limit state was cleared, and GitHub confirmed the Buildmates OAuth grant was revoked. The next authorization must therefore create a new Buildmates account and begin from the server-authoritative `0/11` state.
 - Beta activation now treats the fresh-task boundary as part of installation UX. After installation and OAuth, Codex asks permission to open the activated task itself through the host; only when native task creation is unavailable does it show the exact one-line manual fallback. Recursive `codex exec` is explicitly forbidden. Exact source commit `41766beb26e9fcfbf9d8f21c154cf428991b163a` is live as ChatGPT Sites version 18, and the beta cachebuster is `0.3.0-beta.1+codex.20260717222507`.

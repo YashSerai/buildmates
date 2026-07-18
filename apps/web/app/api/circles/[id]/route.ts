@@ -7,7 +7,7 @@ import { addCircleModuleEntry, createCircleProposal, deleteCircleModuleEntry, ge
 const command = z.discriminatedUnion("action", [
   z.object({ action: z.literal("invite"), handle: z.string().trim().min(1).max(64) }).strict(),
   z.object({ action: z.literal("respond_invite"), accept: z.boolean() }).strict(),
-  z.object({ action: z.literal("propose"), kind: z.enum(["design", "module", "rules", "membership"]), payload: z.record(z.string(), z.unknown()) }).strict(),
+  z.object({ action: z.literal("propose"), kind: z.enum(["design", "module", "rules"]), payload: z.record(z.string(), z.unknown()) }).strict(),
   z.object({ action: z.literal("vote"), proposalId: z.string().min(1).max(160), vote: z.enum(["approve", "reject", "abstain"]) }).strict(),
   z.object({ action: z.literal("publish"), proposalId: z.string().min(1).max(160) }).strict(),
   z.object({ action: z.literal("add_entry"), moduleId: z.string().min(1).max(160), payload: z.record(z.string(), z.unknown()) }).strict(),

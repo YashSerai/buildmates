@@ -51,9 +51,10 @@ test("automation settings expose expiring intent, hard budget, quiet hours, live
   await expect(page.getByText(/What a scheduled Work Pulse does/)).toBeVisible();
   await expect(page.getByLabel(/local or device-bound sources/)).toBeVisible();
   await page.getByLabel(/local or device-bound sources/).check();
-  await page.getByRole("button", { name: "Save automation" }).click();
-  await expect(page.getByRole("status")).toContainText("Automation preferences saved");
+  await page.getByRole("button", { name: "Save Work Pulse preferences" }).click();
+  await expect(page.getByRole("status")).toContainText("recurring task is not confirmed yet");
   await assertNoOverflow(page);
+  await page.screenshot({ path: test.info().outputPath("work-pulse-settings.png"), fullPage: true });
 });
 
 async function useIdentity(page: import("@playwright/test").Page, subject: string) { await signInTestUser(page,subject);await page.evaluate(async()=>{const codeResponse=await fetch("/api/identity/link-code",{method:"POST"});const {code}=await codeResponse.json() as {code:string};const linked=await fetch("/api/testing/complete-link",{method:"POST",headers:{"content-type":"application/json","x-buildmates-e2e":"1"},body:JSON.stringify({code})});if(!linked.ok)throw new Error(`e2e_link_failed:${linked.status}:${await linked.text()}`)}); }

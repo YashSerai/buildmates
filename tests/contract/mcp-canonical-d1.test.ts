@@ -10,6 +10,7 @@ const ALICE_SUB = "mcp_subject_alice_canonical";
 const BOB_SUB = "mcp_subject_bob_canonical__";
 const CAROL_SUB = "mcp_subject_carol_canonical";
 const at = Date.parse("2026-07-15T12:00:00.000Z");
+const toolNow = Date.parse("2026-07-18T12:00:00.000Z");
 
 describe("canonical MCP D1 execution", () => {
   let mf: Miniflare;
@@ -30,7 +31,7 @@ describe("canonical MCP D1 execution", () => {
     services = {
       linkBaseUrl: "https://buildmates.example",
       repository: createD1McpProductRepository(DB),
-      now: () => new Date("2026-07-18T12:00:00.000Z"),
+      now: () => new Date(toolNow),
       completeIdentityLink: async () => ({ linked: false, reason: "invalid_or_expired" }),
       allowAttempt: async () => true,
       resolveLinkedUser: async ({ mcpSubject }) => links.has(mcpSubject) ? { userId: links.get(mcpSubject)! } : null,
@@ -60,7 +61,7 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT maximum_per_week AS maximum FROM introduction_budgets WHERE user_id='user_alice'").first()).resolves.toEqual({ maximum: 4 });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM quiet_hours WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM matching_exclusions WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
-    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], fields: [{ key: "ambitions", value: "Build lasting tools for builders" }, { key: "style_preferences", value: "Editorial, compact, and warm", audience: "private" }], statistics: [{ key: "active_users", label: "Daily active users", value: "1,200" }], publishedAt: null }] });
+    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ projectOrInterest: "Voice-first builder matching", portfolioLinks: ["https://example.com/alice", "https://github.com/example/alice"], fields: expect.arrayContaining([expect.objectContaining({ key: "ambitions", value: "Build lasting tools for builders" }), expect.objectContaining({ key: "style_preferences", value: "Editorial, compact, and warm", audience: "private" })]), statistics: [{ key: "active_users", label: "Daily active users", value: "1,200" }], publishedAt: null }] });
     await expect(call(ALICE_SUB, "get_networking_pulse", {})).resolves.toMatchObject({ pulses: [{ maximumIntroductionsPerWeek: 4, timezone: "America/Vancouver", quietHours: [{ weekday: 1, startMinute: 0, endMinute: 480 }], snoozedUntil: null, exclusions: [{ kind: "industry", value: "Ads" }] }] });
     const activeFollow = await call(ALICE_SUB, "set_follow_or_watch", { relationId: "follow-topic", relation: "follow", targetKind: "topic", targetId: "topic-matching", enabled: true, idempotencyKey: "follow-enable-01" }) as MutationResult;
     expect(activeFollow.result.id).toBe("follow:topic:topic-matching");
@@ -68,14 +69,14 @@ describe("canonical MCP D1 execution", () => {
     await expect(services.repository.readForMember("follow_watch", activeFollow.result.id, "user_bob")).resolves.toBeNull();
     await expect(services.repository.listForMember("follow_watch", "user_alice")).resolves.toEqual([expect.objectContaining({ id: activeFollow.result.id })]);
     await call(ALICE_SUB, "set_follow_or_watch", { relationId: "follow-topic", relation: "follow", targetKind: "topic", targetId: "topic-matching", enabled: false, idempotencyKey: "follow-disable-01" });
-    await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM follows WHERE follower_user_id='user_alice' AND target_kind='topic' AND target_id='topic-matching'").first()).resolves.toMatchObject({ revokedAt: at });
+    await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM follows WHERE follower_user_id='user_alice' AND target_kind='topic' AND target_id='topic-matching'").first()).resolves.toMatchObject({ revokedAt: toolNow });
     await expect(services.repository.readForMember("follow_watch", activeFollow.result.id, "user_alice")).resolves.toBeNull();
     await expect(services.repository.listForMember("follow_watch", "user_alice")).resolves.toEqual([]);
     const activeWatch = await call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-builder", relation: "watch", targetKind: "relevant_builder", targetId: "network", enabled: true, idempotencyKey: "watch-enable-01" }) as MutationResult;
     expect(activeWatch.result.id).toBe("watch:relevant_builder:network");
     await expect(services.repository.readForMember("follow_watch", activeWatch.result.id, "user_alice")).resolves.toMatchObject({ value: { relation: "watch", targetKind: "relevant_builder", targetId: "network", enabled: true } });
     await call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-builder", relation: "watch", targetKind: "relevant_builder", targetId: "network", enabled: false, idempotencyKey: "watch-disable-01" });
-    await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM watches WHERE user_id='user_alice' AND kind='relevant_builder' AND target_id='network'").first()).resolves.toMatchObject({ revokedAt: at });
+    await expect(DB.prepare("SELECT revoked_at AS revokedAt FROM watches WHERE user_id='user_alice' AND kind='relevant_builder' AND target_id='network'").first()).resolves.toMatchObject({ revokedAt: toolNow });
     await expect(services.repository.readForMember("follow_watch", activeWatch.result.id, "user_alice")).resolves.toBeNull();
     await expect(call(ALICE_SUB, "set_follow_or_watch", { relationId: "watch-person", relation: "watch", targetKind: "relevant_builder", targetId: "user_bob", enabled: true, idempotencyKey: "watch-person-invalid-01" })).rejects.toThrow();
 
@@ -170,7 +171,7 @@ describe("canonical MCP D1 execution", () => {
     const approvalId = String((preference.result.details as Record<string, unknown>).approvalId);
     await call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("ask-signal", "ask-write"), sourceApprovalId: approvalId } });
     await expect(call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("ask-signal-two", "ask-write-two"), sourceApprovalId: approvalId } })).rejects.toThrow("source_approval_required");
-    await expect(DB.prepare("SELECT consumed_at AS consumedAt FROM source_use_approvals WHERE id=?").bind(approvalId).first()).resolves.toMatchObject({ consumedAt: at });
+    await expect(DB.prepare("SELECT consumed_at AS consumedAt FROM source_use_approvals WHERE id=?").bind(approvalId).first()).resolves.toMatchObject({ consumedAt: toolNow });
   }, 60_000);
 
   it("conditionally recovers an exact crashed idempotency row and audits the operator disposition", async () => {

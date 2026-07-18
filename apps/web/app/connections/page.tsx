@@ -30,12 +30,12 @@ export default async function ConnectionsPage() {
           <ConnectionsClient initialConnections={connections} />
         ) : (
           <section className={styles.empty}>
-            <h2>Your connections will live here.</h2>
+            <h2>Your connections will appear here.</h2>
             <p>
-              New connections appear after an introduction. You can return to
-              the room, add a note, or reconnect later.
+              A new Connection appears after an introduction. From there, you
+              can return to its room, add a private note, or reconnect later.
             </p>
-            <a href="/matches">See recommendations</a>
+            <a href="/matches">Open introductions</a>
           </section>
         )}
       </main>

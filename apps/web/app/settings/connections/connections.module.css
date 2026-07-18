@@ -12,6 +12,18 @@
   padding: 0 max(24px, calc((100vw - 1040px) / 2)) 72px;
 }
 
+.connectionContent {
+  --paper: #f5f1e8;
+  --ink: #1d211e;
+  --muted: #62665f;
+  --rule: #c9c5ba;
+  --accent: #176b51;
+  --accent-dark: #0e4d3a;
+  max-width: 1040px;
+  margin: auto;
+  padding: 0 28px;
+}
+
 .header {
   min-height: 78px;
   display: flex;
@@ -68,7 +80,7 @@
 
 .connectionLine {
   display: grid;
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
   gap: 0;
   min-height: 96px;
@@ -77,14 +89,14 @@
 }
 
 .siteNode, .codexNode {
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
+  display: flex;
+  min-height: 38px;
+  align-items: center;
   border: 1px solid #777d75;
-  border-radius: 50%;
+  padding: 0 14px;
   color: #f5f1e8;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--font-geist-sans), sans-serif;
+  font-size: 0.78rem;
   font-weight: 700;
   transition: background-color 180ms ease, border-color 180ms ease;
 }
@@ -168,14 +180,15 @@
 @keyframes handoff { from { left: 0; } to { left: calc(100% - 9px); } }
 
 @media (max-width: 620px) {
+  .connectionContent { padding-inline: 18px; }
   .page { padding-inline: 18px; padding-bottom: 48px; }
   .header { min-height: 68px; }
   .accountName { display: none; }
   .intro { padding: 36px 0 26px; }
   .intro h1 { font-size: clamp(2.2rem, 11vw, 3.35rem); }
   .connectionPanel { box-shadow: 5px 5px 0 #d9d4c8; }
-  .connectionLine { min-height: 78px; padding-inline: 22px; grid-template-columns: 38px 1fr 38px; }
-  .siteNode, .codexNode { width: 38px; height: 38px; }
+  .connectionLine { min-height: 78px; padding-inline: 18px; }
+  .siteNode, .codexNode { min-height: 36px; padding-inline: 10px; font-size: 0.72rem; }
   .statusHeader { display: grid; }
   .statusMark { grid-row: 1; }
   .codeRow { grid-template-columns: 1fr; }

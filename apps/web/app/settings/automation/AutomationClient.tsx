@@ -60,7 +60,7 @@ export function AutomationClient({
       const payload = (await response.json()) as { error?: string };
       if (!response.ok)
         throw new RequestError(userFacingError(payload.error, "Could not save settings."));
-      setMessage(body.action === "save_automation" ? "Automation preferences saved. Continue in Codex to create or update the recurring task." : "Networking Pulse saved.");
+      setMessage(body.action === "save_automation" ? "Work Pulse preferences saved. The recurring task is not confirmed yet. Continue in Codex to create or update it." : "Networking Pulse saved.");
     } catch (error) {
       setMessage(
         error instanceof RequestError ? error.message : "Could not save settings. Check your connection and try again.",
@@ -182,8 +182,8 @@ export function AutomationClient({
             />
           </label>
           <label>
-            Reconfirm on
-            <span>When Codex will ask whether this networking intent still fits. It does not delete your profile.</span>
+            Networking Pulse expires
+            <span>On this date, Codex will ask whether this intent still fits. Your profile stays published.</span>
             <input
               type="date"
               min={new Date(Date.parse(initialSnapshot.generatedAt) + 864e5)
@@ -205,7 +205,7 @@ export function AutomationClient({
                 setForm({ ...form, avoidRepeatedClusters: e.target.checked })
               }
             />
-            Avoid repeated matches from the same cluster
+            Avoid repeated introductions from the same group
           </label>
           <label className={styles.full}>
             Exclusions <span>Optional</span>
@@ -252,9 +252,9 @@ export function AutomationClient({
       <section>
         <header className={styles.sectionHeader}>
           <div>
-            <h2>One Buildmates Work Pulse</h2>
+            <h2>Your Buildmates Work Pulse</h2>
             <p>
-              Recommended: Tuesdays and Fridays. These controls save the cadence; Codex creates one recurring task under your Codex usage limits and reports the result back to you.
+              Recommended: Tuesdays and Fridays. Saving here records your preferences only. Continue in Codex to confirm the recurring Work Pulse that posts its outcome back to you.
             </p>
           </div>
           <span
@@ -278,26 +278,28 @@ export function AutomationClient({
           />
           I understand local or device-bound sources refresh only while Codex desktop and this computer are available.
         </label>
-        <button
-          onClick={() =>
-            save({
-              action: "save_automation",
-              cadence,
-              enabled: cadence !== "manual",
-              sourceLivenessReviewed: liveness,
-            })
-          }
-          disabled={busy}
-        >
-          Save automation
-        </button>
-        <a href={`codex://open?prompt=${encodeURIComponent(automationPrompt)}`}>Continue in Codex</a>
-        <button className={styles.secondaryButton} type="button" onClick={() => void copyAutomationPrompt()}>Copy automation prompt</button>
-        {initialSnapshot.codexConnected ? (
-          <button className={styles.secondaryButton} onClick={()=>save({action:"save_automation",cadence,enabled:cadence!=="manual",sourceLivenessReviewed:liveness,requestCapabilityRecheck:true})} disabled={busy || !liveness}>
-            Recheck background actions
+        <div className={styles.actionRow}>
+          <button
+            onClick={() =>
+              save({
+                action: "save_automation",
+                cadence,
+                enabled: cadence !== "manual",
+                sourceLivenessReviewed: liveness,
+              })
+            }
+            disabled={busy}
+          >
+            Save Work Pulse preferences
           </button>
-        ) : null}
+          <a className={styles.primaryLink} href={`codex://open?prompt=${encodeURIComponent(automationPrompt)}`}>Continue in Codex</a>
+          <button className={styles.secondaryButton} type="button" onClick={() => void copyAutomationPrompt()}>Copy prompt</button>
+          {initialSnapshot.codexConnected ? (
+            <button className={styles.secondaryButton} onClick={()=>save({action:"save_automation",cadence,enabled:cadence!=="manual",sourceLivenessReviewed:liveness,requestCapabilityRecheck:true})} disabled={busy || !liveness}>
+              Recheck background actions
+            </button>
+          ) : null}
+        </div>
       </section>
       <p className={styles.liveMessage} role="status" aria-live="polite">
         {busy ? "Saving…" : message}

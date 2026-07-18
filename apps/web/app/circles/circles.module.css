@@ -1,198 +1,391 @@
 .page {
-  --paper: #f5f1e8;
+  --paper: #f4efe4;
   --ink: #1d211e;
   --muted: #62665f;
-  --rule: #c9c5ba;
-  --accent: #176b51;
-  min-height: 100vh;
+  --rule: #c8c1b4;
+  --moss: #245443;
+  --dark-moss: #26342d;
+  min-height: calc(100vh - 64px);
+  overflow-x: clip;
   background: var(--paper);
   color: var(--ink);
-  padding: 0 max(18px, calc((100vw - 1080px) / 2)) 72px;
-  font-family: var(--font-geist-sans), sans-serif;
+  padding: 0 max(20px, calc((100% - 1080px) / 2)) 64px;
+  font-family: var(--font-body);
 }
-.page > header {
-  min-height: 76px;
-  border-bottom: 1px solid var(--rule);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.page > header > a {
-  font:
-    700 1.3rem Georgia,
-    serif;
-  color: inherit;
-  text-decoration: none;
-}
-.page nav {
-  display: flex;
-  gap: 20px;
-}
-.page nav a {
-  color: inherit;
-  text-underline-offset: 4px;
-}
+
 .intro {
-  padding: 54px 0 36px;
-  max-width: 900px;
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(250px, 3fr);
+  gap: 30px;
+  align-items: end;
+  padding: 38px 0 30px;
 }
+
 .intro > p,
 .heading p,
 .grid article > p {
-  margin: 0 0 10px;
-  color: #0e4d3a;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.72rem;
+  margin: 0 0 7px;
+  color: var(--moss);
+  font-size: 0.79rem;
   font-weight: 750;
 }
+
+.intro > p,
 .intro h1 {
-  font: 500 clamp(2.7rem, 5vw, 4.7rem)/0.98 var(--font-display);
-  letter-spacing: -0.055em;
+  grid-column: 1;
+}
+
+.intro h1 {
   margin: 0;
+  max-width: 790px;
+  font: 520 clamp(2.45rem, 5vw, 4.35rem) / 0.98 var(--font-display);
+  letter-spacing: -0.045em;
 }
+
 .intro > span {
+  grid-column: 2;
+  grid-row: 1 / span 2;
   display: block;
-  max-width: 680px;
   color: var(--muted);
-  line-height: 1.6;
-  margin-top: 22px;
+  line-height: 1.55;
 }
+
 .heading {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  border-bottom: 1px solid var(--ink);
-  padding-bottom: 15px;
+  gap: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--ink);
 }
+
 .heading h2 {
-  font:
-    500 clamp(1.6rem, 4vw, 2.4rem) Georgia,
-    serif;
   margin: 0;
+  max-width: 720px;
+  font: 650 clamp(1.45rem, 3vw, 2rem) / 1.08 var(--font-display);
+  letter-spacing: -0.02em;
 }
+
 .heading button,
 .create button,
-.grid a {
-  border: 1px solid var(--ink);
+.grid a,
+.suggestions button {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid currentColor;
   border-radius: 3px;
   background: transparent;
   color: inherit;
-  padding: 11px 15px;
+  padding: 9px 14px;
   font: inherit;
-  font-weight: 700;
+  font-size: 0.86rem;
+  font-weight: 720;
   text-decoration: none;
   cursor: pointer;
 }
+
+.heading button:hover,
+.grid a:hover {
+  background: var(--ink);
+  color: #fffdf7;
+}
+
+.suggestions {
+  margin: 0 0 34px;
+  padding: 22px;
+  border-radius: 0 16px 16px 16px;
+  background: var(--dark-moss);
+  color: #fbf6eb;
+}
+
+.suggestions .heading {
+  border-color: #8e9a90;
+}
+
+.suggestions .heading p,
+.suggestions .grid article > p {
+  color: #c9d9cb;
+}
+
+.suggestions .grid {
+  grid-template-columns: 1fr;
+}
+
+.suggestions .grid article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  border-color: #58655d;
+}
+
+.suggestions .grid article > p,
+.suggestions .grid article > h3,
+.suggestions .grid article > span {
+  grid-column: 1;
+}
+
+.suggestions .grid article > button {
+  grid-column: 2;
+  grid-row: 1 / span 3;
+  align-self: center;
+  border-color: #c7d0c8;
+  color: #fffdf7;
+}
+
+.suggestions .grid article > button:hover {
+  background: #fffdf7;
+  color: var(--dark-moss);
+}
+
 .create {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 18px;
-  border-bottom: 1px solid var(--rule);
-  padding: 24px 0;
+  grid-template-columns: 0.8fr 1.2fr;
+  gap: 16px 20px;
+  margin-bottom: 28px;
+  padding: 20px;
+  border-radius: 0 0 12px 12px;
+  background: #e6eadf;
 }
+
 .create label,
 .create fieldset {
   display: grid;
-  gap: 6px;
-  font-size: 0.78rem;
+  gap: 7px;
+  min-width: 0;
+  font-size: 0.8rem;
   font-weight: 700;
 }
+
 .create input,
 .create textarea {
-  border: 1px solid var(--rule);
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid #aaa99f;
+  border-radius: 2px;
   background: #fffdf7;
+  color: var(--ink);
   padding: 10px;
   font: inherit;
 }
+
 .create fieldset {
-  grid-column: 1/-1;
-  border: 0;
+  grid-column: 1 / -1;
+  margin: 0;
   padding: 0;
+  border: 0;
 }
+
 .create fieldset label {
   display: flex;
+  min-height: 36px;
   align-items: center;
-  font-weight: 500;
+  gap: 9px;
+  font-weight: 520;
 }
+
+.create fieldset input {
+  width: 18px;
+  height: 18px;
+  min-height: 0;
+  accent-color: var(--moss);
+}
+
 .create button {
   justify-self: start;
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
+  background: var(--dark-moss);
+  color: #fffdf7;
 }
+
+.circleGroups {
+  display: grid;
+  gap: 30px;
+  padding-top: 26px;
+}
+
+.groupHeading {
+  display: flex;
+  min-height: 44px;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--ink);
+}
+
+.groupHeading h3 {
+  margin: 0;
+  font: 650 1.35rem var(--font-display);
+}
+
+.groupHeading span,
+.past summary span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0 26px;
 }
+
 .grid article {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  padding: 21px 0;
   border-bottom: 1px solid var(--rule);
-  padding: 26px 0;
 }
+
 .grid h3,
 .empty h3 {
-  margin: 0 0 8px;
-  font-size: 1.2rem;
+  margin: 0 0 7px;
+  overflow-wrap: anywhere;
+  font: 700 1.18rem/1.15 var(--font-display);
 }
+
 .grid article > span,
-.empty p {
+.empty p,
+.groupEmpty {
   display: block;
+  margin: 0;
+  overflow-wrap: anywhere;
   color: var(--muted);
   line-height: 1.5;
 }
+
 .grid dl {
-  display: flex;
-  gap: 7px 18px;
-  margin: 16px 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 4px 14px;
+  margin: 15px 0;
 }
+
 .grid dt {
   color: var(--muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
+  font-size: 0.75rem;
 }
+
 .grid dd {
+  min-width: 0;
   margin: 0;
-  font-weight: 700;
+  overflow-wrap: anywhere;
+  font-size: 0.8rem;
+  font-weight: 720;
 }
+
 .grid a {
-  display: inline-block;
+  justify-self: start;
+  margin-top: auto;
 }
-.empty {
-  padding: 38px 0;
+
+.groupEmpty {
+  padding: 18px 0;
   border-bottom: 1px solid var(--rule);
 }
-.notice {
-  min-height: 1.3em;
-  color: #0e4d3a;
+
+.past {
+  border-bottom: 1px solid var(--rule);
 }
+
+.past > summary {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  cursor: pointer;
+  font: 650 1.1rem var(--font-display);
+}
+
+.past > summary::marker {
+  color: var(--moss);
+}
+
+.empty {
+  padding: 30px 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+}
+
+.notice {
+  min-height: 1.4em;
+  margin: 14px 0 0;
+  color: var(--moss);
+  font-size: 0.84rem;
+}
+
+.page button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .page a:focus-visible,
 .page button:focus-visible,
 .page input:focus-visible,
-.page textarea:focus-visible {
+.page textarea:focus-visible,
+.page summary:focus-visible {
   outline: 3px solid #d9753b;
   outline-offset: 3px;
 }
-@media (max-width: 680px) {
-  .page {
-    padding-inline: 18px;
-  }
+
+@media (max-width: 720px) {
   .intro {
-    padding-top: 52px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding-top: 30px;
   }
+
+  .intro > span {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
   .heading {
     align-items: start;
-    gap: 20px;
     flex-direction: column;
   }
+
   .heading button {
     width: 100%;
   }
+
+  .suggestions .grid article {
+    grid-template-columns: 1fr;
+  }
+
+  .suggestions .grid article > button {
+    grid-column: 1;
+    grid-row: auto;
+    margin-top: 16px;
+  }
+
   .create,
   .grid {
     grid-template-columns: 1fr;
   }
-  .page nav a:first-child {
-    display: none;
+}
+
+@media (max-width: 420px) {
+  .page {
+    padding-inline: 16px;
+  }
+
+  .intro h1 {
+    font-size: 2.35rem;
+  }
+
+  .suggestions,
+  .create {
+    padding: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page *,
+  .page *::before,
+  .page *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }

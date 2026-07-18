@@ -322,6 +322,29 @@
 .singleColumn section > button {
   margin-top: 18px;
 }
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 10px;
+  margin-top: 18px;
+}
+.actionRow button,
+.primaryLink {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+.primaryLink {
+  border: 1px solid var(--moss);
+  padding: 10px 14px;
+  color: var(--moss);
+  font-size: 0.83rem;
+  font-weight: 700;
+  text-decoration: none;
+}
 button:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -373,6 +396,9 @@ a:focus-visible {
     grid-column: auto;
   }
   .controlRow > * {
+    width: 100%;
+  }
+  .actionRow > * {
     width: 100%;
   }
   .jobs li,

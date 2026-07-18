@@ -149,7 +149,7 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Connected sources"
-            description="Buildmates source-use policies are separate from ChatGPT connector permissions."
+            description="Your Buildmates source permissions are separate from ChatGPT connector permissions."
             action={<a href="/onboarding">Add or review sources</a>}
           />
           {snapshot.sources.length ? (
@@ -187,7 +187,7 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Work Signals"
-            description="Stale signals stay visible here but stop contributing as current work after expiry."
+            description="Expired signals stay visible here, but no longer shape introductions."
           />
           {snapshot.signals.filter((signal) => signal.status !== "revoked")
             .length ? (
@@ -238,7 +238,7 @@ export function PrivacyClient({
         <section>
           <SectionHeading
             title="Profile and networking"
-            description="Matching intent expires and should be reconfirmed when your work changes."
+            description="Your networking intent expires so an old goal does not quietly keep shaping introductions."
             action={<a href="/settings/automation">Edit networking controls</a>}
           />
           <dl className={styles.details}>
@@ -309,7 +309,7 @@ export function PrivacyClient({
         </section>
         <section>
           <SectionHeading
-            title="Automation and Codex"
+            title="Work Pulse and Codex"
             description="Disconnecting revokes the Codex identity link, disables source policies, and revokes active Work Signals. Your profile, projects, Connections, rooms, and messages remain until you delete them separately."
           />
           <dl className={styles.details}>
@@ -350,15 +350,15 @@ export function PrivacyClient({
         </section>
         <section>
           <SectionHeading
-            title="Other account records"
-            description="Counts include only records this authenticated account may access. Private notes and another builder's private reasoning are never exposed here."
+            title="Your other records"
+            description="These counts cover only your records. Private notes and another builder's private reasoning are never shown here."
           />
           <dl className={styles.details}>
             <div><dt>Projects</dt><dd>{snapshot.holdings.projects}</dd></div>
             <div><dt>Rooms</dt><dd>{snapshot.holdings.rooms}</dd></div>
             <div><dt>Circles</dt><dd>{snapshot.holdings.circles}</dd></div>
             <div><dt>My Codex evaluations</dt><dd>{snapshot.holdings.evaluations}</dd></div>
-            <div><dt>Notifications</dt><dd>{snapshot.holdings.notifications}</dd></div>
+            <div><dt>Activity items</dt><dd>{snapshot.holdings.notifications}</dd></div>
           </dl>
           {snapshot.projects.length ? (
             <div className={styles.list}>
@@ -430,8 +430,8 @@ export function PrivacyClient({
         </section>
         <section>
           <SectionHeading
-            title="Recent account audit"
-            description="This history shows when privacy-sensitive settings changed without storing the changed content."
+            title="Recent privacy activity"
+            description="This history records when privacy-sensitive settings changed, without storing the changed content."
           />
           {snapshot.audit.length ? (
             <ul className={styles.audit}>
@@ -512,8 +512,8 @@ function visibilityLabel(value: string) {
 }
 
 function statusLabel(value:string){return ({active:"Active",expired:"Expired",pending:"Pending",processing:"In progress",complete:"Complete",completed:"Complete",failed:"Needs attention",revoked:"Revoked",draft:"Draft",published:"Published",paused:"Paused"} as Record<string,string>)[value]??"Updated"}
-function cadenceLabel(value:string){return ({daily:"Daily",weekdays:"Weekdays",weekly:"Weekly",manual:"Manual only",every_3_days:"Every three days"} as Record<string,string>)[value]??"Scheduled"}
-function capabilityLabel(value?:string){if(!value)return undefined;return ({supported:"Ready",unsupported:"Not available",unknown:"Not checked",requires_confirmation:"Needs confirmation",background_supported:"Background actions ready"} as Record<string,string>)[value]??"Checked"}
+function cadenceLabel(value:string){return ({automatic:"Daily check",daily:"Daily",twice_weekly:"Tuesdays and Fridays",weekly:"Weekly",manual:"Manual only"} as Record<string,string>)[value]??"Scheduled"}
+function capabilityLabel(value?:string){if(!value)return undefined;return ({available:"Background actions ready",approval_required:"Needs confirmation",automation_unavailable:"Not available"} as Record<string,string>)[value]??"Not checked"}
 function lifecycleLabel(value:string){return ({account_deletion:"Account deletion",data_export:"Data export",profile_refresh:"Profile refresh",signal_expiry:"Work Signal expiry"} as Record<string,string>)[value]??"Account request"}
 function auditLabel(value:string){return ({"profile.updated":"Profile updated","profile.reviewed":"Profile reviewed","privacy.updated":"Privacy settings updated","source.revoked":"Connected source removed","work_signal.revoked":"Work Signal removed","account.deletion_requested":"Account deletion requested","sync.disconnected_all":"Codex disconnected","shared_context.redacted":"Shared connection context removed","matching.paused":"Matching paused","project.deleted":"Project deleted","export.requested":"Data export requested"} as Record<string,string>)[value]??"Account setting changed"}
 

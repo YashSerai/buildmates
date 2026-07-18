@@ -48,6 +48,18 @@ describe("D1 reciprocal matching", () => {
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM rooms").first()).toEqual({ count: 1 });
   });
 
+  it("opens one room after reciprocal Full Autopilot approval without a human response", async () => {
+    await DB.prepare("UPDATE profiles SET acceptance_mode='full_autopilot' WHERE user_id='alice'").run();
+    const alice = await evaluateCandidate(DB, { actorId: "alice", batchId: "batch-a", candidateUserId: "bob", decision: "approve", reasonSummary: "Relevant retrieval work", indexVersion: 2, evidenceIds: ["signal-b"], now });
+    expect(alice).toMatchObject({ state: "pending", connectionId: null, roomId: null });
+    const bob = await evaluateCandidate(DB, { actorId: "bob", batchId: "batch-b", candidateUserId: "alice", decision: "approve", reasonSummary: "Useful evaluation overlap", indexVersion: 4, evidenceIds: [], now: now + 1 });
+    expect(bob).toMatchObject({ state: "matched", connectionId: expect.any(String), roomId: expect.any(String) });
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM human_responses").first()).toEqual({ count: 0 });
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM connections").first()).toEqual({ count: 1 });
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM rooms").first()).toEqual({ count: 1 });
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM room_memberships").first()).toEqual({ count: 2 });
+  });
+
   it("enforces quiet hours and repeated-cluster diversity before returning candidates",async()=>{
     await DB.prepare("INSERT INTO quiet_hours(id,user_id,timezone,weekday,start_minute,end_minute) VALUES('quiet-alice','alice','UTC',3,660,780)").run();
     expect(await listCandidateRows(DB,"alice",now,30)).toEqual([]);

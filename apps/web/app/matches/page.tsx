@@ -10,8 +10,8 @@ import { MatchesClient } from "./MatchesClient";
 import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "./matches.module.css";
 export const metadata: Metadata = {
-  title: "Matches",
-  description: "Review relevant builders and reciprocal introductions.",
+  title: "Introductions",
+  description: "Review your shortlist and follow reciprocal introductions.",
   robots: { index: false, follow: false },
 };
 export default async function MatchesPage() {
@@ -27,11 +27,14 @@ export default async function MatchesPage() {
       <ProductHeader signedIn />
       <main className={styles.page}>
         <section className={styles.intro}>
-          <p className={styles.eyebrow}>For you</p>
-          <h1>People worth meeting now.</h1>
+          <div>
+            <p className={styles.eyebrow}>Introductions</p>
+            <h1>Meet through current work.</h1>
+          </div>
           <p>
-            These introductions are based on the work, interests, ambitions, and
-            preferences you chose to share.
+            Your shortlist changes with the work, interests, and ambitions you
+            choose to share. Nothing becomes a connection until both people are
+            ready.
           </p>
         </section>
         <MatchesClient

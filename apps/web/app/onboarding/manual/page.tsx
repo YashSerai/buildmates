@@ -7,8 +7,8 @@ import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "../onboarding.module.css";
 
 export const metadata: Metadata = {
-  title: "Manual setup",
-  description: "Complete Buildmates setup on the website when Codex is unavailable.",
+  title: "Set up on the web",
+  description: "Review and update your Buildmates setup from the website.",
   robots: { index: false, follow: false },
 };
 
@@ -20,9 +20,9 @@ export default async function ManualOnboardingPage() {
   return (
     <><ProductHeader signedIn/><main className={styles.page}>
       <section className={styles.intro}>
-        <p className={styles.eyebrow}>Website fallback</p>
-        <h1>Continue setup without Codex</h1>
-        <p>These forms update the same profile and setup progress used by Codex. You can return to the guided Codex flow at any time.</p>
+        <p className={styles.eyebrow}>Web setup</p>
+        <h1>Continue setting up Buildmates</h1>
+        <p>Review the same profile, privacy choices, and networking preferences that Buildmates uses in Codex.</p>
       </section>
       <OnboardingClient initialSnapshot={snapshot} defaultDisplayName={user.identity.displayName ?? "Builder"} />
     </main></>

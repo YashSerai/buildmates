@@ -69,7 +69,7 @@ test("privacy and error copy stay aligned with the product boundaries", async ()
   assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);
   assert.match(profileDesign, /Design with Codex/);
   assert.match(onboarding, /Recommended: Tuesdays and Fridays/);
-  assert.match(onboarding, /Save automation/);
+  assert.match(onboarding, /Save Work Pulse preferences/);
   assert.doesNotMatch(onboarding, /Topic to watch/);
 });
 

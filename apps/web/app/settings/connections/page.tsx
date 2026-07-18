@@ -3,8 +3,7 @@ import { requireUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { getIdentityConnectionStatus } from "@/src/platform/identity-connections";
 import { ConnectionsClient } from "./ConnectionsClient";
-import { SignOutButton } from "@/components/auth/SignOutButton";
-import { ProductHeader } from "@/components/discovery/ProductHeader";
+import { SettingsShell } from "@/components/settings/SettingsShell";
 import styles from "./connections.module.css";
 
 export const metadata: Metadata = {
@@ -23,33 +22,24 @@ export default async function ConnectionsPage() {
   );
 
   return (
-    <><ProductHeader signedIn/><main className={styles.page}>
-        <div className={styles.account}>
-          <span className={styles.accountName}>
-            {user.identity.displayName ?? "Signed in with GitHub"}
-          </span>
-          <SignOutButton className={styles.signOut} />
-        </div>
+    <SettingsShell
+      current="connections"
+      eyebrow="Codex connection"
+      title="Connect Buildmates to Codex"
+      description="Approve a private link between this account and Buildmates in your Codex conversation. Your connected-app credentials stay with Codex."
+    >
+      <div className={styles.connectionContent}>
+        <ConnectionsClient initialStatus={initialStatus} />
 
-      <section className={styles.intro} aria-labelledby="connections-title">
-        <p className={styles.sectionName}>Account connection</p>
-        <h1 id="connections-title">Connect Buildmates to Codex</h1>
-        <p className={styles.lede}>
-          Approve a private link between this account and the Buildmates plugin in
-          your Codex conversation. Your connected-app credentials stay with Codex.
-        </p>
-      </section>
-
-      <ConnectionsClient initialStatus={initialStatus} />
-
-      <aside className={styles.boundary} aria-labelledby="privacy-boundary-title">
-        <h2 id="privacy-boundary-title">What this approves</h2>
-        <p>
-          The link lets the Buildmates plugin act as this Buildmates account. It
-          does not grant Buildmates access to your raw chats, prompts, repositories,
-          calendar, email, or connector credentials.
-        </p>
-      </aside>
-    </main></>
+        <aside className={styles.boundary} aria-labelledby="privacy-boundary-title">
+          <h2 id="privacy-boundary-title">What this approves</h2>
+          <p>
+            The link lets Buildmates in Codex act as this Buildmates account. It
+            does not grant Buildmates access to your raw chats, prompts, repositories,
+            calendar, email, or connector credentials.
+          </p>
+        </aside>
+      </div>
+    </SettingsShell>
   );
 }

@@ -66,7 +66,7 @@ test("sparse-context builder completes the mandatory first run and resumes", asy
   await page.getByText("Full Autopilot", { exact: true }).click();
   await page.getByRole("button", { name: "Save acceptance mode" }).click();
   await page.getByLabel(/local repositories and device-bound sources/).check();
-  await page.getByRole("button", { name: "Save automation" }).click();
+  await page.getByRole("button", { name: "Save Work Pulse preferences" }).click();
 
   await expect(
     page.getByRole("heading", { name: "Your Buildmates profile is ready" }),

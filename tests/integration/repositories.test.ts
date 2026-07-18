@@ -23,7 +23,7 @@ import {
   createD1IdentityLinkStore,
   sha256,
 } from "../../apps/web/src/platform/identity-link-store";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, PROFILE_V2_FIXTURES, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
 
 const at = new Date("2026-07-15T00:00:00Z");
 const later = new Date("2099-07-16T00:00:00Z");
@@ -53,8 +53,24 @@ const operator = {
 };
 
 function surfaceSpecJson(kind: "profile" | "room" | "circle", overrides: Record<string, unknown> = {}): string {
+  const requestedPolicyVersion = String(overrides.designPolicyVersion ?? DESIGN_POLICY_VERSION);
+  if (requestedPolicyVersion === DESIGN_POLICY_VERSION) {
+    const current = structuredClone(PROFILE_V2_FIXTURES[1]);
+    return JSON.stringify({
+      ...current,
+      kind,
+      title: `${kind} surface`,
+      approvedAssets: [],
+      bindingManifest: { ...current.bindingManifest, media: [] },
+      accessibility: {
+        ...current.accessibility,
+        label: `${kind} surface`,
+      },
+      ...overrides,
+    });
+  }
   const spec: SurfaceSpec = {
-    schemaVersion: "1", designPolicyVersion: DESIGN_POLICY_VERSION, kind, title: `${kind} surface`,
+    schemaVersion: "1", designPolicyVersion: requestedPolicyVersion, kind, title: `${kind} surface`,
     theme: { mode: "light", colors: { canvas: "#ffffff", surface: "#f8f8f4", ink: "#171814", mutedInk: "#55584f", accent: "#cad7ad", accentInk: "#181b12", rule: "#c4c6bd", focusInner: "#000000", focusOuter: "#ffffff" }, typography: { display: "editorial", body: "humanist", scale: "comfortable" }, shape: { corners: "soft", density: "comfortable" } },
     root: { id: "root", type: "section", tone: "canvas", children: [{ id: "title", type: "heading", level: 1, binding: "surface.title", fallback: "Surface" }] },
     bindingManifest: { content: [{ key: "surface.title", type: "text" }], media: [] }, approvedAssets: [], decorativeRegions: [],

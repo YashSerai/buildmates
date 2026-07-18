@@ -1,6 +1,24 @@
 import Link from "next/link";
 import styles from "./product-shell.module.css";
 import polish from "./product-shell-polish.module.css";
+import { ProductNavLinks, type ProductNavItem } from "./ProductNav";
+
+const signedInPrimary: ProductNavItem[] = [
+  { href: "/home", label: "Home" },
+  { href: "/matches", label: "Introductions" },
+  { href: "/connections", label: "Connections" },
+  { href: "/circles", label: "Circles" },
+  { href: "/inbox", label: "Activity" },
+];
+
+const signedInMenu: ProductNavItem[] = [
+  ...signedInPrimary,
+  { href: "/profile", label: "Profile" },
+  { href: "/invite", label: "Invite" },
+  { href: "/settings/privacy", label: "Settings" },
+  { href: "/map", label: "Map" },
+  { href: "/graph", label: "Build graph" },
+];
 
 export function ProductHeader({ signedIn = false }: { signedIn?: boolean }) {
   return (
@@ -21,13 +39,7 @@ export function ProductHeader({ signedIn = false }: { signedIn?: boolean }) {
         aria-label={signedIn ? "Your Buildmates" : "Primary navigation"}
       >
         {signedIn ? (
-          <>
-            <Link href="/home">Home</Link>
-            <Link href="/matches">Matches</Link>
-            <Link href="/connections">Connections</Link>
-            <Link href="/circles">Circles</Link>
-            <Link href="/inbox">Inbox</Link>
-          </>
+          <ProductNavLinks items={signedInPrimary} />
         ) : (
           <>
             <Link href="/map">Map</Link>
@@ -41,16 +53,7 @@ export function ProductHeader({ signedIn = false }: { signedIn?: boolean }) {
         >
           <summary>Menu</summary>
           <nav aria-label="Account menu">
-            <Link href="/home">Home</Link>
-            <Link href="/matches">Matches</Link>
-            <Link href="/connections">Connections</Link>
-            <Link href="/circles">Circles</Link>
-            <Link href="/inbox">Inbox</Link>
-            <Link href="/profile">Profile</Link>
-            <Link href="/invite">Invite</Link>
-            <Link href="/settings/privacy">Settings</Link>
-            <Link href="/map">Map</Link>
-            <Link href="/graph">Build graph</Link>
+            <ProductNavLinks items={signedInMenu} />
           </nav>
         </details>
       ) : (
