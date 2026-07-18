@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: Release candidate deployed and production-smoked; clean 0/10 Codex onboarding QA is next
+Status: Release candidate deployed; visualization density fixture is live for visual approval, then clean onboarding and two-person QA remain
 Last updated: 2026-07-18
 Product line: Meet people through what you build.
 
@@ -63,7 +63,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Profiles | Profile review, field-level visibility, projects, generative responsive full-page surface, optional connection/build stats, canonical share link | Broader module library and isolated custom code | SurfaceSpec v2 implemented with five structurally distinct responsive portfolio compositions, governed media, real preview/public parity, and canonical `/builders/{handle}` publication |
 | Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Implemented in source; integrated review pending |
 | Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
-| Aggregate network views | No people/database search; MapLibre/OpenFreeMap city bubbles and anonymous canonical-topic bubbles expose counts only, never rosters | Richer aggregate filters after network density is proven | Implemented and sparse live smoke passed; pre-launch dummy-data QA is required for multi-city density, topic hierarchy, weighted links, drill-down, responsive layout, and privacy boundaries |
+| Aggregate network views | No people/database search; MapLibre/OpenFreeMap city bubbles and anonymous canonical-topic bubbles expose counts only, never rosters | Richer aggregate filters after network density is proven | A reversible 36-builder aggregate-only fixture is live; automated privacy/count checks and desktop/phone browser QA pass, while founder visual approval and fixture cleanup remain |
 | Matching | Deterministic shortlist, independent Codex evaluations, reciprocal handshake | Optional embeddings only after measured need | Implemented; integrated source regression passed |
 | Acceptance | Manual or Full Autopilot modes | Per-context acceptance rules | Implemented; live unattended capability proof pending |
 | Rooms | Mutual-interest lightweight chat themed around the connection reason | Consent-based room upgrade modules | Implemented; populated chat, safety, tools, scheduling, and responsive QA pass |
@@ -87,7 +87,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - User-facing copy uses Introductions and Activity consistently, removes fallback/process language from web onboarding, explains actions in product terms, and keeps technical identifiers, schemas, checkpoints, raw payloads, and implementation notes out of ordinary surfaces.
 - Final rendered evidence covers populated and empty states at desktop and phone dimensions. The populated end-to-end fixture exercises an introduction, a Connection and room conversation, two Activity items, an active Circle chat, and a Circle invitation without leaking into production.
 - Source verification: clean lint and workspace typechecks; 13/13 rendered web assertions; 91/91 unit tests; 82/82 integration tests after SurfaceSpec v2 fixture repair; 35/35 contract assertions after current-time/order fixture repair; 12/12 security tests; production workspace build; 12/12 focused settings/safety desktop-phone checks; and 2/2 final populated-network desktop-phone journeys with zero console errors or horizontal overflow.
-- **Still required before launch:** run one clean 0/10 Codex onboarding QA against the deployed release candidate. Map and Build Graph remain explicitly pending the privacy-safe multi-density dummy-data QA already recorded below.
+- **Still required before launch:** run one clean 0/10 Codex onboarding QA against the deployed release candidate, complete founder visual review of the populated Map and Build Graph, remove the temporary visualization fixture, and run genuine two-person behavior with an independent account.
 
 ## Clean-room onboarding QA repair - 2026-07-17
 
@@ -233,7 +233,7 @@ Run one clean 0/10 Codex onboarding QA against the production MCP and preserve t
 - The final copy scan found no public leakage of SurfaceSpec internals, setup evidence identifiers, identity scopes, or operator instructions. Technical language remains limited to restricted operator tooling and the non-production Surface Lab.
 - The production website account reached the terminal deletion route, the GitHub Buildmates OAuth grant was revoked, and the Worker database was verified at zero OAuth tokens, handoffs, assertion replays, rate-limit rows, and identity principals.
 - The local Buildmates OAuth credential, MCP registration, installed beta plugin, and installed cache were removed. The `buildmates-beta` marketplace remains configured so the next QA exercises a fresh installation instead of an already-loaded plugin.
-- Map and Build Graph are not marked launch-complete. Their multi-density, privacy-safe dummy-data desktop/phone QA remains the explicit visualization gate.
+- Map and Build Graph now have a live aggregate-only density fixture for founder review. Do not remove it or mark the visual gate complete until the populated UI is approved; remove all fixture rows before launch.
 
 ## Source-consent and clean-task handoff repair
 
@@ -281,7 +281,9 @@ Run one clean 0/10 Codex onboarding QA against the production MCP and preserve t
 - A built-in versioned topic hierarchy gives Codex stable IDs from `list_topic_taxonomy`; setup and Work Pulse skills must read it before classification. The migration backfills only canonical IDs from already-approved profile summaries so existing builders are not left out after launch.
 - Focused source proof: workspace typechecks pass, anonymous Map/Graph Miniflare tests pass, the canonical taxonomy contract passes, lint exits without new errors, and the production web build passes.
 - Production truth: exact code commit `18cd08371f54a839c465de69b757694b7d914451` is live as ChatGPT Sites version 23 and MCP Worker version `0f9173f8-016a-4d50-9b1c-1d507c65586b`. The public graph rendered the existing approved profile as AI, Automation, and Productivity and workflows; click-to-focus and back navigation worked, and the 2560px browser check had no horizontal overflow. No Map city was fabricated because this profile has not deliberately supplied one.
-- **Pre-launch TODO:** seed privacy-safe dummy builders, cities, projects, parent/child topics, and cross-topic overlaps; verify Map bubble counts and clustering plus Build Graph root layout, weighted edges, focus/drill-down, back navigation, density extremes, phone/desktop reflow, keyboard access, reduced motion, and absence of identity or raw-work leakage. Do not mark either visualization launch-complete until this evidence is retained.
+- **Live visualization fixture:** Sites version 27 (`appgdep_6a5b230338f88191b0e59c8a44314d8d`) contains 36 private, unindexed, nonmatching fixture builders across eight city aggregates, 36 unpublished projects, 24 canonical topics, 41 weighted edges, and 18 cross-topic relationships. No fixture handle, public profile, project title, raw work, or internal ID appears in either public response.
+- Automated fixture validation passes exact city counts of 8/7/6/5/4/3/2/1. Live desktop and phone checks pass without horizontal overflow or console errors; root-topic layout, AI drill-down, back navigation, aggregate transcript/table, singular labels, and persistent city detail popups are verified.
+- **Pre-launch TODO:** keep the fixture live while the founder adjusts and approves the populated visual design. After approval, remove every `qa_visual_*` row, redeploy, and verify the honest sparse state before marking Map and Build Graph launch-complete.
 
 ## Codex acquisition path added 2026-07-16
 
