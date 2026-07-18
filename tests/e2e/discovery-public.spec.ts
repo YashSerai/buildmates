@@ -97,12 +97,17 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(instructions).toContain("host's native plugin-install confirmation");
   expect(instructions).toContain("A plugin installed during a task does not hot-load its skills and MCP tools");
   expect(instructions).toContain("Buildmates is installed. May I open a fresh Codex task to activate it and continue setup?");
-  expect(instructions).toContain("If native task creation is unavailable or fails");
+  expect(instructions).toContain("Buildmates setup - continue here");
+  expect(instructions).toContain("Buildmates installation - complete");
+  expect(instructions).toContain("Never fork when native task creation is available");
+  expect(instructions).toContain("If task creation or title/archive controls are unavailable");
   expect(instructions).toContain("Never spawn recursive `codex exec` helpers or use a child Codex process");
   expect(instructions).toContain("Call `get_setup_state` immediately");
   expect(instructions).toContain("Never infer progress from old tasks");
   expect(instructions).toContain("show up to three concrete next actions");
   expect(instructions).toContain("Use my Codex workspace");
+  expect(instructions).toContain("Skip workspace review");
+  expect(instructions).toContain("without asking for permission again");
   expect(instructions).toContain("Do not treat GitHub website sign-in as repository permission");
   expect(instructions).toContain("submit only reviewed structured profile fields");
 });

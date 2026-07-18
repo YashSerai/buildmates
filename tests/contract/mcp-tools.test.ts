@@ -102,6 +102,23 @@ describe("Buildmates MCP contract", () => {
     }
   });
 
+  it("carries approved workspace scope through context collection without a second consent gate", async () => {
+    const { services, links, repository } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation"], updatedAt: "2026-07-17T12:00:00.000Z" }, now: "2026-07-17T12:00:00.000Z" });
+
+    const sourceState = await invoke(services, "get_setup_state", {});
+    expect(sourceState).toMatchObject({ nextStep: "source_selection" });
+    expect(sourceState.guidance.nextAction).toContain("Skip workspace review");
+    expect(sourceState.guidance.nextAction).toContain("without a second permission prompt");
+
+    await invoke(services, "complete_setup_step", { payload: { step: "source_selection", sourceIds: [] }, idempotencyKey: "consent-carry-source" });
+    const collectionState = await invoke(services, "get_setup_state", {});
+    expect(collectionState).toMatchObject({ nextStep: "context_collection" });
+    expect(collectionState.guidance.nextAction).toContain("proceed without asking again");
+    expect(collectionState.guidance.fallback).toContain("workspace review was skipped");
+  });
+
   it("requires valid input for every linked mutation", async () => {
     const { services, links } = fixture();
     links.set(SUBJECT_A, "user_alice");

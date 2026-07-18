@@ -210,7 +210,15 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 
 ## Current next action
 
-Run the canonical prompt copied from the public landing page in a new personal Codex task. The clean-room reset is complete: the Buildmates account was deleted, its GitHub OAuth grant was revoked, the ChatGPT development plugin is uninstalled, remote MCP OAuth state is empty, and the local beta plugin/marketplace/MCP entries were removed after a successful install test. Complete all 11 steps and preserve the full task as clean first-run evidence. The earlier `2/11` task remains resumability evidence only; do not continue it for the clean-run test. The beta install and reset evidence is logged in `docs/evidence/production-onboarding-2026-07-17.md`. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+Continue the active first-run QA through the generated profile preview and preserve the full task as evidence. The next clean QA must use the updated beta package and public contract: create a clean setup task rather than a fork, label the setup and completed-installation tasks distinctly, archive the parent only after `get_setup_state` works in the child, and treat the exact source-selection approval as authorization for immediate private context collection. Do not ask a second time unless the research scope expands. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+
+## Source-consent and clean-task handoff repair
+
+- The `source_selection` and `context_collection` records remain separate resumable backend steps, but they are one user consent event when Codex states the exact local research scope first. Selecting **Use my Codex workspace** authorizes immediate review of that stated scope and completion of both records without another permission prompt.
+- Source selection now includes **Skip workspace review**. That route inspects no other tasks, project folders, GBrain, or memory files and continues with approved connected sources or focused questions instead of dead-ending.
+- Expanding the approved scope to another task range, project, local memory source, or connected app still requires a new confirmation.
+- Beta activation now requires a clean new task titled `Buildmates setup - continue here`, not a history-duplicating fork. After the child successfully calls `get_setup_state`, the parent is titled `Buildmates installation - complete` and archived. The manual continuation remains the fallback when host task controls are unavailable.
+- The MCP contract, public `/llms.txt`, public and beta onboarding skills, plugin READMEs, and package cachebusters carry the same rules. Both plugin packages validate, 18/18 focused MCP contract tests pass, workspace typechecks pass, and the public agent contract passes on desktop and phone.
 
 ## Codex acquisition path added 2026-07-16
 
