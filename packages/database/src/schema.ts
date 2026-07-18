@@ -263,6 +263,15 @@ export const builderMatchIndex = sqliteTable("builder_match_index", {
   updatedAt: updated(),
 }, (t) => [index("builder_match_index_taxonomy_version_idx").on(t.taxonomyVersionId, t.version)]);
 
+export const profileTopicContributions = sqliteTable("profile_topic_contributions", {
+  userId: userRef("user_id"),
+  topicId: text("topic_id").notNull().references(() => topics.id, { onDelete: "cascade" }),
+  updatedAt: updated(),
+}, (t) => [
+  primaryKey({ columns: [t.userId, t.topicId] }),
+  index("profile_topic_contributions_topic_idx").on(t.topicId, t.updatedAt),
+]);
+
 export const pairScores = sqliteTable(
   "pair_scores",
   {
@@ -432,7 +441,7 @@ export const profiles = sqliteTable(
     coarseLocation: text("coarse_location"),
     locationMapOptIn: integer("location_map_opt_in", { mode: "boolean" })
       .notNull()
-      .default(false),
+      .default(true),
     timezone: text("timezone"),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }),
     createdAt: created(),

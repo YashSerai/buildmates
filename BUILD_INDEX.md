@@ -229,6 +229,13 @@ Continue the active first-run QA through the generated profile preview and prese
 - Privacy review copy now explains profile visibility, matching, search indexing, aggregate city-map inclusion, private design notes, acceptance mode, and recurring Work Signals individually before one approval. Search indexing means Google and other search engines; city-map inclusion uses only a chosen city in anonymous aggregate bubbles and never precise or live location.
 - The privacy explanation repair is live from exact commit `a9c2a4d6dc1135929994a3621e1689417689cb98` as ChatGPT Sites version 21 and MCP Worker version `6f0e652b-1c6f-46e3-82ae-b32c35161bb2`. Production `/llms.txt` returned the explanatory markers and unauthenticated MCP initialization remained closed with 401.
 
+## Anonymous Map and Build Graph repair
+
+- Map participation is independent of profile publication. When a user deliberately supplies a supported city, anonymous aggregation is enabled by default unless they hide it. The first participating builder can create a city bubble; Buildmates never infers precise or live location.
+- Setup and recurring Work Pulses classify only reviewed work into canonical topic IDs. The graph aggregates those IDs from reviewed profiles, active project taxonomy, and approved unexpired Work Signals; raw text, source excerpts, prompts, handles, project titles, and user IDs never enter its response.
+- The graph returns topic nodes, weighted co-occurrence edges, and canonical parent/child relationships. Its interactive field opens on broad/root topics, supports click-to-focus drill-down, and shows the strongest child and neighboring topics with keyboard and reduced-motion support.
+- Focused source proof: workspace typechecks pass, anonymous Map/Graph Miniflare tests pass 4/4, lint exits without new errors, and the production web build passes. Production deployment and rendered browser truth remain separate until published and inspected.
+
 ## Codex acquisition path added 2026-07-16
 
 - The landing page now states that Codex creates the profile and routes the primary action through a canonical public setup guide instead of assuming visitors already know or have installed Buildmates.

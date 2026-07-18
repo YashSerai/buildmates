@@ -16,6 +16,7 @@ export async function beginAccountDeletion(DB: DB, userId: string, assets?: R2Li
     DB.prepare("UPDATE work_signals SET free_text_summary='',canonical_topic_ids_json='[]',canonical_tool_ids_json='[]',canonical_domain_ids_json='[]',canonical_stage_ids_json='[]',canonical_collaboration_intent_ids_json='[]',allow_matching=0,audience='private',revoked_at=COALESCE(revoked_at,?),updated_at=? WHERE user_id=?").bind(now,now,userId),
     DB.prepare("DELETE FROM source_use_approvals WHERE user_id=?").bind(userId),
     DB.prepare("DELETE FROM builder_match_index WHERE user_id=?").bind(userId),
+    DB.prepare("DELETE FROM profile_topic_contributions WHERE user_id=?").bind(userId),
     DB.prepare("DELETE FROM candidate_batches WHERE user_id=?").bind(userId),
     DB.prepare("DELETE FROM pair_scores WHERE user_a_id=? OR user_b_id=?").bind(userId,userId),
     DB.prepare("DELETE FROM codex_evaluations WHERE user_id=?").bind(userId),

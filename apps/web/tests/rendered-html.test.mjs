@@ -62,7 +62,7 @@ test("privacy and error copy stay aligned with the product boundaries", async ()
     readFile(new URL("../app/onboarding/OnboardingClient.tsx", import.meta.url), "utf8"),
   ]);
   assert.match(profileReview, /key === "current_work" \|\|\s+key === "networking_intent"\s+\? "suggested_connections"/);
-  assert.match(graph, /projects that builders deliberately made public/);
+  assert.match(graph, /anonymous topic network taking shape across Buildmates/);
   assert.match(errors, /export function userFacingError/);
   assert.doesNotMatch(errors, /return value/);
   assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);

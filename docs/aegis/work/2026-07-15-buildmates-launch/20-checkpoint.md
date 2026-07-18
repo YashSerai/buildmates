@@ -118,3 +118,10 @@ Read `10-intent.md`, this checkpoint, `GOAL.md`, and `BUILD_INDEX.md`; verify th
 - New owner/fallback: database interfaces keep local memory and D1 adapters behaviorally aligned; the signed service client keeps the external MCP topology host-neutral.
 - Evidence sufficiency: generated and inspected migrations, repeated fresh Miniflare D1 apply through 0005, canonical audience authorization, all named aggregate boundaries on both adapters, comprehensive second-user actor-forgery and crossed-pair denials, exactly-one-owner transfer invariants, expiry-aware idempotency outcomes, transactional fault injection for Surface publication and Circle voting, concurrent publish/vote retries, room/Circle approval thresholds, stale base/governance/CAS denials, standing-based appeals, approved-collaborator access, lint, typecheck, tests, and build pass; independent specification/security and quality rereviews both approve.
 - Decision: continue.
+
+## Anonymous aggregate topic topology - 2026-07-17
+
+- Anonymous aggregation no longer depends on a public/searchable profile or project. A deliberately supplied supported city contributes to the Map by default, and one builder is sufficient for the first city bubble.
+- Reviewed profile topics, active project taxonomy, and approved unexpired Work Signal topic IDs feed the Build Graph. The response contains canonical topic labels, aggregate builder/contribution counts, hierarchy, and co-occurrence strength only.
+- The graph UI is an explorable bubble topology: root topics first, click-to-focus drill-down, child/neighbor expansion, and weighted links for topic overlap. It does not expose project or builder identity.
+- Focused evidence: workspace typecheck passes; Map/Graph integration tests pass 4/4; web production build passes.

@@ -243,11 +243,11 @@ export function ProfileReview({
         <input
           type="checkbox"
           name="locationMapOptIn"
-          defaultChecked={initial?.locationMapOptIn}
+          defaultChecked={initial?.coarseLocation ? initial.locationMapOptIn : true}
         />
-        Include my city in the community map
+        Show my city in the anonymous community map
       </label>
-      <p className={styles.hint}>Uses only the city you add to your profile - never your precise or live location - and appears only in aggregate.</p>
+      <p className={styles.hint}>On by default when you add a city. Buildmates never uses your precise or live location, and the map never identifies you.</p>
       <button disabled={busy}>
         {busy ? "Saving..." : "Save and view profile"}
       </button>

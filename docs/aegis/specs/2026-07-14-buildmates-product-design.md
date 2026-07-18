@@ -181,14 +181,15 @@ Project routes use canonical `/projects/{slug}` URLs. Public projects can be fol
 ### 4.7 Discovery, city map, and build graph
 
 - Buildmates does not expose a people, profile, project, location, or Work Signal search endpoint or directory. Public profiles and projects are reached only through deliberate direct/share links.
-- View a MapLibre map with one aggregate bubble per supported city that has at least five opted-in builders. Bubble size represents opted-in builder count; aggregate project and Connection counts may appear in the city summary.
-- View an aggregate build graph whose bubbles group deliberately published project topics. Bubble size represents visible project activity, never popularity or private Work Signals.
+- View a MapLibre map with one anonymous aggregate bubble per supported city. A deliberately supplied city participates by default unless hidden, and the first participating builder may create a bubble. Bubble size represents aggregate builder count; project and Connection counts may appear without exposing a person.
+- View an anonymous Build Graph whose bubbles group canonical topics extracted from user-reviewed profiles, active projects, and approved current Work Signals. Only canonical topic IDs and aggregate counts enter the graph; raw profile/project/signal text and builder identity never do. Bubble size represents contributing builders, not popularity.
+- Start with broad topic bubbles, drill into canonical child topics, and draw weighted links when the same anonymous contribution spans multiple topics. Link strength represents aggregate builder overlap and never exposes a person-to-person edge.
 - See honest aggregate network counters computed from production data, such as opted-in builders, public projects, Connections formed, and meetings scheduled; counters are omitted until real data exists and never use fabricated launch numbers.
 - Receive private, server-bounded match recommendations with direct, evidence-based explanations after authentication and matching authorization.
 
 The map and graph are functional aggregate network views, not decorative background effects. They provide accessible aggregate-list alternatives and keyboard-operable navigation. Neither surface links to or lists the people, profiles, projects, or Work Signals represented by an aggregate bubble.
 
-The public build graph never exposes room, Connection, collaboration, Circle, or person-to-person edges. A signed-in personalized explanation may use viewer-authorized evidence outside the public graph.
+The public build graph never exposes project titles, profile fields, Work Signal summaries, rooms, Connections, collaboration, Circles, or person-to-person edges. A signed-in personalized explanation may use viewer-authorized evidence outside the public graph.
 
 ### 4.8 Cold-start and network growth
 

@@ -3,7 +3,9 @@ import { resolveCanonicalCity } from "@buildmates/domain";
 
 export type DiscoveryBuilder = { userId:string;handle:string;displayName:string;summary:string;coarseLocation:string|null;currentWork:string|null;projectCount:number };
 export type DiscoveryProject = { id:string;slug:string;title:string;summary:string;stage:string;ownerHandle:string;ownerName:string;topics:string[] };
-export type BuildGraphTopic = { id:string;label:string;projectCount:number;builderCount:number;latestActivityAt:number };
+export type BuildGraphTopic = { id:string;label:string;contributionCount:number;projectCount:number;builderCount:number;latestActivityAt:number };
+export type BuildGraphEdge = { sourceId:string;targetId:string;builderCount:number;contributionCount:number;strength:number };
+export type BuildGraphRelationship = { parentId:string;childId:string };
 export type CohortSummary = { id:string;slug:string;name:string;description:string;visibility:"public"|"request"|"invite"|"private";memberCount:number;viewerRole:string|null;viewerStatus:string|null };
 export type DiscoveryOptions = { query?:string;location?:string;timezone?:string;stage?:string;topic?:string;tool?:string;problem?:string;offer?:string;need?:string;cohort?:string;collaboration?:string;limit?:number };
 type Access = { sql:string; bindings:string[] };
@@ -51,27 +53,44 @@ export async function listDiscovery(db:D1Database,viewerId:string|null,options:D
 }
 
 export async function listLocationGroups(db:D1Database,viewerId:string|null){
-  const b=block(viewerId,"p.user_id");
-  const profiles=await db.prepare(`SELECT p.user_id AS userId,p.coarse_location AS location FROM profiles p JOIN users u ON u.id=p.user_id WHERE u.status='active' AND p.published_at IS NOT NULL AND p.audience='public' AND p.cohort_scope_id IS NULL AND p.location_map_opt_in=1 AND p.coarse_location IS NOT NULL AND trim(p.coarse_location)<>'' AND ${b.sql} LIMIT 5000`).bind(...b.bindings).all<{userId:string;location:string}>();
+  void viewerId;
+  const profiles=await db.prepare(`SELECT p.user_id AS userId,p.coarse_location AS location FROM profiles p JOIN users u ON u.id=p.user_id WHERE u.status='active' AND p.location_map_opt_in=1 AND p.coarse_location IS NOT NULL AND trim(p.coarse_location)<>'' LIMIT 5000`).all<{userId:string;location:string}>();
   const cityByUser=new Map<string,string>();
   const groups=new Map<string,{cityId:string;label:string;latitude:number;longitude:number;builders:Set<string>;projects:Set<string>;connections:Set<string>}>();
   for(const row of profiles.results){const city=resolveCanonicalCity(row.location);if(!city)continue;cityByUser.set(row.userId,city.id);const group=groups.get(city.id)??{cityId:city.id,label:`${city.label}, ${city.country}`,latitude:city.latitude,longitude:city.longitude,builders:new Set<string>(),projects:new Set<string>(),connections:new Set<string>()};group.builders.add(row.userId);groups.set(city.id,group)}
   const eligibleUsers=[...cityByUser.keys()];
   if(eligibleUsers.length){
     const [projects,connections]=await Promise.all([
-      db.prepare("SELECT x.id,x.owner_user_id AS userId FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id WHERE p.location_map_opt_in=1 AND x.status='active' AND x.published_at IS NOT NULL AND x.audience='public' AND x.cohort_scope_id IS NULL LIMIT 10000").all<{id:string;userId:string}>(),
+      db.prepare("SELECT x.id,x.owner_user_id AS userId FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id WHERE p.location_map_opt_in=1 AND x.status='active' LIMIT 10000").all<{id:string;userId:string}>(),
       db.prepare("SELECT cs.connection_id AS connectionId,cs.user_id AS userId FROM connection_sides cs JOIN connections c ON c.id=cs.connection_id JOIN profiles p ON p.user_id=cs.user_id WHERE p.location_map_opt_in=1 AND c.state='active' LIMIT 20000").all<{connectionId:string;userId:string}>(),
     ]);
     for(const row of projects.results){const cityId=cityByUser.get(row.userId);if(cityId)groups.get(cityId)?.projects.add(row.id)}
     for(const row of connections.results){const cityId=cityByUser.get(row.userId);if(cityId)groups.get(cityId)?.connections.add(row.connectionId)}
   }
-  return [...groups.values()].filter(group=>group.builders.size>=5).map(group=>({cityId:group.cityId,label:group.label,latitude:group.latitude,longitude:group.longitude,builderCount:group.builders.size,projectCount:group.projects.size,connectionCount:group.connections.size})).sort((left,right)=>right.builderCount-left.builderCount||left.label.localeCompare(right.label)).slice(0,80);
+  return [...groups.values()].map(group=>({cityId:group.cityId,label:group.label,latitude:group.latitude,longitude:group.longitude,builderCount:group.builders.size,projectCount:group.projects.size,connectionCount:group.connections.size})).sort((left,right)=>right.builderCount-left.builderCount||left.label.localeCompare(right.label)).slice(0,80);
 }
 
 export async function getBuildGraph(db:D1Database,viewerId:string|null){
-  const b=block(viewerId,"x.owner_user_id");
-  const rows=await db.prepare(`SELECT pti.taxonomy_item_id AS id,t.label AS label,count(DISTINCT x.id) AS projectCount,count(DISTINCT x.owner_user_id) AS builderCount,max(x.updated_at) AS latestActivityAt FROM project_taxonomy_items pti JOIN projects x ON x.id=pti.project_id JOIN users u ON u.id=x.owner_user_id JOIN profiles p ON p.user_id=x.owner_user_id LEFT JOIN topics t ON t.id=pti.taxonomy_item_id WHERE pti.kind='topic' AND u.status='active' AND x.status='active' AND x.published_at IS NOT NULL AND x.audience='public' AND x.cohort_scope_id IS NULL AND p.published_at IS NOT NULL AND p.audience='public' AND p.cohort_scope_id IS NULL AND ${b.sql} GROUP BY pti.taxonomy_item_id,t.label HAVING count(DISTINCT x.owner_user_id)>=2 ORDER BY projectCount DESC,builderCount DESC,pti.taxonomy_item_id LIMIT 60`).bind(...b.bindings).all<{id:string;label:string|null;projectCount:number;builderCount:number;latestActivityAt:number}>();
-  return{topics:rows.results.map(row=>({id:row.id,label:row.label?.trim()||humanizeTaxonomyId(row.id),projectCount:Number(row.projectCount),builderCount:Number(row.builderCount),latestActivityAt:Number(row.latestActivityAt)} satisfies BuildGraphTopic))};
+  void viewerId;
+  const contributions=`WITH contributions AS (
+    SELECT x.owner_user_id AS user_id,'project:'||x.id AS contribution_id,pti.taxonomy_item_id AS topic_id,x.updated_at AS updated_at,1 AS is_project
+    FROM project_taxonomy_items pti JOIN projects x ON x.id=pti.project_id JOIN users u ON u.id=x.owner_user_id
+    WHERE pti.kind='topic' AND x.status='active' AND u.status='active'
+    UNION ALL
+    SELECT c.user_id,'profile:'||c.user_id,c.topic_id,c.updated_at,0 FROM profile_topic_contributions c JOIN users u ON u.id=c.user_id WHERE u.status='active'
+    UNION ALL
+    SELECT w.user_id,'signal:'||w.id,topic.value,w.updated_at,0 FROM work_signals w JOIN users u ON u.id=w.user_id JOIN json_each(w.canonical_topic_ids_json) topic
+    WHERE u.status='active' AND w.approved_at IS NOT NULL AND w.revoked_at IS NULL AND w.expires_at>CAST(strftime('%s','now') AS INTEGER)*1000
+  )`;
+  const [rows,edges,relationships]=await Promise.all([
+    db.prepare(`${contributions} SELECT c.topic_id AS id,t.label AS label,count(DISTINCT c.contribution_id) AS contributionCount,count(DISTINCT CASE WHEN c.is_project=1 THEN c.contribution_id END) AS projectCount,count(DISTINCT c.user_id) AS builderCount,max(c.updated_at) AS latestActivityAt FROM contributions c LEFT JOIN topics t ON t.id=c.topic_id GROUP BY c.topic_id,t.label ORDER BY builderCount DESC,contributionCount DESC,c.topic_id LIMIT 80`).all<{id:string;label:string|null;contributionCount:number;projectCount:number;builderCount:number;latestActivityAt:number}>(),
+    db.prepare(`${contributions} SELECT a.topic_id AS sourceId,b.topic_id AS targetId,count(DISTINCT a.user_id) AS builderCount,count(DISTINCT a.contribution_id) AS contributionCount FROM contributions a JOIN contributions b ON b.user_id=a.user_id AND b.contribution_id=a.contribution_id AND b.topic_id>a.topic_id GROUP BY a.topic_id,b.topic_id ORDER BY builderCount DESC,contributionCount DESC LIMIT 180`).all<{sourceId:string;targetId:string;builderCount:number;contributionCount:number}>(),
+    db.prepare("SELECT from_topic_id AS parentId,to_topic_id AS childId FROM topic_relationships WHERE lower(kind) IN ('parent','broader','contains')").all<{parentId:string;childId:string}>(),
+  ]);
+  const topics=rows.results.map(row=>({id:row.id,label:row.label?.trim()||humanizeTaxonomyId(row.id),contributionCount:Number(row.contributionCount),projectCount:Number(row.projectCount),builderCount:Number(row.builderCount),latestActivityAt:Number(row.latestActivityAt)} satisfies BuildGraphTopic));
+  const topicIds=new Set(topics.map(topic=>topic.id));
+  const maxBuilders=Math.max(1,...edges.results.map(edge=>Number(edge.builderCount)));
+  return{topics,edges:edges.results.filter(edge=>topicIds.has(edge.sourceId)&&topicIds.has(edge.targetId)).map(edge=>({sourceId:edge.sourceId,targetId:edge.targetId,builderCount:Number(edge.builderCount),contributionCount:Number(edge.contributionCount),strength:Number(edge.builderCount)/maxBuilders} satisfies BuildGraphEdge)),relationships:relationships.results.filter(relation=>topicIds.has(relation.parentId)&&topicIds.has(relation.childId)) satisfies BuildGraphRelationship[]};
 }
 
 export async function listCohorts(db:D1Database,viewerId:string|null){const rows=await db.prepare(`SELECT c.id,c.slug,c.name,c.description,c.visibility,(SELECT count(*) FROM cohort_memberships x WHERE x.cohort_id=c.id AND x.status='active') AS memberCount,cm.role AS viewerRole,cm.status AS viewerStatus FROM cohorts c LEFT JOIN cohort_memberships cm ON cm.cohort_id=c.id AND cm.user_id=? WHERE c.status='active' AND (c.visibility IN ('public','request') OR cm.status IN ('active','invited')) ORDER BY memberCount DESC,c.name`).bind(viewerId??"").all<CohortSummary>();return rows.results.map(row=>({...row,memberCount:Number(row.memberCount)}))}

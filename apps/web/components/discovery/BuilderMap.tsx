@@ -100,7 +100,7 @@ export function BuilderMap({ places, statistics, mapHidden = false }: { places: 
 }
 
 function Statistics({ statistics }: { statistics: MapStatistics }) {
-  const items = [["Published profiles", statistics.publishedBuilderCount], ["Builders on the map", statistics.mappedBuilderCount], ["Cities shown", statistics.qualifyingCityCount], ["Public projects", statistics.publicProjectCount], ["Public topics", statistics.publicTopicCount], ["Connections formed", statistics.connectionCount]] as const;
+  const items = [["Builders", statistics.publishedBuilderCount], ["Builders on the map", statistics.mappedBuilderCount], ["Cities shown", statistics.qualifyingCityCount], ["Active projects", statistics.publicProjectCount], ["Topics in the graph", statistics.publicTopicCount], ["Connections formed", statistics.connectionCount]] as const;
   return <dl className={styles.statistics}>{items.map(([label, value]) => <div className={styles.statistic} key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>;
 }
 

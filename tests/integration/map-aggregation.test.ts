@@ -27,7 +27,7 @@ describe("aggregate city map", () => {
 
   afterEach(async () => miniflare.dispose());
 
-  it("normalizes aliases before the privacy threshold and returns aggregate-only counts", async () => {
+  it("shows anonymous city totals from the first participating builder regardless of profile audience", async () => {
     const eligible = [
       ["map-1", "Vancouver"],
       ["map-2", "Vancouver, BC"],
@@ -44,8 +44,7 @@ describe("aggregate city map", () => {
     for (const [userId, location] of eligible.slice(0, 4)) await insertProfile(DB, { userId, location, audience: "public", optIn: 1, now });
     for (const [userId, location, audience, optIn] of excluded) await insertProfile(DB, { userId, location, audience, optIn, now });
 
-    expect(await listLocationGroups(DB, null)).toEqual([]);
-    expect((await getMapStatistics(DB, [])).mappedBuilderCount).toBe(0);
+    expect(await listLocationGroups(DB, null)).toEqual([expect.objectContaining({cityId:"vancouver-ca",builderCount:5})]);
     await insertProfile(DB, { userId: eligible[4][0], location: eligible[4][1], audience: "public", optIn: 1, now });
     await insertProfile(DB, { userId: "map-hidden-city", location: "Toronto", audience: "public", optIn: 1, now });
 
@@ -64,12 +63,20 @@ describe("aggregate city map", () => {
       label: "Vancouver, Canada",
       latitude: 49.2827,
       longitude: -123.1207,
-      builderCount: 5,
-      projectCount: 2,
+      builderCount: 6,
+      projectCount: 3,
       connectionCount: 1,
+    },{
+      cityId:"toronto-ca",
+      label:"Toronto, Canada",
+      latitude:43.6532,
+      longitude:-79.3832,
+      builderCount:1,
+      projectCount:0,
+      connectionCount:0,
     }]);
     expect(Object.keys(result[0]).sort()).toEqual(["builderCount", "cityId", "connectionCount", "label", "latitude", "longitude", "projectCount"]);
-    expect(await getMapStatistics(DB,result)).toMatchObject({mappedBuilderCount:5,qualifyingCityCount:1});
+    expect(await getMapStatistics(DB,result)).toMatchObject({mappedBuilderCount:7,qualifyingCityCount:2});
   });
 }, 30_000);
 
