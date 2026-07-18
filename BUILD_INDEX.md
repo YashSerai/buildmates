@@ -227,6 +227,7 @@ Continue the active first-run QA through the generated profile preview and prese
 - Do not repair the generative profile architecture during the active 11-step QA. Continue the run with the current revision as temporary functional evidence, then design SurfaceSpec v2 before launch. The target flow is profile approval, a user-reviewed Codex design brief and available-skill choice, real generation, full-page private preview, then publication. The starter remains an invisible validation fallback and must not count as `Design 1`.
 - The published profile should make the generated Surface the primary page while trusted Buildmates navigation, connect, report, privacy, revision, and rollback controls remain outside generated authority. The design workspace keeps its explanatory header and shows the full-page preview below it.
 - Privacy review copy now explains profile visibility, matching, search indexing, aggregate city-map inclusion, private design notes, acceptance mode, and recurring Work Signals individually before one approval. Search indexing means Google and other search engines; city-map inclusion uses only a chosen city in anonymous aggregate bubbles and never precise or live location.
+- The privacy explanation repair is live from exact commit `a9c2a4d6dc1135929994a3621e1689417689cb98` as ChatGPT Sites version 21 and MCP Worker version `6f0e652b-1c6f-46e3-82ae-b32c35161bb2`. Production `/llms.txt` returned the explanatory markers and unauthenticated MCP initialization remained closed with 401.
 
 ## Codex acquisition path added 2026-07-16
 
