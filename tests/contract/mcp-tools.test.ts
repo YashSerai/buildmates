@@ -76,6 +76,11 @@ describe("Buildmates MCP contract", () => {
     expect(listed.tools.find((tool) => tool.name === "prepare_calendar_handoff")?.annotations?.readOnlyHint).toBe(true);
     expect(listed.tools.find((tool) => tool.name === "attach_calendar_event")?.annotations?.readOnlyHint).toBe(false);
     expect(listed.tools.find((tool) => tool.name === "rollback_surface")?.annotations?.destructiveHint).toBe(true);
+    const updateProfileInput = listed.tools.find((tool) => tool.name === "update_profile_model")?.inputSchema as { required?: string[]; properties?: { profile?: { description?: string; required?: string[] } } };
+    expect(updateProfileInput.required).toContain("profile");
+    expect(updateProfileInput.required).not.toContain("idempotencyKey");
+    expect(updateProfileInput.properties?.profile?.required).toContain("idempotencyKey");
+    expect(updateProfileInput.properties?.profile?.description).toContain("inside this profile object");
     expect(buildmatesToolRegistry.filter((tool) => tool.preLink).map((tool) => tool.name)).toEqual(["get_link_url", "complete_identity_link", "get_setup_state"]);
     const strict = await client.callTool({ name: "get_link_url", arguments: { unexpected: true } });
     expect(strict.isError).toBe(true);
@@ -227,6 +232,30 @@ describe("Buildmates MCP contract", () => {
     ]));
     expect(taxonomy.relationships).toContainEqual({ parentId: "ai", childId: "voice-ai" });
     expect(JSON.stringify(taxonomy)).not.toContain("user_alice");
+  });
+
+  it("round-trips every listed canonical topic ID through profile and Work Signal writes", async () => {
+    const { services, links } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    await allowGithub(services, "taxonomy-source-01");
+    const taxonomy = await invoke(services, "list_topic_taxonomy", {}) as { taxonomyVersion: string; topics: Array<{ id: string }> };
+    const listedIds = new Set(taxonomy.topics.map(({ id }) => id));
+    services.validateTaxonomy = async ({ taxonomyVersion, topicIds }) => taxonomyVersion === taxonomy.taxonomyVersion && topicIds.every((id) => listedIds.has(id));
+
+    for (let offset = 0; offset < taxonomy.topics.length; offset += 30) {
+      const index = offset / 30;
+      const canonicalTopicIds = taxonomy.topics.slice(offset, offset + 30).map(({ id }) => id);
+      if (canonicalTopicIds.length === 0) continue;
+      await expect(invoke(services, "update_profile_model", { profile: { ...validProfile("taxonomy-profile"), taxonomyVersion: taxonomy.taxonomyVersion, canonicalTopicIds, idempotencyKey: `taxonomy-profile-${index}` } })).resolves.toMatchObject({ result: { id: "taxonomy-profile" } });
+      await expect(invoke(services, "submit_work_signal", { signal: { ...validSignal(), signalId: `taxonomy-signal-${index}`, taxonomyVersion: taxonomy.taxonomyVersion, canonicalTopicIds, idempotencyKey: `taxonomy-signal-${index}` } })).resolves.toMatchObject({ result: { id: `taxonomy-signal-${index}` } });
+    }
+  });
+
+  it("documents and enforces profile-scoped idempotency", () => {
+    const definition = buildmatesToolRegistry.find((tool) => tool.name === "update_profile_model");
+    expect(definition?.description).toContain("inside the profile object");
+    expect(definition?.input.safeParse({ profile: validProfile("schema-profile") }).success).toBe(true);
+    expect(definition?.input.safeParse({ profile: { ...validProfile("schema-profile"), idempotencyKey: undefined }, idempotencyKey: "misplaced-key" }).success).toBe(false);
   });
 
   it("replays identical idempotent writes and rejects key reuse with different input", async () => {

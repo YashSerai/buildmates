@@ -190,3 +190,11 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Hydration defect and fix: The first run exposed a real SSR hydration race: the room textarea accepted pre-hydration typing in the DOM while React state remained empty, leaving Send disabled. The composer now uses a lint-clean hydration snapshot and keeps the textarea and submit action unavailable until React owns the controlled state. Scoped lint passes.
 - Circle suffix: Pending integrated rerun. The harness created the Circle, but its locator expected `Accept invitation` while the product correctly labels the action `Join Circle`; the click waited until the suite timeout. The selector is corrected. Circle join, chat, sequential module/design governance publishing, admin promotion, and outsider Circle denial were not reached after that correction and must not be called passed until the integrated journey completes.
 - Evidence limitation: This is a high-fidelity local two-principal simulation using real application sessions, authorization, database rules, and three isolated browser contexts. It is not a substitute for the final test with two independent external GitHub/Codex accounts.
+
+### 2026-07-18 - canonical taxonomy write contract
+
+- Defect: live onboarding received canonical topic `ai` from `list_topic_taxonomy`, but both profile and Work Signal inputs reused the general resource-ID schema and rejected its two-character identifier before taxonomy validation.
+- Repair: canonical taxonomy fields now use a dedicated bounded identifier schema. General resource IDs retain their existing three-character minimum.
+- Round-trip proof: every canonical topic returned by `list_topic_taxonomy`, including `ai`, is written through both `update_profile_model` and `submit_work_signal` in bounded batches.
+- Tool-call clarity: the published `update_profile_model` schema and description explicitly place `idempotencyKey` inside `profile`; a top-level misplaced key remains invalid.
+- Verification: `@buildmates/mcp-core` typecheck passed; the complete MCP tool contract passed `24/24`; repository lint and final diff checks are recorded after the aggregate gate.

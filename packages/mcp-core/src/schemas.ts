@@ -3,6 +3,7 @@ import { SETUP_STEPS } from "@buildmates/domain";
 
 export const workspaceScopeSchema = z.literal("global").default("global");
 export const idSchema = z.string().trim().min(3).max(128).regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/);
+export const canonicalTaxonomyIdSchema = z.string().trim().min(1).max(128).regex(/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/);
 export const idempotencyKeySchema = z.string().trim().min(8).max(128);
 export const isoDateSchema = z.string().datetime({ offset: true });
 export const summarySchema = z.string().trim().min(1).max(1200);
@@ -31,11 +32,11 @@ export const workSignalSchema = z.object({
   sourceId: idSchema,
   taxonomyVersion: z.string().trim().min(1).max(40),
   summary: summarySchema,
-  canonicalTopicIds: z.array(idSchema).max(30).default([]),
-  canonicalToolIds: z.array(idSchema).max(30).default([]),
-  canonicalDomainIds: z.array(idSchema).max(30).default([]),
-  canonicalStageIds: z.array(idSchema).max(10).default([]),
-  canonicalCollaborationIntentIds: z.array(idSchema).max(20).default([]),
+  canonicalTopicIds: z.array(canonicalTaxonomyIdSchema).max(30).default([]),
+  canonicalToolIds: z.array(canonicalTaxonomyIdSchema).max(30).default([]),
+  canonicalDomainIds: z.array(canonicalTaxonomyIdSchema).max(30).default([]),
+  canonicalStageIds: z.array(canonicalTaxonomyIdSchema).max(10).default([]),
+  canonicalCollaborationIntentIds: z.array(canonicalTaxonomyIdSchema).max(20).default([]),
   audience: workSignalAudienceSchema,
   allowMatching: z.boolean(),
   expiresAt: isoDateSchema,
@@ -68,7 +69,7 @@ export const profileModelSchema = z.object({
   projectOrInterest: z.string().trim().min(1).max(2_000),
   portfolioLinks: z.array(z.string().url().max(500)).max(30).default([]),
   taxonomyVersion: z.string().trim().min(1).max(40).optional(),
-  canonicalTopicIds: z.array(idSchema).max(30).default([]),
+  canonicalTopicIds: z.array(canonicalTaxonomyIdSchema).max(30).default([]),
   audience: audienceSchema,
   allowMatching: z.boolean(),
   acceptanceMode: z.enum(["manual", "full_autopilot"]),
