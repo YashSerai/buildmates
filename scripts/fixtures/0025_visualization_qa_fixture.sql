@@ -1,4 +1,4 @@
--- Temporary, privacy-safe production fixture for Map and Build Graph QA.
+-- Temporary, privacy-safe visualization fixture for Map and Build Graph QA.
 -- These records have no handles, sessions, identity principals, public profiles,
 -- indexable pages, or matching consent. Only aggregate city/topic queries see them.
 WITH RECURSIVE fixture(n) AS (

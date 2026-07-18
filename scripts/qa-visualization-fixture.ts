@@ -15,11 +15,22 @@ async function main() {
   try {
   const DB = await miniflare.getD1Database("DB") as D1Database;
   const migrations = (await readdir("apps/web/drizzle"))
-    .filter((name) => name.endsWith(".sql") && name <= "0026_expand_visualization_qa_fixture.sql")
+    .filter((name) => name.endsWith(".sql"))
     .sort();
+  const fixtures = [
+    "scripts/fixtures/0025_visualization_qa_fixture.sql",
+    "scripts/fixtures/0026_expand_visualization_qa_fixture.sql",
+  ];
 
   for (const migration of migrations) {
     const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
+    for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) {
+      await DB.prepare(statement).run();
+    }
+  }
+
+  for (const fixture of fixtures) {
+    const sql = await readFile(fixture, "utf8");
     for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) {
       await DB.prepare(statement).run();
     }
