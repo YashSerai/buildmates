@@ -106,6 +106,9 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(instructions).toContain("Never infer progress from old tasks");
   expect(instructions).toContain("show up to three concrete next actions");
   expect(instructions).toContain("Use my Codex workspace");
+  expect(instructions).toContain("every accessible task without filtering to the current directory");
+  expect(instructions).toContain("every project and every task in the approved inventory");
+  expect(instructions).toContain("only the current project is represented");
   expect(instructions).toContain("Skip workspace review");
   expect(instructions).toContain("without asking for permission again");
   expect(instructions).toContain("Search-engine indexing");

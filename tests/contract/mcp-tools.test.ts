@@ -109,12 +109,16 @@ describe("Buildmates MCP contract", () => {
 
     const sourceState = await invoke(services, "get_setup_state", {});
     expect(sourceState).toMatchObject({ nextStep: "source_selection" });
+    expect(sourceState.guidance.requiredHostDiscovery).toContain("every accessible Codex task");
+    expect(sourceState.guidance.completionGate).toContain("current-directory-only");
     expect(sourceState.guidance.nextAction).toContain("Skip workspace review");
     expect(sourceState.guidance.nextAction).toContain("without a second permission prompt");
 
     await invoke(services, "complete_setup_step", { payload: { step: "source_selection", sourceIds: [] }, idempotencyKey: "consent-carry-source" });
     const collectionState = await invoke(services, "get_setup_state", {});
     expect(collectionState).toMatchObject({ nextStep: "context_collection" });
+    expect(collectionState.guidance.requiredCoverage).toContain("every task in every project");
+    expect(collectionState.guidance.completionGate).toContain("only the current project");
     expect(collectionState.guidance.nextAction).toContain("proceed without asking again");
     expect(collectionState.guidance.fallback).toContain("workspace review was skipped");
   });
