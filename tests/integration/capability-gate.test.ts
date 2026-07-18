@@ -2,10 +2,11 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { generateKeyPair, exportSPKI, SignJWT } from "jose";
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { runD1Diagnostic, type D1Like } from "../../apps/web/src/platform/d1";
 import { runR2Diagnostic } from "../../apps/web/src/platform/r2";
 import { verifyDelegatedRequest } from "../../apps/web/src/platform/delegated-request";
-import { BUILD_MATES_MCP_TOOLS } from "../../packages/mcp-core/src/server";
+import { BUILD_MATES_MCP_TOOLS, buildmatesToolRegistry } from "../../packages/mcp-core/src/server";
 import { canonicalToolInputHash } from "../../packages/mcp-core/src/tool-hash";
 import { completeIdentityLink, sha256, type IdentityLinkStore } from "../../apps/web/src/platform/identity-link-store";
 import { createExternalMcpFetchHandler } from "../../apps/mcp/src/server";
@@ -18,7 +19,14 @@ describe("platform capability gate", () => {
     expect(BUILD_MATES_MCP_TOOLS.slice(0, 2)).toEqual(["get_link_url", "complete_identity_link"]);
     expect(BUILD_MATES_MCP_TOOLS).toHaveLength(40);
     expect(BUILD_MATES_MCP_TOOLS).toContain("validate_surface_spec");
+    expect(BUILD_MATES_MCP_TOOLS).toContain("submit_surface_revision");
     expect(new Set(BUILD_MATES_MCP_TOOLS).size).toBe(BUILD_MATES_MCP_TOOLS.length);
+
+    const catalogSchemas = buildmatesToolRegistry.map((definition) => ({
+      name: definition.name,
+      bytes: Buffer.byteLength(JSON.stringify(z.toJSONSchema(definition.input)), "utf8"),
+    }));
+    expect(catalogSchemas.filter(({ bytes }) => bytes > 16_000)).toEqual([]);
   });
 
   it("proves actor-scoped D1 insert/read/delete without leaking the actor", async () => {

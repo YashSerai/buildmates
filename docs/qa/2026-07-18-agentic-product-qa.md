@@ -178,6 +178,14 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 ### 2026-07-18 - website onboarding and profile-preview gate
 
 - Page-preview result: Pass at persistence and UI-contract level. Website onboarding no longer presents or approves a generic summary card. It exposes only a validated, non-recovery SurfaceSpec v2 private revision and requires the exact revision ID before publishing the Surface and profile or completing `page_preview`.
+
+### 2026-07-18 - beta plugin Surface submission catalog repair
+
+- Live-task reproduction: task `019f7739-3259-7440-b85f-6d7e9aa02987` loaded `get_surface_generation_brief`, `validate_surface_spec`, `decide_surface_revision`, and `rollback_surface`, but its Codex tool catalog omitted `submit_surface_revision`; setup therefore stopped safely at `6/10` with no revision submitted or published.
+- Root cause: `submit_surface_revision` was the only MCP tool advertising the full SurfaceSpec v2 JSON Schema. Its catalog schema was 23,793 bytes, while the adjacent surface-tool schemas were 333-716 bytes. Codex silently excluded that oversized tool definition.
+- Repair: the submission tool now advertises the generated spec as an opaque validated object, matching `validate_surface_spec`, while the server continues to enforce the same strict `safeParseSurfaceSpec`, active Design Policy, authorized binding/media, design-brief, and starter-rejection checks before persistence. The catalog schema is now 1,295 bytes.
+- Regression: the capability gate requires both validation and submission tools and fails if any Buildmates tool schema exceeds 16,000 bytes. Focused integration, MCP typecheck, and surface submission/approval contract verification pass.
+- Resume boundary: the repaired Worker must be deployed and the MCP catalog reloaded in a new task or reconnect. The existing task's loaded catalog cannot acquire a newly exposed tool in place; authoritative onboarding data remains resumable at `page_preview`.
 - Source-selection result: Pass at source level. Install and manual fallback copy lead with permissioned Codex workspace review, explain that research stays in Codex, and hand the user back to the guided Codex flow. Task-only and internal approval-batch narration were removed.
 - Work Signal result: Pass. Website review labels are humanized and the approved summary limit is 12,000 characters rather than 1,200.
 - Focused verification: web typecheck passed; onboarding/privacy integration passed `3/3`; the recovery-seed/private-preview regression passed again `1/1`; targeted ESLint passed; the production web build passed; scoped `git diff --check` passed.
