@@ -1,4 +1,5 @@
 type SeededNetwork = {
+  viewerHandle: string;
   pendingUserId: string;
   connectedUserId: string;
   pendingProposalId: string;
@@ -35,9 +36,9 @@ export async function seedPopulatedNetwork(
   const viewerProfileId = `e2e_profile_viewer_${suffix}`;
   const pendingProfileId = `e2e_profile_pending_${suffix}`;
   const connectedProfileId = `e2e_profile_connected_${suffix}`;
-  const viewerHandle = `tester-${suffix.slice(-12)}`;
-  const pendingHandle = `mira-${suffix.slice(-12)}`;
-  const connectedHandle = `rowan-${suffix.slice(-12)}`;
+  const viewerHandle = `tester_${suffix.slice(-12)}`;
+  const pendingHandle = `mira_${suffix.slice(-12)}`;
+  const connectedHandle = `rowan_${suffix.slice(-12)}`;
   const publishedAt = now - 7 * 86_400_000;
 
   await DB.batch([
@@ -178,6 +179,7 @@ export async function seedPopulatedNetwork(
   ]);
 
   return {
+    viewerHandle,
     pendingUserId,
     connectedUserId,
     pendingProposalId,
