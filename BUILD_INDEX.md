@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: SurfaceSpec v2 and completed-onboarding repair implemented; final deployment verification in progress
+Status: SurfaceSpec v2 and completed-onboarding repair deployed; clean 0/10 Codex QA is the next gate
 Last updated: 2026-07-17
 Product line: Meet people through what you build.
 
@@ -247,6 +247,8 @@ Deploy this repair, update the beta package, then run one clean 0/10 Codex onboa
 - The mandatory setup state is 10 steps. Networking Pulse explains every configurable value; Work Pulse recommends Tuesdays and Fridays; automation completes setup; referral creation is optional afterward.
 - The personal invite page infers the signed-in inviter, tracks accepted joins, caps active links, and does not ask for a redundant username.
 - Verification evidence: 89/89 unit tests, 12/12 security tests, 5/5 rendered-source tests, 8/8 Surface Lab desktop/phone tests, 12/16 combined affected E2E tests on the first run plus all 4 repaired failures passing on rerun, two focused surface-media integration regressions passing, both plugin bundles validating, workspace typechecks, clean ESLint, `git diff --check`, and the production web build. The Windows Vitest contract runner completed its assertions in earlier focused runs but failed to exit cleanly in the final combined process; it was terminated without treating the hung process as new pass evidence.
+- Production truth: implementation commit `b6a1d2cc676b877acecfa63202b9e883d667a8fd` is pushed to GitHub. ChatGPT Sites version 24 deployed successfully as `appgdep_6a5af23c9b908191966b774d4c4ff580`; the MCP Worker deployed as version `8d5448ed-4fc8-4495-a3ee-2de590db1c9f`. Landing, install, and `/llms.txt` return 200 with the revised contract, while unauthenticated MCP initialization remains closed with 401. The deleted/reset `yashns` profile correctly returns 404 until the clean onboarding run republishes it.
+- The locally installed beta plugin is updated to `0.3.0-beta.1+codex.20260718012000`, so the next fresh Codex task loads the revised onboarding and SurfaceSpec guidance.
 
 ## Anonymous Map and Build Graph repair
 
