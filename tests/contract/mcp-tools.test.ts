@@ -114,6 +114,8 @@ describe("Buildmates MCP contract", () => {
     expect(sourceState.guidance.requiredHostDiscovery).toContain("limit 50");
     expect(sourceState.guidance.requiredHostDiscovery).toContain("every product-bearing root");
     expect(sourceState.guidance.requiredHostDiscovery).toContain("exact absolute normalized root");
+    expect(sourceState.guidance.workspaceOnlySourceIds).toEqual([]);
+    expect(sourceState.guidance.nextAction).toContain("sourceIds: []");
     expect(sourceState.guidance.completionGate).toContain("current-directory-only");
     expect(sourceState.guidance.nextAction).toContain("Skip workspace review");
     expect(sourceState.guidance.nextAction).toContain("without a second permission prompt");
