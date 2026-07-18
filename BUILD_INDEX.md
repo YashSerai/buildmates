@@ -219,6 +219,7 @@ Continue the active first-run QA through the generated profile preview and prese
 - Expanding the approved scope to another task range, project, local memory source, or connected app still requires a new confirmation.
 - Beta activation now requires a clean new task titled `Buildmates setup - continue here`, not a history-duplicating fork. After the child successfully calls `get_setup_state`, the parent is titled `Buildmates installation - complete` and archived. The manual continuation remains the fallback when host task controls are unavailable.
 - The MCP contract, public `/llms.txt`, public and beta onboarding skills, plugin READMEs, and package cachebusters carry the same rules. Both plugin packages validate, 18/18 focused MCP contract tests pass, workspace typechecks pass, and the public agent contract passes on desktop and phone.
+- Exact implementation commit `c7a62b41dbb6e49cb68fae04f2ee80e885775a90` is live as ChatGPT Sites version 20 and MCP Worker version `0f5a30d4-d9e0-4479-915c-88e251460d84`. The versioned live contract returned all new markers; the plain `/llms.txt` path initially retained the prior edge response while caches propagated.
 
 ## Codex acquisition path added 2026-07-16
 
