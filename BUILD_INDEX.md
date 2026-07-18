@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: Network information architecture, safety/settings, copy, and responsive UI repair verified in source; deploy and clean 0/10 Codex QA are next
+Status: Release candidate deployed and production-smoked; clean 0/10 Codex onboarding QA is next
 Last updated: 2026-07-18
 Product line: Meet people through what you build.
 
@@ -87,7 +87,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - User-facing copy uses Introductions and Activity consistently, removes fallback/process language from web onboarding, explains actions in product terms, and keeps technical identifiers, schemas, checkpoints, raw payloads, and implementation notes out of ordinary surfaces.
 - Final rendered evidence covers populated and empty states at desktop and phone dimensions. The populated end-to-end fixture exercises an introduction, a Connection and room conversation, two Activity items, an active Circle chat, and a Circle invitation without leaking into production.
 - Source verification: clean lint and workspace typechecks; 13/13 rendered web assertions; 91/91 unit tests; 82/82 integration tests after SurfaceSpec v2 fixture repair; 35/35 contract assertions after current-time/order fixture repair; 12/12 security tests; production workspace build; 12/12 focused settings/safety desktop-phone checks; and 2/2 final populated-network desktop-phone journeys with zero console errors or horizontal overflow.
-- **Still required before launch:** deploy this exact source, run production smoke, then reset the test account and local Buildmates installation for one clean 0/10 Codex onboarding QA. Map and Build Graph remain explicitly pending the privacy-safe multi-density dummy-data QA already recorded below.
+- **Still required before launch:** run one clean 0/10 Codex onboarding QA against the deployed release candidate. Map and Build Graph remain explicitly pending the privacy-safe multi-density dummy-data QA already recorded below.
 
 ## Clean-room onboarding QA repair - 2026-07-17
 
@@ -100,7 +100,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - Work Signal wording, profile status wording, aggregate-map/indexing explanations, example metrics, and the connection-page first viewport were corrected.
 - Remaining brand task: generate the final Buildmates logo with ImageGen and replace the current Buildmates/Codex text labels with approved marks where permitted. No placeholder initials remain.
 - Exact source commit `7b93a9b96e0396f7779c5e38da3aec04ed49d00d` is live as ChatGPT Sites version 17 and Worker version `534d8a18-5c4e-4a68-a573-262794948822`. Production returned 200 for `/`, `/install`, `/llms.txt`, OAuth metadata, and protected-resource metadata; unauthenticated MCP access returned 401 as required.
-- The production test account reached terminal deletion, external MCP OAuth/principal/handoff/replay/rate-limit state was cleared, and GitHub confirmed the Buildmates OAuth grant was revoked. The next authorization must therefore create a new Buildmates account and begin from the server-authoritative `0/11` state.
+- The production test account reached terminal deletion, external MCP OAuth/principal/handoff/replay/rate-limit state was cleared, and GitHub confirmed the Buildmates OAuth grant was revoked. The next authorization must therefore create a new Buildmates account and begin from the server-authoritative `0/10` state.
 - Beta activation now treats the fresh-task boundary as part of installation UX. After installation and OAuth, Codex asks permission to open the activated task itself through the host; only when native task creation is unavailable does it show the exact one-line manual fallback. Recursive `codex exec` is explicitly forbidden. Exact source commit `41766beb26e9fcfbf9d8f21c154cf428991b163a` is live as ChatGPT Sites version 18, and the beta cachebuster is `0.3.0-beta.1+codex.20260717222507`.
 - QA task `019f721b-2b85-7c72-8f5c-f0e0b6728887` completed Buildmates OAuth but made no native create-task or fork-task call. It had loaded the pre-version-18 public contract and beta package before the automatic handoff repair was deployed, so it correctly fell back to telling the user to start a fresh task; this was not a failed host task-creation attempt.
 - The MCP authorization route now uses a dedicated consent surface with a compact Codex-to-Buildmates handoff diagram, plain-language permissions, explicit expired-link recovery, a working signed-out path, responsive layout, reduced-motion support, and `noindex` metadata. Exact source commit `feb9e04b4bd5397223c5fed0475600e2524e7806` is live as ChatGPT Sites version 19 (`appgdep_6a5ab28641e88191b642ad2afc763a11`).
@@ -221,7 +221,19 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 
 ## Current next action
 
-Deploy this repair, update the beta package, then run one clean 0/10 Codex onboarding QA against the production MCP. Preserve the full task as evidence. The task handoff must label the setup and completed-installation tasks distinctly, and exact source-selection approval authorizes the stated private context collection without a second prompt. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+Run one clean 0/10 Codex onboarding QA against the production MCP and preserve the full task as evidence. The task handoff must label the setup and completed-installation tasks distinctly, and exact source-selection approval authorizes the stated private context collection without a second prompt. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+
+## Release-candidate deployment and clean reset - 2026-07-18
+
+- Functional release commit `7bd395337faeecf21b1d53c0685e1f2c113b5cbb` is pushed on `launch/buildmates`.
+- ChatGPT Sites version 25 deployed successfully as `appgdep_6a5b170dd9ec819188cfd40652d5bea0` at `https://buildmates.yashns.chatgpt.site`.
+- The external MCP Worker deployed successfully as version `2e44de1e-55c5-4dea-b686-bade5c9ed713` at `https://buildmates-mcp.yashserai1.workers.dev`.
+- Production smoke passed the public landing page, D1 readiness, security headers, authenticated-route redirect boundary, robots, and manifest. `/`, `/install`, and `/llms.txt` return 200; OAuth authorization-server and protected-resource metadata return 200; unauthenticated MCP initialization returns 401.
+- Source gates pass lint, all workspace typechecks, all production builds, 91/91 unit tests, 82/82 integration assertions, 35/35 contract assertions, 12/12 security assertions, 13/13 rendered web checks, and the retained desktop/phone populated and safety/settings matrices.
+- The final copy scan found no public leakage of SurfaceSpec internals, setup evidence identifiers, identity scopes, or operator instructions. Technical language remains limited to restricted operator tooling and the non-production Surface Lab.
+- The production website account reached the terminal deletion route, the GitHub Buildmates OAuth grant was revoked, and the Worker database was verified at zero OAuth tokens, handoffs, assertion replays, rate-limit rows, and identity principals.
+- The local Buildmates OAuth credential, MCP registration, installed beta plugin, and installed cache were removed. The `buildmates-beta` marketplace remains configured so the next QA exercises a fresh installation instead of an already-loaded plugin.
+- Map and Build Graph are not marked launch-complete. Their multi-density, privacy-safe dummy-data desktop/phone QA remains the explicit visualization gate.
 
 ## Source-consent and clean-task handoff repair
 
