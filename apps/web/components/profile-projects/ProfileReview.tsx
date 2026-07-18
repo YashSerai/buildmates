@@ -113,8 +113,7 @@ export function ProfileReview({
       setBusy(false);
       return;
     }
-    router.push(`/@${data.handle}`);
-    router.refresh();
+    router.push(`/builders/${data.handle}`);
   }
   return (
     <form action={submit} className={styles.form}>

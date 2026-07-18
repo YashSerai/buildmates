@@ -30,7 +30,7 @@ describe("canonical MCP D1 execution", () => {
     services = {
       linkBaseUrl: "https://buildmates.example",
       repository: createD1McpProductRepository(DB),
-      now: () => new Date(at),
+      now: () => new Date("2026-07-18T12:00:00.000Z"),
       completeIdentityLink: async () => ({ linked: false, reason: "invalid_or_expired" }),
       allowAttempt: async () => true,
       resolveLinkedUser: async ({ mcpSubject }) => links.has(mcpSubject) ? { userId: links.get(mcpSubject)! } : null,
@@ -224,16 +224,18 @@ describe("canonical MCP D1 execution", () => {
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.starterSpec })).resolves.toEqual({ valid: true, issues: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: { kind: "profile" } })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ path: expect.any(String), message: expect.any(String) })]) });
 
-    const revision = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-revision", surfaceId, baseRevisionId: null, spec: workshopProfileSpec, visibility: "private_preview", idempotencyKey: "surface-revision-01" }) as MutationResult;
+    const designBrief = { direction: "A warm editorial workshop page with clear project depth", sections: ["Introduction", "Current work", "Projects"], signatureElement: "A workshop ledger running through the page" };
+    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "starter-revision", surfaceId, baseRevisionId: null, spec: brief.starterSpec, visibility: "private_preview", designBrief, designBriefApproved: true, idempotencyKey: "starter-revision-01" })).rejects.toThrow("starter_spec_not_publishable");
+    const revision = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-revision", surfaceId, baseRevisionId: null, spec: workshopProfileSpec, visibility: "private_preview", designBrief, designBriefApproved: true, idempotencyKey: "surface-revision-01" }) as MutationResult;
     expect((revision.result as Record<string, unknown>).previewUrl).toBe("https://buildmates.example/profile/design");
     await expect(DB.prepare("SELECT status FROM surface_revisions WHERE id=?").bind(revision.result.id).first()).resolves.toEqual({ status: "draft" });
-    await call(ALICE_SUB, "decide_surface_revision", { revisionId: revision.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "surface-approval-01" });
+    const publication = await call(ALICE_SUB, "decide_surface_revision", { revisionId: revision.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "surface-approval-01" }) as MutationResult;
+    expect(publication.result).toMatchObject({ publicUrl: "https://buildmates.example/builders/surface_alice" });
     await expect(DB.prepare("SELECT published_revision_id AS published FROM surfaces WHERE id=?").bind(surfaceId).first()).resolves.toEqual({ published: revision.result.id });
 
     const setupSignal = await call(ALICE_SUB, "submit_work_signal", { signal: signal("surface-setup-signal", "surface-signal-01") }) as MutationResult;
     const setupPulse = await call(ALICE_SUB, "update_networking_pulse", { pulse: { pulseId: "surface-setup-pulse", intentSummary: "Meet builders working on governed UI", builderSimilarity: "balanced", geography: "global", maximumIntroductionsPerWeek: 3, serendipity: 30, timezone: "America/Vancouver", quietHours: [], snoozedUntil: null, exclusions: [], startsAt: "2026-07-15T12:00:00.000Z", expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-pulse-01" } }) as MutationResult;
-    await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "surface-automation", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "surface-automation-01" });
-    const invite = await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-invite", kind: "personal", headline: "Meet builders working on safe generative UI", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-invite-01" }) as MutationResult;
+    await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-invite", kind: "personal", headline: "Meet builders working on safe generative UI", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-invite-01" });
     const builderInvite = await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-builder-invite", kind: "builder", targetId: profile.result.id, headline: "Meet Alice, who builds governed surfaces", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-builder-invite-01" }) as MutationResult;
     await DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,status,created_at,updated_at) VALUES ('surface-project','user_alice','surface-project','Surface Project','Governed generative surfaces','active',?,?)").bind(at,at).run();
     const cardInvite = await call(ALICE_SUB, "create_invite_link", { inviteId: "surface-card-invite", kind: "connection_card", targetId: "surface-project", headline: "Connect around governed generative surfaces", maximumUses: 5, expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-card-invite-01" }) as MutationResult;
@@ -249,12 +251,11 @@ describe("canonical MCP D1 execution", () => {
     await setup({ step: "page_preview", surfaceRevisionId: revision.result.id, approved: true }, "surface-setup-06");
     await setup({ step: "networking_pulse", pulseId: setupPulse.result.id }, "surface-setup-07");
     await setup({ step: "acceptance_mode", mode: "manual" }, "surface-setup-08");
-    await setup({ step: "automation", enabled: true, cadence: "daily", sourceLivenessReviewed: true }, "surface-setup-09");
-    await expect(call(ALICE_SUB, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { enabled: true, cadence: "daily", kind: "buildmates" } });
-    await setup({ step: "first_useful_outcome", kind: "invite", objectId: invite.result.id }, "surface-setup-10");
-    await expect(call(ALICE_SUB, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 11 });
+    await expect(call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "surface-automation", cursor: null, state: "configured", lastOutcome: "Configured", enabled: true, cadence: "twice_weekly", sourceLivenessReviewed: true, nextRunAt: "2026-07-17T12:00:00.000Z", idempotencyKey: "surface-automation-01" })).resolves.toMatchObject({ result: { setup: { complete: true, completedCount: 10 } } });
+    await expect(call(ALICE_SUB, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { enabled: true, cadence: "twice_weekly", kind: "buildmates" } });
+    await expect(call(ALICE_SUB, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 10, totalSteps: 10 });
 
-    const personal = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-personal", surfaceId, baseRevisionId: revision.result.id, spec: { ...workshopProfileSpec, title: "Private personal view" }, visibility: "personal_view", idempotencyKey: "surface-personal-01" }) as MutationResult;
+    const personal = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "caller-personal", surfaceId, baseRevisionId: revision.result.id, spec: { ...workshopProfileSpec, title: "Private personal view" }, visibility: "personal_view", designBrief, designBriefApproved: true, idempotencyKey: "surface-personal-01" }) as MutationResult;
     await expect(DB.prepare("SELECT revision_id AS revision FROM personal_surface_views WHERE surface_id=? AND user_id='user_alice'").bind(surfaceId).first()).resolves.toEqual({ revision: personal.result.id });
     await expect(call(ALICE_SUB, "decide_surface_revision", { revisionId: personal.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "personal-publish-denied-01" })).rejects.toThrow("personal_view_not_publishable");
     await expect(call(ALICE_SUB, "rollback_surface", { surfaceId, revisionId: personal.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "personal-rollback-denied-01" })).rejects.toThrow("personal_view_not_rollback_target");
@@ -403,7 +404,7 @@ describe("canonical MCP D1 execution", () => {
       ...workshopProfileSpec,
       kind: "circle",
       title: "Retrieval builders Circle",
-      root: { id: "circle-root", type: "section", tone: "canvas", children: [{ id: "circle-title", type: "heading", level: 1, binding: "surface.title", fallback: "Circle" }] },
+      root: { id: "circle-root", type: "section", tone: "canvas", layout: "cover", padding: "xl", bleed: true, minHeight: "viewport", background: "paper-rule", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center", children: [{ id: "circle-title", type: "heading", level: 1, binding: "surface.title", fallback: "Circle", size: "hero", align: "start", width: "balanced", weight: "black", lineHeight: "tight", tracking: "tight" }] },
       bindingManifest: { content: [{ key: "surface.title", type: "text" }], media: [] },
       decorativeRegions: [],
       accessibility: { label: "Retrieval builders Circle", primaryHeadingNodeId: "circle-title", reducedMotion: "required" },

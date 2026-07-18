@@ -15,6 +15,7 @@ export function InviteCenter({ initialWatch }: { initialWatch: boolean }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [invites, setInvites] = useState<Invite[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const joinedCount = invites.reduce((total, invite) => total + invite.useCount, 0);
   const load = useCallback(async () => {
     const [inviteResponse, projectResponse] = await Promise.all([fetch("/api/invites", { cache: "no-store" }), fetch("/api/projects", { cache: "no-store" })]);
     if (inviteResponse.ok) setInvites(((await inviteResponse.json()) as { invites: Invite[] }).invites); else setError("Invitation history could not be loaded. Try again.");
@@ -39,7 +40,7 @@ export function InviteCenter({ initialWatch }: { initialWatch: boolean }) {
   }
   async function personal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await create({ kind: "personal", maximumUses: 1 });
+    await create({ kind: "personal", maximumUses: 20 });
   }
   async function card(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = new FormData(event.currentTarget);
@@ -74,14 +75,14 @@ export function InviteCenter({ initialWatch }: { initialWatch: boolean }) {
   }
 
   return <>
-    <section className={styles.panel}><h2>Invite someone you know</h2><p>Buildmates knows the invitation comes from your signed-in profile. Send this one-time link to one person; they will see only what you chose to share.</p><form onSubmit={personal}><button disabled={busy !== null}>{busy === "create" ? "Creating…" : "Create invitation"}</button></form></section>
-    <section className={styles.panel}><h2>Invite through a project</h2><p>Center the invitation on a project, so they know what sparked it.</p>{projects.length ? <form onSubmit={card}><label>Project<select name="project">{projects.map((project) => <option key={project.slug} value={project.slug}>{project.title}</option>)}</select></label><button disabled={busy !== null}>{busy === "create" ? "Creating…" : "Create project invitation"}</button></form> : <p>Share a project on your profile to create this invitation.</p>}</section>
+    <section className={styles.panel}><h2>Share your personal Buildmates link</h2><p>Buildmates attributes this link to your signed-in profile. Share it with builders you would genuinely like to have here. The history below counts people who accepted the link and joined.</p><form onSubmit={personal}><button disabled={busy !== null}>{busy === "create" ? "Creating..." : "Create personal share link"}</button></form></section>
+    <section className={styles.panel}><h2>Invite through a project</h2><p>Center the invitation on a project, so they know what sparked it.</p>{projects.length ? <form onSubmit={card}><label>Project<select name="project">{projects.map((project) => <option key={project.slug} value={project.slug}>{project.title}</option>)}</select></label><button disabled={busy !== null}>{busy === "create" ? "Creating..." : "Create project invitation"}</button></form> : <p>Share a project on your profile to create this invitation.</p>}</section>
     {url && <section className={styles.panel}><h2>New share link</h2><label>Share link<input readOnly value={url} onFocus={(event) => event.currentTarget.select()} /></label><button onClick={() => void navigator.clipboard.writeText(url).then(() => setNotice("Link copied.")).catch(() => setError("Copy was blocked. Select the share link and copy it manually."))}>Copy link</button></section>}
-    <section className={styles.toggle}><h2>Let Codex keep looking</h2><p>Codex will mention promising new builders during your next scheduled Work Pulse.</p><button disabled={busy !== null} aria-pressed={watching} onClick={toggle}>{busy === "watch" ? "Updating…" : watching ? "Included in your Work Pulse" : "Notify me in Work Pulse"}</button></section>
-    {invites.length > 0 && <section className={styles.panel}><h2>Invitation history</h2><ul>{invites.map((invite) => <li key={invite.id}><span>{inviteKindLabel(invite.kind)} · {invite.useCount > 0 ? "Used" : "Unused"} · expires {new Date(invite.expiresAt).toLocaleDateString()}</span>{invite.revokedAt ? <strong>Revoked</strong> : invite.useCount > 0 ? <strong>Completed</strong> : <button disabled={busy !== null} onClick={() => void revoke(invite.id)}>{busy === invite.id ? "Revoking…" : "Revoke"}</button>}</li>)}</ul></section>}
+    <section className={styles.toggle}><h2>Let Codex keep looking</h2><p>Codex will mention promising new builders during your next scheduled Work Pulse.</p><button disabled={busy !== null} aria-pressed={watching} onClick={toggle}>{busy === "watch" ? "Updating..." : watching ? "Included in your Work Pulse" : "Notify me in Work Pulse"}</button></section>
+    {invites.length > 0 && <section className={styles.panel}><h2>Invitation history</h2><p className={styles.joinedCount}>{joinedCount} builder{joinedCount === 1 ? "" : "s"} joined through your links</p><ul>{invites.map((invite) => <li key={invite.id}><span>{inviteKindLabel(invite.kind)} · {invite.useCount} of {invite.maximumUses} joined · expires {new Date(invite.expiresAt).toLocaleDateString()}</span>{invite.revokedAt ? <strong>Revoked</strong> : <button disabled={busy !== null} onClick={() => void revoke(invite.id)}>{busy === invite.id ? "Revoking..." : "Revoke"}</button>}</li>)}</ul></section>}
     {notice && <p className={styles.status} role="status">{notice}</p>}
     {error && <p className={styles.error} role="alert">{error}</p>}
   </>;
 }
 
-function inviteKindLabel(kind: string) { return ({personal:"Personal invitation",builder:"Profile invitation",connection_card:"Project connection card"} as Record<string,string>)[kind] ?? "Buildmates invitation"; }
+function inviteKindLabel(kind: string) { return ({ personal: "Personal share link", builder: "Profile invitation", connection_card: "Project connection card" } as Record<string, string>)[kind] ?? "Buildmates invitation"; }

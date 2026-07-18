@@ -49,11 +49,12 @@ describe("onboarding and privacy persistence", () => {
     await mutateOnboarding(DB, userId, "Avery", { action: "save_networking", intentSummary: "Meet people comparing retrieval systems", similarAdjacent: 50, localGlobal: 50, serendipity: 30, maximumIntroductionsPerWeek: 3, builderSimilarity: "balanced", geography: "balanced", timezone: "UTC", quietStart: "22:00", quietEnd: "08:00", exclusions: [], avoidRepeatedClusters: true, expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString() });
     await mutateOnboarding(DB, userId, "Avery", { action: "save_acceptance", mode: "full_autopilot" });
     await mutateOnboarding(DB, userId, "Avery", { action: "save_automation", cadence: "daily", enabled: true, sourceLivenessReviewed: true, capability: "available" });
+    expect((await getOnboardingSnapshot(DB, userId, "Avery")).setup).toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
     await mutateOnboarding(DB, userId, "Avery", { action: "complete_outcome" });
     expect(await DB.prepare("SELECT kind,target_id AS targetId,revoked_at AS revokedAt FROM watches WHERE user_id=?").bind(userId).first()).toEqual({kind:"relevant_builder",targetId:"network",revokedAt:null});
 
     const snapshot = await getOnboardingSnapshot(DB, userId, "Avery");
-    expect(snapshot.setup).toMatchObject({ complete: true, completedCount: 11, nextStep: null });
+    expect(snapshot.setup).toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
     expect(snapshot.profile).toMatchObject({ acceptanceMode: "full_autopilot", allowMatching: true });
     expect(snapshot.automation).toMatchObject({ enabled: true, cadence: "daily", capability: "approval_required", sourceLivenessReviewed: true });
     const automationState = await DB.prepare("SELECT state_json AS stateJson FROM automation_checkpoints WHERE user_id=? AND kind='buildmates'").bind(userId).first<{ stateJson: string }>();

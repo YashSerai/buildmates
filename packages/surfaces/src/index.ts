@@ -5,5 +5,6 @@ export * from "./schema";
 export * from "./scope-css";
 export * from "./seed-policy";
 export * from "./profile-brief";
+export * from "./profile-fixtures";
 
 export const surfacesPackage = "@buildmates/surfaces";

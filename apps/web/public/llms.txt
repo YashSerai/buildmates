@@ -21,7 +21,7 @@ When the user asks to install, set up, start, or resume Buildmates:
 9. The progress restriction does not prohibit permissioned profile research. With the user's approval, recent Codex tasks, project folders, and local GBrain or memory files may be reviewed as profile sources.
 10. If `get_setup_state` remains unavailable in the activated task, repair the app or MCP connection. Advance one returned step at a time and call it again after every completed write.
 11. Ask before reviewing workspace context, using a connected app, submitting the first Work Signal, publishing the generated page, creating an automation, or taking an interpersonal action not covered by the saved acceptance mode.
-12. Finish only after the user has reviewed their complete profile and generated page, chosen networking and automation preferences, and received one useful next action.
+12. Setup has 10 mandatory steps and finishes after the user has reviewed and published their custom profile, chosen a Networking Pulse and acceptance mode, and configured one Work Pulse. A candidate, follow, watch, or invite is optional after setup.
 13. During setup and each approved Work Pulse, call `list_topic_taxonomy`, classify reviewed project context using only returned canonical topic IDs, and submit those IDs with the approved profile or Work Signal. Buildmates may aggregate those IDs anonymously in the Build Graph, but never raw project text, prompt text, source excerpts, or identity. A deliberately supplied supported city joins the anonymous Map by default unless the user asks to hide it.
 
 ## Approval batching
@@ -75,4 +75,27 @@ Do not compress these settings into one unexplained approval sentence. Inferred 
 
 If no recurring Work Signals exist, say: "Your approved profile draft is saved. You did not connect an ongoing work source, so there are no recurring Work Signals to review."
 
-For page generation, use the `starterSpec` returned by `get_surface_generation_brief`, customize only authorized content, validate with `validate_surface_spec`, and then submit a private preview. If customization still fails, use the unchanged valid starter so onboarding continues. Every incomplete response must say what completed, what comes next, the exact user action, and the fallback.
+For page generation, call `get_surface_generation_brief` with the profile's returned `surfaceId`. Before the first actual revision, explain the learned visual direction, planned sections, and one signature element; optionally ask whether the user wants an available frontend or design skill applied; then get approval. The returned `starterSpec` is hidden recovery scaffolding, not Design 1. It cannot be submitted, published, or shown in revision history. Use only authorized bindings, validate the genuinely customized full-page specification, repair exact validation issues until it passes, and submit a private preview with the approved design brief. Publish only after the user approves that preview. Use the `publicUrl` returned after approval as the share link. `/profile/design` is the owner-only design workspace and is never the public profile.
+
+## Networking Pulse
+
+Before saving, explain every proposed value:
+
+- **Intent** is who the user wants to meet and why during this temporary period.
+- **Similar** prioritizes closely related work, **adjacent** prioritizes complementary work, and **balanced** mixes both.
+- **Local** prioritizes the user's chosen area, **global** removes that preference, and **balanced** mixes both.
+- **Maximum introductions per week** is a hard cap, not a quota.
+- **Quiet hours** prevent introduction activity during local-time windows.
+- **Serendipity** controls variety beyond the strongest obvious matches.
+- **Exclusions** remove unwanted people, companies, industries, topics, or repeated clusters.
+- **Expiry** is when this temporary intent must be reconfirmed so it does not silently become permanent.
+
+Recommend balanced matching, global geography, at most three introductions per week, and 30-day expiry unless the user's context supports a different choice.
+
+## Work Pulse and setup completion
+
+When recurring automations are available, recommend exactly one clearly named Buildmates Work Pulse every Tuesday and Friday in the user's timezone. Explain that each run reviews only permitted sources, refreshes approved profile and project topics plus changed or expiring Work Signals, checks one bounded candidate shortlist and the saved relevance watch, independently evaluates only that batch, and posts sources checked, changes, matches, actions needed, and the next run to the Codex task inbox. Use manual refresh only when the user explicitly chooses it or recurring automations are unavailable, and state which condition applies.
+
+After creating or updating the approved automation, call `update_automation_checkpoint` once with `cadence: twice_weekly` and `sourceLivenessReviewed: true`; that write completes setup without a duplicate `complete_setup_step` call. Then summarize the profile, Networking Pulse, acceptance mode, and schedule; give the canonical `/builders/{handle}` profile URL; and explain that the user can update or redesign it by asking Codex through Buildmates. Optionally offer a personal invite link and explain that joined invitees are attributed to the inviter. The invite is not a setup gate.
+
+Every incomplete response must say what completed, what comes next, the exact user action, and the fallback.

@@ -12,7 +12,6 @@ const labels: Record<SetupStep, string> = {
   networking_pulse: "Networking Pulse",
   acceptance_mode: "Acceptance",
   automation: "Automation",
-  first_useful_outcome: "First useful action",
 };
 
 export function SetupProgress({

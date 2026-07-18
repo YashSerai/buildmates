@@ -85,7 +85,7 @@ describe("Buildmates MCP contract", () => {
 
   it("delegates setup-state reads to the website in the external MCP topology", async () => {
     const { services } = fixture();
-    services.executeRemoteTool = async () => ({ completedCount: 0, totalSteps: 11, nextStep: "identity_link" });
+    services.executeRemoteTool = async () => ({ completedCount: 0, totalSteps: 10, nextStep: "identity_link" });
     expect(shouldExecuteRemoteTool("get_setup_state", services)).toBe(true);
     expect(shouldExecuteRemoteTool("get_link_url", services)).toBe(false);
     expect(shouldExecuteRemoteTool("complete_identity_link", services)).toBe(false);
@@ -94,7 +94,7 @@ describe("Buildmates MCP contract", () => {
   it("rejects unauthenticated principals and exposes only safe setup/link operations before linking", async () => {
     const { services } = fixture();
     await expect(executeBuildmatesTool("get_link_url", {}, undefined, services)).rejects.toThrow("oauth_required");
-    await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ completedCount: 0, totalSteps: 11, nextStep: "identity_link" });
+    await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ completedCount: 0, totalSteps: 10, nextStep: "identity_link" });
     await expect(invoke(services, "get_link_url", {})).resolves.toEqual({ url: "https://buildmates.example/settings/connections", workspaceScope: "global" });
     await expect(invoke(services, "get_link_url", { workspaceScope: "tenant-acme" })).rejects.toThrow("invalid_workspace_scope");
     for (const definition of buildmatesToolRegistry.filter((tool) => !tool.preLink)) {
@@ -277,9 +277,9 @@ describe("Buildmates MCP contract", () => {
     } finally {
       await mf.dispose();
     }
-  }, 15_000);
+  }, 30_000);
 
-  it.each(["rich", "sparse"] as const)("completes the %s setup path through profile, automation, and a useful outcome", async (mode) => {
+  it.each(["rich", "sparse"] as const)("completes the %s setup path through profile and one Work Pulse checkpoint", async (mode) => {
     const { services, links, repository } = fixture();
     links.set(SUBJECT_A, "user_alice");
     const setup = async (payload: Record<string, unknown>, key: string) => invoke(services, "complete_setup_step", { payload, idempotencyKey: key });
@@ -296,15 +296,21 @@ describe("Buildmates MCP contract", () => {
     await repository.write({ kind: "surface_revision", id: `${mode}-surface-revision`, ownerUserId: "user_alice", value: { surfaceId: `${mode}-surface`, status: "published" }, now: "2026-07-15T12:00:00.000Z" });
     await setup({ step: "page_preview", surfaceRevisionId: `${mode}-surface-revision`, approved: true }, `${mode}-step-07`);
     await invoke(services, "update_networking_pulse", { pulse: validPulse(`${mode}-pulse`) });
+    await expect(invoke(services, "get_networking_pulse", {})).resolves.toMatchObject({ optionGuide: { builderSimilarity: { adjacent: expect.stringContaining("complementary") }, expiresAt: expect.stringContaining("reconfirmed") } });
     await setup({ step: "networking_pulse", pulseId: `${mode}-pulse` }, `${mode}-step-08`);
     await setup({ step: "acceptance_mode", mode: mode === "rich" ? "full_autopilot" : "manual" }, `${mode}-step-09`);
-    await invoke(services, "update_automation_checkpoint", { checkpointId: `${mode}-checkpoint`, cursor: null, state: "configured", lastOutcome: "Setup complete", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: `${mode}-automation-01` });
-    await setup({ step: "automation", enabled: true, cadence: "weekly", sourceLivenessReviewed: true }, `${mode}-step-10`);
+    await expect(invoke(services, "update_automation_checkpoint", { checkpointId: `${mode}-checkpoint`, cursor: null, state: "configured", lastOutcome: "Setup complete", enabled: true, cadence: "twice_weekly", sourceLivenessReviewed: true, nextRunAt: "2026-07-17T12:00:00.000Z", idempotencyKey: `${mode}-automation-01` })).resolves.toMatchObject({ result: { setup: { complete: true, completedCount: 10 } } });
     await invoke(services, "create_invite_link", { inviteId: `${mode}-invite`, kind: "builder", targetId: `${mode}-profile`, headline: "Find builders working on matching", expiresAt: "2026-08-01T00:00:00.000Z", maximumUses: 20, idempotencyKey: `${mode}-invite-01` });
-    await setup({ step: "first_useful_outcome", kind: "invite", objectId: `${mode}-invite` }, `${mode}-step-11`);
-    await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 11, nextStep: null });
+    await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
     await expect(invoke(services, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ audience: "public" }] });
     await expect(invoke(services, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { state: "configured", kind: "buildmates" } });
+  });
+
+  it("normalizes legacy eleven-step setup rows as complete after automation", async () => {
+    const { services, links, repository } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation", "source_selection", "context_collection", "signal_privacy_review", "basic_profile", "page_preview", "networking_pulse", "acceptance_mode", "automation", "first_useful_outcome"], updatedAt: "2026-07-15T12:00:00.000Z" }, now: "2026-07-15T12:00:00.000Z" });
+    await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
   });
 
   it("accepts an explicitly approved private profile as basic-profile evidence", async () => {

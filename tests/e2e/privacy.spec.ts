@@ -33,7 +33,7 @@ test("privacy center audits source revocation, matching pause, export, and delet
   await expect(deletion).toBeDisabled();
   await page.getByLabel("Type DELETE BUILDMATES").fill("DELETE BUILDMATES");
   await expect(deletion).toBeEnabled();
-  await expect(page.getByText(/source\.revoked/i)).toBeVisible();
+  await expect(page.getByText("Connected source removed", { exact: true })).toBeVisible();
   await page.getByRole("button",{name:"Delete project"}).click();
   await expect(page.getByText("No active projects")).toBeVisible();
   await assertNoOverflow(page);
@@ -47,10 +47,12 @@ test("automation settings expose expiring intent, hard budget, quiet hours, live
   await expect(page.getByRole("heading", { name: "Control when Buildmates looks for people" })).toBeVisible();
   await expect(page.getByLabel("Introductions per week")).toBeVisible();
   await expect(page.getByLabel("Quiet start")).toBeVisible();
-  await expect(page.getByLabel(/local\/device sources/)).toBeVisible();
-  await page.getByLabel(/local\/device sources/).check();
+  await expect(page.getByLabel("When should Work Pulse run?")).toHaveValue("twice_weekly");
+  await expect(page.getByText(/What a scheduled Work Pulse does/)).toBeVisible();
+  await expect(page.getByLabel(/local or device-bound sources/)).toBeVisible();
+  await page.getByLabel(/local or device-bound sources/).check();
   await page.getByRole("button", { name: "Save automation" }).click();
-  await expect(page.getByRole("status")).toContainText("Settings saved");
+  await expect(page.getByRole("status")).toContainText("Automation preferences saved");
   await assertNoOverflow(page);
 });
 

@@ -8,7 +8,7 @@ import { AutomationCadence } from "@/components/onboarding/AutomationCadence";
 import { userFacingError } from "@/src/client/user-facing-error";
 import styles from "../settings.module.css";
 class RequestError extends Error {}
-const automationPrompt = "Open Buildmates and create or update my single Buildmates Work Pulse using my saved cadence, source choices, quiet hours, and introduction limit. Confirm the schedule before creating it, then tell me when it will run next and whether any approved source needs my computer to be available.";
+const automationPrompt = "Open Buildmates and create or update my single Buildmates Work Pulse. Use Tuesdays and Fridays unless I have chosen another saved cadence. On each run, refresh only my approved sources and profile context, update approved projects or work signals, check my relevance watch and bounded candidate shortlist, and post a concise outcome here. Keep my quiet hours, introduction limit, and acceptance mode in force. Confirm the schedule before creating it, then tell me the next run and whether any approved source needs my computer to be available.";
 export function AutomationClient({
   initialSnapshot,
 }: {
@@ -16,7 +16,7 @@ export function AutomationClient({
 }) {
   const pulse = initialSnapshot.networking;
   const [cadence, setCadence] = useState<Cadence>(
-    initialSnapshot.automation?.cadence ?? "automatic",
+    initialSnapshot.automation?.cadence ?? "twice_weekly",
   );
   const [form, setForm] = useState({
     intentSummary:
@@ -38,7 +38,7 @@ export function AutomationClient({
     expiresAt:
       pulse && !pulse.expired
         ? pulse.expiresAt.slice(0, 10)
-        : new Date(Date.parse(initialSnapshot.generatedAt) + 28 * 864e5)
+        : new Date(Date.parse(initialSnapshot.generatedAt) + 30 * 864e5)
             .toISOString()
             .slice(0, 10),
   });
@@ -84,8 +84,7 @@ export function AutomationClient({
           <div>
             <h2>Networking Pulse</h2>
             <p>
-              Temporary intent is reconfirmed instead of quietly becoming a
-              permanent preference.
+              Your temporary brief for who Buildmates should consider. It expires so an old goal does not quietly become a permanent preference.
             </p>
           </div>
           {pulse?.expired ? (
@@ -104,6 +103,7 @@ export function AutomationClient({
           </label>
           <label>
             Builder mix
+            <span>Similar favors shared work; adjacent favors complementary work; balanced uses both.</span>
             <select
               value={form.builderSimilarity}
               onChange={(e) =>
@@ -120,6 +120,7 @@ export function AutomationClient({
           </label>
           <label>
             Geography
+            <span>Local first prioritizes nearby builders, global first removes that preference, and balanced considers both.</span>
             <select
               value={form.geography}
               onChange={(e) =>
@@ -136,6 +137,7 @@ export function AutomationClient({
           </label>
           <label>
             Introductions per week
+            <span>A hard cap on new introductions. Existing conversations are unaffected.</span>
             <input
               type="number"
               min="0"
@@ -151,6 +153,7 @@ export function AutomationClient({
           </label>
           <label>
             Serendipity: {form.serendipity}%
+            <span>How often to include a thoughtful stretch beyond your closest overlap.</span>
             <input
               type="range"
               min="0"
@@ -163,6 +166,7 @@ export function AutomationClient({
           </label>
           <label>
             Quiet start
+            <span>Buildmates will not surface scheduled Work Pulse results during these local hours.</span>
             <input
               type="time"
               value={form.quietStart}
@@ -179,6 +183,7 @@ export function AutomationClient({
           </label>
           <label>
             Reconfirm on
+            <span>When Codex will ask whether this networking intent still fits. It does not delete your profile.</span>
             <input
               type="date"
               min={new Date(Date.parse(initialSnapshot.generatedAt) + 864e5)
@@ -201,6 +206,15 @@ export function AutomationClient({
               }
             />
             Avoid repeated matches from the same cluster
+          </label>
+          <label className={styles.full}>
+            Exclusions <span>Optional</span>
+            <span>One person, company, industry, topic, or project category per line. Buildmates leaves these out of candidate suggestions.</span>
+            <textarea
+              rows={4}
+              value={form.exclusions}
+              onChange={(e) => setForm({ ...form, exclusions: e.target.value })}
+            />
           </label>
         </div>
         <button
@@ -240,8 +254,7 @@ export function AutomationClient({
           <div>
             <h2>One Buildmates Work Pulse</h2>
             <p>
-              These controls save the requested cadence and whether background actions are available.
-              Codex creates and runs the recurring task under your Codex usage limits.
+              Recommended: Tuesdays and Fridays. These controls save the cadence; Codex creates one recurring task under your Codex usage limits and reports the result back to you.
             </p>
           </div>
           <span
@@ -263,8 +276,7 @@ export function AutomationClient({
             checked={liveness}
             onChange={(e) => setLiveness(e.target.checked)}
           />
-          I understand local/device sources need Codex desktop and the computer
-          to be available.
+          I understand local or device-bound sources refresh only while Codex desktop and this computer are available.
         </label>
         <button
           onClick={() =>

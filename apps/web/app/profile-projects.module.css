@@ -35,6 +35,50 @@
   align-items: center;
   gap: 8px;
 }
+.publicProfileActions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem 1.5rem;
+  align-items: center;
+  padding: 0.75rem clamp(1rem, 4vw, 4rem);
+  background: #f7f8f2;
+  border-bottom: 1px solid #c9c4b8;
+}
+.publicProfileActionGroup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+.publicProfileActionGroup a,
+.ownerProfileReminder a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: #274c39;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
+.ownerProfileReminder {
+  display: grid;
+  grid-template-columns: auto minmax(15rem, 28rem) auto auto;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  max-width: 60rem;
+  padding-left: 1rem;
+  border-left: 3px solid #b9481f;
+  color: #4a5148;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+.ownerProfileReminder > span:first-child {
+  color: #1e201d;
+  font-weight: 750;
+}
+.publishedSurface {
+  width: 100%;
+  min-height: min(44rem, calc(100vh - 7rem));
+}
 .page {
   min-height: 100vh;
   background: #edf2ec;
@@ -154,6 +198,20 @@
 .sectionHead {
   display: flex;
   justify-content: space-between;
+}
+@media (max-width: 760px) {
+  .publicProfileActions {
+    grid-template-columns: 1fr;
+    padding: 0.75rem 1.25rem;
+  }
+  .ownerProfileReminder {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+    padding-block: 0.5rem;
+  }
+  .ownerProfileReminder a {
+    min-height: 36px;
+  }
 }
 @media (max-width: 620px) {
   .page {

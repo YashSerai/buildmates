@@ -28,6 +28,44 @@
   line-height: 1.65;
   color: #55524c;
 }
+.designWorkspace {
+  max-width: none;
+  padding: clamp(2rem, 6vw, 5rem) 0 0;
+}
+.designWorkspace > header,
+.designWorkspace > [role],
+.designWorkspace > .actionRow,
+.designWorkspace > h2 {
+  width: min(880px, calc(100% - clamp(2rem, 8vw, 8rem)));
+  margin-inline: auto;
+}
+.designWorkspace > h2 {
+  margin-top: 2.5rem;
+}
+.designHistory {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+.designHistory > li {
+  padding-top: 1rem;
+  border-top: 1px solid #c9c4b8;
+}
+.designHistory > li > p,
+.designHistory > li > button {
+  width: min(880px, calc(100% - clamp(2rem, 8vw, 8rem)));
+  margin-inline: auto;
+}
+.designHistory > li > button {
+  display: block;
+  width: fit-content;
+  min-height: 44px;
+  margin-top: 1rem;
+}
+.designSurfacePreview {
+  width: 100%;
+  margin-top: 1rem;
+}
 .eyebrow {
   font-size: 0.78rem !important;
   font-weight: 700;
@@ -120,6 +158,9 @@
     grid-column: auto;
   }
   .form {
+    padding-top: 2rem;
+  }
+  .designWorkspace {
     padding-top: 2rem;
   }
   .form h1 {

@@ -22,7 +22,6 @@ export const setupPayloadSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal("networking_pulse"), pulseId: idSchema }).strict(),
   z.object({ step: z.literal("acceptance_mode"), mode: z.enum(["manual", "full_autopilot"]) }).strict(),
   z.object({ step: z.literal("automation"), enabled: z.boolean(), cadence: z.enum(["automatic", "manual", "daily", "twice_weekly", "weekly"]), sourceLivenessReviewed: z.boolean() }).strict(),
-  z.object({ step: z.literal("first_useful_outcome"), kind: z.enum(["candidate", "follow", "watch", "invite"]), objectId: idSchema }).strict(),
 ]);
 
 export const setupStepSchema = z.enum(SETUP_STEPS);
@@ -47,17 +46,17 @@ export const workSignalSchema = z.object({
 
 export const networkingPulseSchema = z.object({
   pulseId: idSchema,
-  intentSummary: summarySchema,
-  builderSimilarity: z.enum(["similar", "adjacent", "balanced"]),
-  geography: z.enum(["local", "global", "balanced"]),
-  maximumIntroductionsPerWeek: z.number().int().min(0).max(20),
-  serendipity: z.number().int().min(0).max(100),
+  intentSummary: summarySchema.describe("Who the user wants to meet and why during this temporary networking period."),
+  builderSimilarity: z.enum(["similar", "adjacent", "balanced"]).describe("Similar prioritizes closely related work, adjacent broadens into complementary work, and balanced mixes both."),
+  geography: z.enum(["local", "global", "balanced"]).describe("Local prioritizes the user's chosen area, global removes that preference, and balanced mixes both."),
+  maximumIntroductionsPerWeek: z.number().int().min(0).max(20).describe("A hard weekly cap on new introductions, not a target Buildmates must fill."),
+  serendipity: z.number().int().min(0).max(100).describe("How much variety to allow beyond the strongest obvious matches; 0 is strict and 100 is broad."),
   timezone: z.string().trim().min(1).max(80),
-  quietHours: z.array(z.object({ weekday: z.number().int().min(0).max(6), startMinute: z.number().int().min(0).max(1439), endMinute: z.number().int().min(0).max(1439) }).strict()).max(14).default([]),
-  snoozedUntil: isoDateSchema.nullable().default(null),
-  exclusions: z.array(z.object({ kind: z.enum(["user", "company", "industry", "topic", "cluster"]), value: z.string().trim().min(1).max(120) }).strict()).max(100).default([]),
+  quietHours: z.array(z.object({ weekday: z.number().int().min(0).max(6), startMinute: z.number().int().min(0).max(1439), endMinute: z.number().int().min(0).max(1439) }).strict()).max(14).default([]).describe("Local-time windows when Buildmates should not schedule introduction activity."),
+  snoozedUntil: isoDateSchema.nullable().default(null).describe("Temporarily pauses matching until this time without deleting the pulse."),
+  exclusions: z.array(z.object({ kind: z.enum(["user", "company", "industry", "topic", "cluster"]), value: z.string().trim().min(1).max(120) }).strict()).max(100).default([]).describe("People, companies, industries, topics, or repeated clusters the user does not want included."),
   startsAt: isoDateSchema,
-  expiresAt: isoDateSchema,
+  expiresAt: isoDateSchema.describe("When this temporary intent must be reconfirmed so old preferences do not silently become permanent."),
   idempotencyKey: idempotencyKeySchema,
 }).strict();
 

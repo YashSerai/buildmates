@@ -50,7 +50,8 @@ test("sitemap and robots omit retired discovery and cohort surfaces", async () =
   const [sitemap, robots] = await Promise.all([sitemapResponse.text(), robotsResponse.text()]);
   assert.doesNotMatch(sitemap, /\/discover|\/cohorts/);
   assert.doesNotMatch(robots, /\/discover|\/cohorts/);
-  assert.match(robots, /Disallow:\s*\/builders\//);
+  assert.match(robots, /Allow:\s*\/builders\//);
+  assert.match(robots, /Disallow:\s*\/@/);
 });
 
 test("privacy and error copy stay aligned with the product boundaries", async () => {
@@ -67,8 +68,50 @@ test("privacy and error copy stay aligned with the product boundaries", async ()
   assert.doesNotMatch(errors, /return value/);
   assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);
   assert.match(profileDesign, /Design with Codex/);
-  assert.match(onboarding, /Turn on relevance watch and finish/);
+  assert.match(onboarding, /Recommended: Tuesdays and Fridays/);
+  assert.match(onboarding, /Save automation/);
   assert.doesNotMatch(onboarding, /Topic to watch/);
+});
+
+test("public builder pages are canonical surfaces and keep design controls private", async () => {
+  const [builder, designWorkspace, profile, profileReview, surfacePreview, nextConfig, sitemap, robots] = await Promise.all([
+    readFile(new URL("../app/builders/[handle]/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/profile-projects/RevisionPreview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/profile/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../components/profile-projects/ProfileReview.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/api/surfaces/profile/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../next.config.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/robots.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(builder, /const canonical = `\/builders\/\$\{encodeURIComponent\(profile\.handle\)\}`/);
+  assert.match(builder, /This is your published profile\./);
+  assert.match(builder, /Tell Codex what to change/);
+  assert.match(builder, /className=\{styles\.publishedSurface\}/);
+  assert.match(builder, /const ownPublishedProfile = ownProfile && Boolean\(profile\.publishedSpec\)/);
+  assert.match(builder, /profile_fields WHERE profile_id=\? AND audience='public'/);
+  assert.match(builder, /"profile\.facts": profile\.surfaceFacts/);
+  assert.match(builder, /"profile\.projects": profile\.surfaceProjects/);
+  assert.match(builder, /value: surfaceFactValue\(field\.valueJson\)/);
+  assert.match(surfacePreview, /value: surfaceFactValue\(field\.valueJson\)/);
+  assert.doesNotMatch(builder, /workSignals/);
+  assert.doesNotMatch(builder, /Make this page feel like you\./);
+  assert.match(designWorkspace, /Make this page feel like you\./);
+  assert.match(designWorkspace, /className=\{styles\.designHistory\}/);
+  assert.match(designWorkspace, /<SurfaceRenderer\s+spec=\{revision\.spec\}/);
+  assert.doesNotMatch(designWorkspace, /isRecoveryStarter/);
+  assert.doesNotMatch(designWorkspace, /Safe starter preview/);
+  assert.doesNotMatch(designWorkspace, /Design \{revision\.revisionNumber\}/);
+  assert.equal(designWorkspace.includes(String.fromCharCode(0xe2, 0x20ac, 0xa6)), false);
+  assert.equal(designWorkspace.includes(String.fromCharCode(0xc2, 0xb7)), false);
+  assert.match(profile, /redirect\(`\/builders\/\$\{encodeURIComponent\(profile\.handle\)\}`\)/);
+  assert.match(profileReview, /router\.push\(`\/builders\/\$\{data\.handle\}`\)/);
+  assert.match(nextConfig, /async redirects\(\)/);
+  assert.match(nextConfig, /source: "\/@:handle", destination: "\/builders\/:handle", permanent: true/);
+  assert.doesNotMatch(nextConfig, /async rewrites\(\)/);
+  assert.match(sitemap, /\/builders\/\$\{encodeURIComponent\(row\.handle\)\}/);
+  assert.match(robots, /"\/builders\/"/);
+  assert.match(robots, /"\/@"/);
 });
 
 function emptyDiscoveryDb() {

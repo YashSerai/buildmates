@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CANONICAL_CITIES, getSetupState, completeSetupStep, resolveCanonicalCity, type SetupProgress } from "@buildmates/domain";
-import { activeSurfaceSpecSchema, DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, safeParseSurfaceSpec, type SurfaceSpec } from "@buildmates/surfaces";
+import { activeSurfaceSpecSchema, DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, profileSurfaceMediaIsAuthorized, safeParseSurfaceSpec, type SurfaceSpec } from "@buildmates/surfaces";
 import { canonicalToolInputHash } from "./tool-hash";
 import { z } from "zod";
 import type { McpProductRepository, McpRecord } from "./repository";
@@ -31,6 +31,25 @@ const BUILD_GRAPH_TOPICS = [
 ] as const;
 
 const BUILD_GRAPH_RELATIONSHIPS = BUILD_GRAPH_TOPICS.flatMap(([id, , parentId]) => parentId ? [{ parentId, childId: id }] : []);
+
+const NETWORKING_PULSE_OPTION_GUIDE = {
+  intentSummary: "Who you want to meet and why during this temporary networking period.",
+  builderSimilarity: {
+    similar: "Prioritize builders doing closely related work.",
+    adjacent: "Prioritize complementary builders whose work connects to yours without being the same.",
+    balanced: "Mix closely related and complementary builders.",
+  },
+  geography: {
+    local: "Prefer builders near the city or region you chose.",
+    global: "Search globally without a local preference.",
+    balanced: "Mix local and global possibilities.",
+  },
+  maximumIntroductionsPerWeek: "A hard weekly cap on new introductions, not a target Buildmates must fill.",
+  quietHours: "Local-time windows when Buildmates should not schedule introduction activity.",
+  serendipity: "How much variety to allow beyond the strongest obvious matches; 0 is strict and 100 is broad.",
+  exclusions: "People, companies, industries, topics, or repeated clusters you do not want included.",
+  expiresAt: "When this temporary intent must be reconfirmed so old preferences do not silently become permanent.",
+} as const;
 
 export type BuildmatesToolServices = {
   linkBaseUrl: string;
@@ -122,8 +141,8 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     return idempotent(context, services, "submit_work_signal", { ...signal, workspaceScope: context.workspaceScope }, async () => confirmed(await services.repository.write({ kind: "work_signal", id: signal.signalId, ownerUserId: context.userId!, value: signal, now: now(services) })));
   }),
 
-  tool("get_networking_pulse", "Get Networking Pulse", "Returns the user's current expiring networking intent and controls.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("networking_pulse", context.userId!, pageOptions(input)); return { pulses: page.records.map(value), nextCursor: page.nextCursor }; }),
-  tool("update_networking_pulse", "Update Networking Pulse", "Stores expiring intent, introduction limits, quiet hours, snooze, serendipity, and exclusions.", z.object({ pulse: networkingPulseSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
+  tool("get_networking_pulse", "Get Networking Pulse", "Returns the user's current temporary networking intent plus plain-language definitions for every control and option.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("networking_pulse", context.userId!, pageOptions(input)); return { pulses: page.records.map(value), optionGuide: NETWORKING_PULSE_OPTION_GUIDE, nextCursor: page.nextCursor }; }),
+  tool("update_networking_pulse", "Update Networking Pulse", "Stores a temporary networking intent. Before saving, explain similar/adjacent/balanced matching, local/global/balanced geography, the weekly cap, quiet hours, serendipity, exclusions, and that expiry is a reconfirmation date.", z.object({ pulse: networkingPulseSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
     const pulse = input.pulse as z.infer<typeof networkingPulseSchema>;
     if (Date.parse(pulse.expiresAt) <= Date.parse(pulse.startsAt)) throw new Error("pulse_expiry_invalid");
     return idempotent(context, services, "update_networking_pulse", pulse, async () => confirmed(await services.repository.write({ kind: "networking_pulse", id: pulse.pulseId, ownerUserId: context.userId!, value: pulse, now: now(services) })));
@@ -200,28 +219,35 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   tool("get_surface_generation_brief", "Get surface generation brief", "Returns the current Design Policy, authorized bindings, governance, base revision, accessibility rules, and privacy boundary before generation.", z.object({ surfaceId: idSchema, ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const surface = await services.repository.readForMember<Record<string, unknown>>("surface", input.surfaceId as string, context.userId!);
     if (!surface || !surfaceBriefIsComplete(surface.value, context.userId!)) throw new Error("surface_brief_unavailable");
-    return { surfaceId: surface.id, kind: surface.value.kind, designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents: surface.value.trustedComponents }, allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, authorizedBindingTypes: surface.value.authorizedBindingTypes ?? null, governance: surface.value.governance, baseRevision: surface.value.publishedRevisionId ?? null, starterSpec: starterSurfaceSpec(String(surface.value.kind)), constraints: { scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only" }, nextAction: "Customize starterSpec using only authorized bindings, validate it, then submit a private preview." };
+    return { surfaceId: surface.id, kind: surface.value.kind, designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents: surface.value.trustedComponents }, allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, authorizedBindingTypes: surface.value.authorizedBindingTypes ?? null, authorizedMedia: surface.value.authorizedMedia ?? [], approvedAssets: surface.value.approvedAssets ?? [], governance: surface.value.governance, baseRevision: surface.value.publishedRevisionId ?? null, starterSpec: starterSurfaceSpec(String(surface.value.kind)), constraints: { scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only", media: "deliberately_public_project_assets_only" }, nextAction: "Customize starterSpec using only authorized bindings and approved assets, validate it, then submit a private preview." };
   }),
   tool("validate_surface_spec", "Validate generated page", "Validates a generated SurfaceSpec without saving it and returns exact field-level problems. Start from the generation brief's starterSpec.", z.object({ surfaceId: idSchema, spec: z.unknown(), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const surface = await requiredRecord<Record<string, unknown>>(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     const kindMatches = parsed.success && parsed.data.kind === surface.value.kind;
-    const bindingsAllowed = parsed.success && surfaceBindingsAllowed(parsed.data, surface.value.authorizedBindings);
+    const bindingsAllowed = parsed.success && surfaceBindingsAllowed(parsed.data, surface.value.authorizedBindings) && surfaceMediaAllowed(parsed.data, surface.value);
     if (parsed.success && kindMatches && bindingsAllowed) return { valid: true, issues: [] };
     const issues = parsed.success ? [!kindMatches ? { path: "kind", message: `Expected ${String(surface.value.kind)}` } : null, !bindingsAllowed ? { path: "bindingManifest", message: "A binding is not authorized for this page" } : null].filter(Boolean) : parsed.error.issues.slice(0, 30).map((issue) => ({ path: issue.path.join("."), message: issue.message }));
     return { valid: false, issues, recovery: "Start again from starterSpec returned by get_surface_generation_brief and change only theme, layout, fallbacks, and authorized bindings." };
   }),
-  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Use get_surface_generation_brief.starterSpec and validate_surface_spec first. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: activeSurfaceSpecSchema, visibility: z.enum(["private_preview", "personal_view"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
+  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Profile revisions require a user-approved design brief. The starterSpec is hidden recovery scaffolding and cannot be submitted or numbered as a user design. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: activeSurfaceSpecSchema, visibility: z.enum(["private_preview", "personal_view"]), designBrief: z.object({ direction: z.string().trim().min(10).max(1000), sections: z.array(z.string().trim().min(1).max(100)).min(1).max(20), signatureElement: z.string().trim().min(3).max(300) }).strict().optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
     const surface = await requiredRecord(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     if (!parsed.success) throw new Error("surface_spec_invalid");
     const surfaceValue = surface.value as Record<string, unknown>;
-    if (parsed.data.kind !== surfaceValue.kind || (surfaceValue.authorizedBindingTypes && !surfaceBindingsAllowed(parsed.data, surfaceValue.authorizedBindings))) throw new Error("surface_spec_invalid");
-    const saved = confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview" }, now: now(services) }));
+    if (parsed.data.kind !== surfaceValue.kind || (surfaceValue.authorizedBindingTypes && !surfaceBindingsAllowed(parsed.data, surfaceValue.authorizedBindings)) || !surfaceMediaAllowed(parsed.data, surfaceValue)) throw new Error("surface_spec_invalid");
+    if (surfaceValue.kind === "profile") {
+      if (input.designBriefApproved !== true || !input.designBrief) throw new Error("profile_design_brief_required");
+      if (JSON.stringify(parsed.data) === JSON.stringify(starterSurfaceSpec("profile"))) throw new Error("starter_spec_not_publishable");
+    }
+    const saved = confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview", ...(input.designBrief ? { designBrief: input.designBrief } : {}) }, now: now(services) }));
     return { ...saved, previewUrl: new URL("/profile/design", services.linkBaseUrl).toString() };
   })),
-  tool("decide_surface_revision", "Approve or reject surface revision", "Records this authorized member's explicit approval or rejection; shared publication remains governed.", z.object({ revisionId: idSchema, decision: z.enum(["approved", "rejected"]), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "decide_surface_revision", input, async () => {
-    return confirmed(await services.repository.write({ kind: "surface_approval", id: `${input.revisionId}:${context.userId}`, ownerUserId: context.userId!, value: { revisionId: input.revisionId, decision: input.decision }, now: now(services) }));
+  tool("decide_surface_revision", "Approve or reject surface revision", "Records this authorized member's explicit approval or rejection; shared publication remains governed. When an approved profile revision publishes, the result includes its canonical /builders/{handle} public URL.", z.object({ revisionId: idSchema, decision: z.enum(["approved", "rejected"]), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "decide_surface_revision", input, async () => {
+    const saved = confirmed(await services.repository.write({ kind: "surface_approval", id: `${input.revisionId}:${context.userId}`, ownerUserId: context.userId!, value: { revisionId: input.revisionId, decision: input.decision }, now: now(services) }));
+    if (input.decision !== "approved") return saved;
+    const publicUrl = await publishedProfileUrl(String(input.revisionId), context.userId!, services);
+    return publicUrl ? { ...saved, publicUrl } : saved;
   }), false, true),
   tool("rollback_surface", "Roll back surface", "Publishes a previously authorized revision using a base-version check.", z.object({ surfaceId: idSchema, revisionId: idSchema, expectedSurfaceVersion: z.number().int().positive(), confirmation: z.literal("confirmed"), ...mutate }).strict(), { ...writeAnnotations, destructiveHint: true }, async (input, context, services) => idempotent(context, services, "rollback_surface", input, async () => {
     const surface = await requiredRecord<Record<string, unknown>>(services, "surface", input.surfaceId as string, context.userId!);
@@ -246,7 +272,11 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   }), false, true),
 
   tool("get_automation_checkpoint", "Get Work Pulse progress", "Returns the saved progress, requested schedule, last outcome, and next run for the linked user's single Buildmates Work Pulse.", z.object(workspaceInput).strict(), readAnnotations, async (_input, context, services) => ({ checkpoint: value(await services.repository.readForMember("automation_checkpoint", `${context.userId}:buildmates`, context.userId!)) })),
-  tool("update_automation_checkpoint", "Update Work Pulse progress", "Saves progress, requested schedule, source availability review, and last outcome for the linked user's single Work Pulse. Codex creates and schedules the recurring task.", z.object({ checkpointId: idSchema, cursor: z.string().max(500).nullable(), state: z.enum(["configured", "running", "succeeded", "needs_attention", "disabled"]), lastOutcome: z.string().trim().max(500), enabled: z.boolean().optional(), cadence: z.enum(["automatic", "manual", "daily", "twice_weekly", "weekly"]).nullable().optional(), sourceLivenessReviewed: z.boolean().optional(), nextRunAt: isoDateSchema.nullable(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "update_automation_checkpoint", input, async () => confirmed(await services.repository.write({ kind: "automation_checkpoint", id: `${context.userId}:buildmates`, ownerUserId: context.userId!, value: { ...withoutRuntime(input), kind: "buildmates" }, now: now(services) })))),
+  tool("update_automation_checkpoint", "Update Work Pulse progress", "Saves the linked user's single Buildmates Work Pulse and completes the final setup step when a reviewed schedule is configured. Recommend Tuesdays and Fridays when recurring automations are available. Manual refresh is only an explicit user override or an automation-unavailable fallback.", z.object({ checkpointId: idSchema, cursor: z.string().max(500).nullable(), state: z.enum(["configured", "running", "succeeded", "needs_attention", "disabled"]), lastOutcome: z.string().trim().max(500), enabled: z.boolean().optional(), cadence: z.enum(["automatic", "manual", "daily", "twice_weekly", "weekly"]).nullable().optional(), sourceLivenessReviewed: z.boolean().optional(), nextRunAt: isoDateSchema.nullable(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "update_automation_checkpoint", input, async () => {
+    const saved = confirmed(await services.repository.write({ kind: "automation_checkpoint", id: `${context.userId}:buildmates`, ownerUserId: context.userId!, value: { ...withoutRuntime(input), kind: "buildmates" }, now: now(services) }));
+    const setup = await completeAutomationSetupIfReady(input, context.userId!, services);
+    return { ...saved, setup };
+  })),
   tool("probe_automation_capability", "Check background actions", "Checks whether this connected Buildmates app can save background results. A website request alone cannot mark this check as passed.", z.object({ probeId: idSchema, ...workspaceInput }).strict(), writeAnnotations, async (_input, context, services) => {
     if (!services.recordAutomationCapabilityProof) throw new Error("automation_probe_unavailable");
     return services.recordAutomationCapabilityProof({ userId: context.userId!, now: now(services) });
@@ -368,6 +398,46 @@ function surfaceBindingsAllowed(spec: SurfaceSpec, authorized: unknown): boolean
     && spec.bindingManifest.media.every((binding) => allowed.has(binding.key) && allowed.has(binding.altKey));
 }
 
+function surfaceMediaAllowed(spec: SurfaceSpec, surface: Record<string, unknown>): boolean {
+  if (surface.kind !== "profile") return spec.bindingManifest.media.length === 0 && spec.approvedAssets.length === 0;
+  return profileSurfaceMediaIsAuthorized(
+    spec,
+    Array.isArray(surface.authorizedMedia) ? surface.authorizedMedia as Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }> : [],
+    Array.isArray(surface.approvedAssets) ? surface.approvedAssets as Array<{ id: string; src: string }> : [],
+  );
+}
+
+async function publishedProfileUrl(revisionId: string, userId: string, services: BuildmatesToolServices): Promise<string | null> {
+  const revision = await services.repository.readForMember<Record<string, unknown>>("surface_revision", revisionId, userId);
+  if (!revision) return null;
+  const surface = await services.repository.readForMember<Record<string, unknown>>("surface", String(revision.value.surfaceId), userId);
+  if (!surface || surface.value.kind !== "profile" || surface.value.publishedRevisionId !== revisionId) return null;
+  const profile = (await services.repository.listForMember<Record<string, unknown>>("profile_model", userId))
+    .find((candidate) => candidate.id === surface.value.subjectId);
+  const handle = profile?.value.handle;
+  return typeof handle === "string" && handle.length > 0
+    ? new URL(`/builders/${encodeURIComponent(handle)}`, services.linkBaseUrl).toString()
+    : null;
+}
+
+async function completeAutomationSetupIfReady(
+  input: Record<string, unknown>,
+  userId: string,
+  services: BuildmatesToolServices,
+): Promise<ReturnType<typeof getSetupState> | null> {
+  const current = await services.repository.readForMember<SetupProgress>("setup", userId, userId);
+  const progress = getSetupState(linkedSetupProgress(current?.value, services));
+  if (progress.complete) return progress;
+  const canComplete = progress.nextStep === "automation"
+    && (input.state === "configured" || input.state === "succeeded")
+    && input.sourceLivenessReviewed === true
+    && typeof input.cadence === "string";
+  if (!canComplete) return null;
+  const completed = completeSetupStep(progress, "automation", now(services));
+  await services.repository.write({ kind: "setup", id: userId, ownerUserId: userId, value: completed, now: now(services) });
+  return completed;
+}
+
 async function verifySetupEvidence(payload: z.infer<typeof setupPayloadSchema>, userId: string, services: BuildmatesToolServices): Promise<void> {
   if (payload.step === "source_selection") for (const id of payload.sourceIds) await requiredRecord(services, "source_policy", id, userId);
   if (payload.step === "signal_privacy_review") for (const id of payload.reviewedSignalIds) await requiredRecord(services, "work_signal", id, userId);
@@ -389,10 +459,6 @@ async function verifySetupEvidence(payload: z.infer<typeof setupPayloadSchema>, 
     const checkpoints = await services.repository.listForMember<Record<string, unknown>>("automation_checkpoint", userId);
     if (!checkpoints.some((checkpoint) => checkpoint.value.state === "configured" || checkpoint.value.state === "succeeded")) throw new Error("setup_evidence_missing");
   }
-  if (payload.step === "first_useful_outcome") {
-    const kind = { candidate: "candidate_batch", follow: "follow_watch", watch: "follow_watch", invite: "invite" }[payload.kind];
-    await requiredRecord(services, kind, payload.objectId, userId);
-  }
 }
 
 function setupStateWithGuidance(state: ReturnType<typeof getSetupState>) {
@@ -409,8 +475,11 @@ function setupGuidance(step: string | null) {
   if (step === "context_collection") return { goal: "Create a rich private profile draft.", nextAction: "If the user already approved the exact workspace scope during source selection, proceed without asking again. Maintain .buildmates/profile-context.md with projects, relationships between projects, current work, stack, interests, ambitions, meeting intent, confirmed style preferences, sources checked, and uncertainties. Show the synthesized draft for approval before submission. Ask again only if the research scope expands.", fallback: "If workspace review was skipped or context is sparse, use approved connected sources or ask focused profile questions." };
   if (step === "signal_privacy_review") return { goal: "Review recurring matching signals separately from the saved profile draft.", nextAction: "Say whether the profile draft is saved, then list recurring Work Signals. If there are none, explicitly say no ongoing source was connected." };
   if (step === "basic_profile") return { goal: "Review the complete structured profile and behavioral settings.", nextAction: "Present the proposed profile and explain each setting in plain language before asking for one approval. Profile visibility controls who can open the profile inside Buildmates. Matching enabled lets Buildmates use only approved matching fields to suggest relevant builders; it does not expose raw workspace sources. Search-engine indexing controls whether Google and other search engines may list an otherwise public profile. If the user supplies a city, it appears only inside an anonymous aggregate bubble on the Map, never as a personal pin; the Map receives the chosen city and never precise or live location, and the user may hide the city contribution. Call list_topic_taxonomy, classify the reviewed profile and projects using only returned IDs, and include those canonicalTopicIds so they join the anonymous Build Graph; never submit raw workspace text to the graph. Private style and personality notes guide Codex's design but are not displayed. Explain Manual versus Full Autopilot and whether recurring Work Signals exist. Ask only about fields Codex could not infer confidently." };
-  if (step === "page_preview") return { goal: "Generate and review a private custom profile page.", nextAction: "Use the returned starterSpec, validate it, submit a private preview, and provide the preview URL. If customization fails, submit the unchanged valid starterSpec rather than blocking setup." };
-  return step ? { goal: `Complete ${step}.`, nextAction: "Explain the choice and complete only the returned setup step.", fallback: "Re-read setup state and report the exact next action." } : { goal: "Setup is complete.", nextAction: "Summarize the profile, networking settings, automation, and first useful action." };
+  if (step === "page_preview") return { goal: "Generate and review a private custom profile page.", nextAction: "Before the first actual revision, explain the learned visual direction, planned sections, and signature element, optionally ask whether the user wants an available frontend or design skill applied, and get approval. Use starterSpec only as hidden recovery scaffolding. Build and validate a genuinely customized full-page specification, submit it with the approved design brief, then provide the private preview URL. Never submit, publish, show in history, or call the recovery seed Design 1; repair validation issues until the custom revision passes." };
+  if (step === "networking_pulse") return { goal: "Set a temporary Networking Pulse for who the user wants to meet.", recommended: { builderSimilarity: "balanced", geography: "global", maximumIntroductionsPerWeek: 3, expiresInDays: 30 }, nextAction: "Explain every proposed value before asking once for confirmation. Intent is who they want to meet and why. Similar prioritizes closely related work, adjacent prioritizes complementary work, and balanced mixes both. Geography can prioritize local builders, search globally, or mix both. The weekly maximum is a hard cap, quiet hours prevent introduction activity during local-time windows, serendipity controls variety beyond obvious matches, exclusions remove unwanted people or clusters, and expiry is when this temporary intent must be reconfirmed so it does not silently become permanent.", fallback: "If the user is unsure, keep the balanced, global, three-per-week, 30-day defaults and invite them to change any one setting." };
+  if (step === "acceptance_mode") return { goal: "Choose how introductions are accepted.", nextAction: "Explain that Manual requires the user's Interested action after Codex independently approves a candidate. Full Autopilot still requires independent approval on both sides and works only when the connected host proves unattended actions are available." };
+  if (step === "automation") return { goal: "Configure the notification and intelligence surface that keeps Buildmates current.", recommended: "One Buildmates Work Pulse every Tuesday and Friday in the user's timezone.", nextAction: "When recurring automations are available, recommend Tuesdays and Fridays and ask once before creating or materially changing the schedule. Explain that each run reviews only permitted sources, refreshes approved profile and project topics plus changed or expiring Work Signals, checks one bounded candidate shortlist and the saved relevance watch, independently evaluates candidates, and posts sources checked, changes, matches, actions needed, and the next run to the Codex task inbox. Create or update exactly one automation, then call update_automation_checkpoint once with cadence twice_weekly and sourceLivenessReviewed true; that write completes setup without a separate automation setup-step call.", fallback: "Use manual refresh only when the user explicitly chooses it or recurring automations are unavailable, and state which condition applies." };
+  return step ? { goal: `Complete ${step}.`, nextAction: "Explain the choice and complete only the returned setup step.", fallback: "Re-read setup state and report the exact next action." } : { goal: "Setup is complete.", nextAction: "Summarize the profile, Networking Pulse, acceptance mode, and Work Pulse schedule. Give the canonical /builders/{handle} profile link, explain that profile updates and redesigns can be requested directly in Codex with the Buildmates plugin, and offer an optional personal invite link. Explain that Buildmates improves as more builders join and accepted invite joins are attributed to the inviter; an invite is not a setup requirement." };
 }
 
 function starterSurfaceSpec(kind: string): SurfaceSpec {
@@ -418,15 +487,28 @@ function starterSurfaceSpec(kind: string): SurfaceSpec {
   const titleBinding = kind === "profile" ? "profile.displayName" : kind === "room" ? "room.themeTopic" : "circle.name";
   const summaryBinding = kind === "profile" ? "profile.summary" : kind === "room" ? "room.connectionContext" : "circle.purpose";
   return {
-    schemaVersion: "1", designPolicyVersion: DESIGN_POLICY_VERSION, kind: kind as SurfaceSpec["kind"], title: "Buildmates page",
-    theme: { mode: "light", colors: { canvas: "#f5f1e8", surface: "#fffdf8", ink: "#192019", mutedInk: "#4f5a50", accent: "#c9d7ad", accentInk: "#192019", rule: "#aeb7a8", focusInner: "#000000", focusOuter: "#ffffff" }, typography: { display: "editorial", body: "humanist", scale: "comfortable" }, shape: { corners: "soft", density: "comfortable" } },
-    root: { id: `${prefix}-root`, type: "section", tone: "canvas", children: [{ id: `${prefix}-title`, type: "heading", level: 1, binding: titleBinding, fallback: kind === "profile" ? "Builder profile" : kind === "room" ? "Introduction room" : "Build Circle" }, { id: `${prefix}-summary`, type: "text", style: "lead", binding: summaryBinding, fallback: "This page is ready to personalize." }] },
-    bindingManifest: { content: [{ key: titleBinding, type: "text" }, { key: summaryBinding, type: "text" }], media: [] }, approvedAssets: [], decorativeRegions: [], responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable" }, accessibility: { label: `${kind} page`, primaryHeadingNodeId: `${prefix}-title`, reducedMotion: "required" },
+    schemaVersion: "2", designPolicyVersion: DESIGN_POLICY_VERSION, kind: kind as SurfaceSpec["kind"], title: "Buildmates recovery seed",
+    theme: {
+      mode: "light",
+      colors: { canvas: "#f5f1e8", surface: "#fffdf8", ink: "#192019", mutedInk: "#4f5a50", accent: "#c9d7ad", accentInk: "#192019", secondary: "#29352b", secondaryInk: "#ffffff", highlight: "#f3c76d", highlightInk: "#221900", rule: "#7a8379", focusInner: "#000000", focusOuter: "#ffffff" },
+      typography: { display: "sturdy-slab", body: "warm-grotesk", data: "engine-mono", scale: "comfortable", headingWeight: "bold", headingCase: "as-written", letterSpacing: "tight" },
+      shape: { corners: "soft", density: "comfortable", border: "hairline" },
+      atmosphere: { motif: "none", density: "quiet", tone: "accent", continuity: "page" },
+      motion: { preset: "none", durationMs: 400, iterations: 1 },
+    },
+    root: {
+      id: `${prefix}-root`, type: "section", tone: "canvas", layout: "flow", padding: "lg", bleed: false, minHeight: "half", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
+      children: [{ id: `${prefix}-container`, type: "container", width: "standard", align: "center", padding: "none", children: [{ id: `${prefix}-stack`, type: "stack", gap: "md", align: "start", justify: "start", width: "full", children: [
+        { id: `${prefix}-title`, type: "heading", level: 1, binding: titleBinding, fallback: kind === "profile" ? "Builder profile" : kind === "room" ? "Introduction room" : "Build Circle", size: "display", align: "start", width: "balanced", weight: "bold", lineHeight: "tight", tracking: "tight" },
+        { id: `${prefix}-summary`, type: "text", style: "lead", binding: summaryBinding, fallback: "This page is ready to personalize.", align: "start", width: "prose", weight: "regular", lineHeight: "relaxed", tracking: "normal" },
+      ] }] }],
+    },
+    bindingManifest: { content: [{ key: titleBinding, type: "text" }, { key: summaryBinding, type: "text" }], media: [] }, approvedAssets: [], decorativeRegions: [], responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true }, accessibility: { label: `${kind} page`, primaryHeadingNodeId: `${prefix}-title`, reducedMotion: "required" },
   };
 }
 
 function safeError(error: unknown): string {
   if (error instanceof z.ZodError) return "invalid_input";
   if (!(error instanceof Error)) return "tool_failed";
-  return ["oauth_required", "identity_link_required", "invalid_workspace_scope", "object_not_found_or_not_authorized", "surface_brief_unavailable", "idempotency_conflict", "version_conflict", "surface_spec_invalid", "pulse_expiry_invalid", "calendar_interval_invalid", "revision_surface_mismatch", "source_actions_unsupported", "source_policy_denied", "source_approval_required", "taxonomy_identifiers_invalid", "setup_evidence_missing", "map_city_required", "invalid_invite_target", "invalid_follow_watch_target", "room_not_available"].includes(error.message) ? error.message : "tool_failed";
+  return ["oauth_required", "identity_link_required", "invalid_workspace_scope", "object_not_found_or_not_authorized", "surface_brief_unavailable", "idempotency_conflict", "version_conflict", "surface_spec_invalid", "profile_design_brief_required", "starter_spec_not_publishable", "pulse_expiry_invalid", "calendar_interval_invalid", "revision_surface_mismatch", "source_actions_unsupported", "source_policy_denied", "source_approval_required", "taxonomy_identifiers_invalid", "setup_evidence_missing", "map_city_required", "invalid_invite_target", "invalid_follow_watch_target", "room_not_available"].includes(error.message) ? error.message : "tool_failed";
 }

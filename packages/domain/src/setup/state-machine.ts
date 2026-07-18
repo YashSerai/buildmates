@@ -11,7 +11,6 @@ export const SETUP_STEPS = [
   "networking_pulse",
   "acceptance_mode",
   "automation",
-  "first_useful_outcome",
 ] as const;
 
 export type SetupStep = (typeof SETUP_STEPS)[number];

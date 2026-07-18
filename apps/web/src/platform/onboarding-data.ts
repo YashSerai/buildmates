@@ -684,7 +684,6 @@ export async function mutateOnboarding(
     )
       .bind(id, userId, Date.now())
       .run();
-    await completeStepInOrder(DB, userId, "first_useful_outcome");
     return audit(DB, userId, "watch.created", "relevant_builder", "network", {});
   }
   throw new InputError("Unknown onboarding action.");

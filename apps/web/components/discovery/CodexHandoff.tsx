@@ -25,6 +25,7 @@ export function CodexHandoff({
     if (!open) return;
 
     const previousOverflow = document.body.style.overflow;
+    const trigger = triggerRef.current;
     document.body.style.overflow = "hidden";
     const dialog = dialogRef.current;
     const focusable = () =>
@@ -59,7 +60,7 @@ export function CodexHandoff({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
-      triggerRef.current?.focus();
+      trigger?.focus();
     };
   }, [open]);
 

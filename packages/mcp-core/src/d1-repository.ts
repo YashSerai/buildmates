@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createD1Repositories, type RepositoryD1 } from "@buildmates/database";
 import { asUserId } from "@buildmates/domain";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, designPolicy, type SurfaceSpec } from "@buildmates/surfaces";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, designPolicy, profileMediaBinding, profileSurfaceMediaIsAuthorized, type SurfaceSpec } from "@buildmates/surfaces";
 import { canonicalFollowWatchId, type IdempotentMutation, type McpPageOptions, type McpProductRepository, type McpRecord, type McpRecordPage, type McpRecordWrite } from "./repository";
 
 type BoundStatement = { first<T>(): Promise<T | null>; all<T>(): Promise<{ results: T[] }>; run(): Promise<{ meta?: { changes?: number } }> };
@@ -245,6 +245,11 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         const surfaceId = String(value.surfaceId);
         const surface = await surfaceRecord<Row>(DB, surfaceId, actor);
         if (!surface) throw new Error("object_not_authorized");
+        if (surface.value.kind === "profile" && !profileSurfaceMediaIsAuthorized(
+          value.spec as SurfaceSpec,
+          (surface.value.authorizedMedia ?? []) as Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }>,
+          (surface.value.approvedAssets ?? []) as Array<{ id: string; src: string }>,
+        )) throw new Error("surface_asset_not_authorized");
         const current = await first(DB, "SELECT COALESCE(MAX(revision_number),0) AS maximum FROM surface_revisions WHERE surface_id=?", surfaceId);
         const base = value.baseRevisionId ? await first(DB, "SELECT revision_number FROM surface_revisions WHERE id=? AND surface_id=?", String(value.baseRevisionId), surfaceId) : await first(DB, "SELECT revision_number FROM surface_revisions WHERE id=(SELECT published_revision_id FROM surfaces WHERE id=?)", surfaceId);
         if (value.baseRevisionId && !base) throw new Error("surface_base_not_found");
@@ -457,11 +462,14 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     if (!subject) return null;
     const approvers = [String(base.owner_user_id)].filter(Boolean);
     if (approvers.length === 0) return null;
+    const media = await approvedProfileMedia(DB, actor);
     return record("surface", id, String(base.owner_user_id), [], {
       kind: "profile", subjectId: base.subject_id, publishedRevisionId: base.published_revision_id, governanceVersion: base.governance_version,
       allowedModules: ["profile.identity", "profile.current_work", "profile.projects"],
-      authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"],
-      authorizedBindingTypes: { "profile.displayName": "text", "profile.summary": "text", "profile.facts": "facts", "profile.projects": "projects" },
+      authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects", ...media.flatMap((item) => [item.key, item.altKey])],
+      authorizedBindingTypes: { "profile.displayName": "text", "profile.summary": "text", "profile.facts": "facts", "profile.projects": "projects", ...Object.fromEntries(media.flatMap((item) => [[item.key, "media"], [item.altKey, "text"]])) },
+      authorizedMedia: media.map(({ key, altKey, assetId, projectTitle }) => ({ key, altKey, label: `${projectTitle} image`, approvedAssetIds: [assetId] })),
+      approvedAssets: media.map(({ assetId, src }) => ({ id: assetId, src })),
       trustedComponents: [...designPolicy.trustedComponents],
       governance: { mode: "owner", ownerUserId: base.owner_user_id, requiredApproverIds: approvers, governanceVersion: base.governance_version },
     } as T, Number(base.governance_version), new Date(Number(base.updated_at)).toISOString());
@@ -501,6 +509,27 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
   const publishers = members.filter((member) => ["admin", "owner"].includes(String(member.role))).map((member) => String(member.user_id));
   if (publishers.length === 0) return null;
   return record("surface", id, String(base.owner_user_id), memberIds.filter((user) => user !== base.owner_user_id), { ...common, governance: { mode: "circle_admin", memberUserIds: memberIds, publisherUserIds: publishers, requiredApproverIds: publishers, governanceVersion: circle.governance_version } } as T, Number(base.governance_version), new Date(Number(base.updated_at)).toISOString());
+}
+
+async function approvedProfileMedia(DB: Database, actor: string) {
+  const rows = await all(DB, `SELECT media.asset_id AS assetId,media.alt_text AS altText,project.title AS projectTitle,asset.object_key AS objectKey
+    FROM project_media media
+    JOIN projects project ON project.id=media.project_id
+    JOIN surface_assets asset ON asset.id=media.asset_id
+    WHERE project.owner_user_id=? AND project.status='active' AND project.audience='public'
+      AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
+      AND asset.owner_user_id=? AND asset.deleted_at IS NULL
+      AND asset.object_key LIKE ?
+    ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor, `surface-assets/${actor}/%`);
+  return rows.flatMap((row) => {
+    const assetId = String(row.assetId ?? "");
+    const objectKey = String(row.objectKey ?? "");
+    const prefix = `surface-assets/${actor}/`;
+    if (!/^asset_[a-z0-9_-]{8,80}$/i.test(assetId) || !objectKey.startsWith(prefix) || !String(row.altText ?? "").trim()) return [];
+    let binding;
+    try { binding = profileMediaBinding(assetId); } catch { return []; }
+    return [{ ...binding, assetId, src: `/api/surface-assets/${actor}/${objectKey.slice(prefix.length)}`, altText: String(row.altText).trim().slice(0, 300), projectTitle: String(row.projectTitle ?? "Project") }];
+  });
 }
 
 async function surfaceReadyToPublish(DB: Database, surfaceId: string, revisionId: string, actor: string): Promise<boolean> {

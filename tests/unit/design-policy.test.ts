@@ -3,11 +3,12 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { createMemoryRepositories } from "@buildmates/database";
-import { DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, HISTORICAL_DESIGN_POLICY_SOURCE, HISTORICAL_DESIGN_POLICY_SOURCE_HASH, SurfaceRendererCore, designPolicy, seedDesignPolicy } from "@buildmates/surfaces";
+import { DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, HISTORICAL_DESIGN_POLICY_SOURCE, HISTORICAL_DESIGN_POLICY_SOURCE_HASH, PREVIOUS_DESIGN_POLICY_SOURCE, PREVIOUS_DESIGN_POLICY_SOURCE_HASH, SurfaceRendererCore, designPolicy, seedDesignPolicy } from "@buildmates/surfaces";
 
 describe("runtime design policy", () => {
   it("has a deterministic source hash and immutable runtime authority", () => {
     expect(createHash("sha256").update(DESIGN_POLICY_SOURCE).digest("hex")).toBe(DESIGN_POLICY_SOURCE_HASH);
+    expect(createHash("sha256").update(PREVIOUS_DESIGN_POLICY_SOURCE).digest("hex")).toBe(PREVIOUS_DESIGN_POLICY_SOURCE_HASH);
     expect(createHash("sha256").update(HISTORICAL_DESIGN_POLICY_SOURCE).digest("hex")).toBe(HISTORICAL_DESIGN_POLICY_SOURCE_HASH);
     expect(designPolicy.authority.generatedCodeMustNever).toContain("execute scripts or submit forms");
   });

@@ -1,6 +1,6 @@
 # Buildmates Build Index
 
-Status: clean-room onboarding QA repairs deployed; production reset complete and next 0/11 run ready
+Status: SurfaceSpec v2 and completed-onboarding repair implemented; final deployment verification in progress
 Last updated: 2026-07-17
 Product line: Meet people through what you build.
 
@@ -56,11 +56,11 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Area | Day-one behavior | Later expansion | Status |
 |---|---|---|---|
 | Landing and identity | Public explanation, GitHub OAuth, random internal Buildmates UUID, mobile web access, explicit ChatGPT/Codex connection | Organization identity | Source regression and build pass; current release production proof pending |
-| Agentic first run | Visible setup progress, rich/sparse context branches, privacy/profile preview, preferences, automation, first useful outcome | Smarter adaptive questioning | MCP pre-link setup routing and deterministic profile-surface creation repaired; source regression passed |
+| Agentic first run | Visible 10-step setup, rich/sparse context branches, privacy/profile preview, preferences, and automation | Smarter adaptive questioning | Completion ends after automation; optional referral follows setup rather than gating it |
 | Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Implemented; live connector proof pending |
 | Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Implemented; unattended production proof pending |
 | Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Implemented; integration review pending |
-| Profiles | Profile review, field-level visibility, projects, generative responsive surface, optional connection/build stats, canonical share link | Broader module library and isolated custom code | Functional preview/publication/history works; SurfaceSpec v2 and distinct full-page public rendering are required before launch |
+| Profiles | Profile review, field-level visibility, projects, generative responsive full-page surface, optional connection/build stats, canonical share link | Broader module library and isolated custom code | SurfaceSpec v2 implemented with five structurally distinct responsive portfolio compositions, governed media, real preview/public parity, and canonical `/builders/{handle}` publication |
 | Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Implemented in source; integrated review pending |
 | Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
 | Aggregate network views | No people/database search; MapLibre/OpenFreeMap city bubbles and anonymous canonical-topic bubbles expose counts only, never rosters | Richer aggregate filters after network density is proven | Implemented and sparse live smoke passed; pre-launch dummy-data QA is required for multi-city density, topic hierarchy, weighted links, drill-down, responsive layout, and privacy boundaries |
@@ -72,7 +72,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Scheduling | Calendar-aware suggestions through permitted apps and ICS fallback | More scheduling connectors | Implemented in source; live Calendar/deep-link proof pending |
 | Cohorts | Deferred from the current product and navigation; dormant domain support remains isolated | Reconsider after Circles and network density are proven | Deferred by product decision |
 | Circles | Consent-gated triadic suggestions, group chat, creator-admin governance, roles, voting, Codex-generated shared surfaces, approved modules and member entries | Richer tracker templates and shipping-room analytics | Implemented in source; integrated review pending |
-| Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Implemented; profile onboarding now creates/discovers its surface without website-first deadlock and rejects undeclared production profile bindings |
+| Generative UI governance | Private preview, approvals, history, rollback, base-version check | Sandboxed interactive code | Implemented; recovery seeds are never revisions or publication candidates, and generated content is limited to authorized bindings/assets and trusted action slots |
 | Privacy and safety | Canonical visibility, source ledger, block/shared-context redaction, immediate export, physical R2 deletion, rate limits and audit trail | Organization policy tooling | Implemented; production smoke pending |
 | Moderation | Restricted operator queue, report status, enforcement, impersonation/safety reasons, appeal/review | Cohort-admin delegation | Implemented; production operator QA pending |
 | Notifications | Immediate in-app product events plus one Codex automation for intelligence refreshes and digests | External email adapter if required | Implemented; production polling QA pending |
@@ -210,7 +210,7 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 
 ## Current next action
 
-Continue the active first-run QA through the generated profile preview and preserve the full task as evidence. The next clean QA must use the updated beta package and public contract: create a clean setup task rather than a fork, label the setup and completed-installation tasks distinctly, archive the parent only after `get_setup_state` works in the child, and treat the exact source-selection approval as authorization for immediate private context collection. Do not ask a second time unless the research scope expands. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
+Deploy this repair, update the beta package, then run one clean 0/10 Codex onboarding QA against the production MCP. Preserve the full task as evidence. The task handoff must label the setup and completed-installation tasks distinctly, and exact source-selection approval authorizes the stated private context collection without a second prompt. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
 
 ## Source-consent and clean-task handoff repair
 
@@ -221,22 +221,32 @@ Continue the active first-run QA through the generated profile preview and prese
 - The MCP contract, public `/llms.txt`, public and beta onboarding skills, plugin READMEs, and package cachebusters carry the same rules. Both plugin packages validate, 18/18 focused MCP contract tests pass, workspace typechecks pass, and the public agent contract passes on desktop and phone.
 - Exact implementation commit `c7a62b41dbb6e49cb68fae04f2ee80e885775a90` is live as ChatGPT Sites version 20 and MCP Worker version `0f5a30d4-d9e0-4479-915c-88e251460d84`. The versioned live contract returned all new markers; the plain `/llms.txt` path initially retained the prior edge response while caches propagated.
 
-## Profile-design QA findings
+## Profile-design QA findings - superseded by SurfaceSpec v2
 
-- The initial starter SurfaceSpec and a second Codex revision remained visibly bounded to the same simple themed card. The current SurfaceSpec can vary palette, typography family, density, trusted component composition, and sandboxed decoration, but it cannot yet produce a fully art-directed portfolio page comparable in depth to Serai Labs or the user's portfolio. This is an architectural capability limit, not a prompt-only defect.
-- Do not repair the generative profile architecture during the active 11-step QA. Continue the run with the current revision as temporary functional evidence, then design SurfaceSpec v2 before launch. The target flow is profile approval, a user-reviewed Codex design brief and available-skill choice, real generation, full-page private preview, then publication. The starter remains an invisible validation fallback and must not count as `Design 1`.
-- The published profile should make the generated Surface the primary page while trusted Buildmates navigation, connect, report, privacy, revision, and rollback controls remain outside generated authority. The design workspace keeps its explanatory header and shows the full-page preview below it.
+- The bounded-card limitation was confirmed during QA and is now replaced by SurfaceSpec v2: full-bleed sections, nested layout primitives, responsive 12-column canvases, bounded overlap, approved media and galleries, featured-project compositions, curated typography, motifs, and reduced-motion-safe declarative motion.
+- Five same-content fixtures prove materially different full-page structures rather than palette swaps: orbital/asymmetric, editorial index, image-led field journal, maker collage, and data ledger. Desktop and phone tests enforce distinct structure, overflow safety, state handling, focus, and reduced motion.
+- The first generated revision follows a user-reviewed design direction, sections, signature element, and optional installed design skills. Recovery scaffolding is invisible and cannot be submitted, numbered, shown in history, or published.
+- `/profile/design` remains the owner workspace. The published `/builders/{handle}` page renders the exact approved Surface as the primary page, with trusted Buildmates navigation and actions outside generated authority plus an owner-only redesign reminder.
 - Privacy review copy now explains profile visibility, matching, search indexing, aggregate city-map inclusion, private design notes, acceptance mode, and recurring Work Signals individually before one approval. Search indexing means Google and other search engines; city-map inclusion uses only a chosen city in anonymous aggregate bubbles and never precise or live location.
 - The privacy explanation repair is live from exact commit `a9c2a4d6dc1135929994a3621e1689417689cb98` as ChatGPT Sites version 21 and MCP Worker version `6f0e652b-1c6f-46e3-82ae-b32c35161bb2`. Production `/llms.txt` returned the explanatory markers and unauthenticated MCP initialization remained closed with 401.
 
 ## Completed-onboarding QA verdict
 
-- **Required before launch — generative profile:** replace the card-bounded SurfaceSpec with a richer governed full-page specification. Profile approval must lead to a user-reviewed design brief, optional use of available frontend/design skills, a real private preview, and a canonical public `/builders/{handle}` page. `/profile/design` remains the owner-only design workspace and must never be reported as the public share URL.
-- **Required before launch — generated-page flow:** the starter specification is an invisible recovery seed, not a generated design or numbered revision. The design workspace may show **Make this page feel like you** and revision controls; the published profile must render the approved Surface as the primary page with only trusted Buildmates actions around it and a small owner-only Codex redesign reminder.
+- **Completed — generative profile:** SurfaceSpec v2 now supports governed full-page portfolio composition, a user-reviewed design brief, optional available design skills, private preview, and canonical `/builders/{handle}` publication. `/profile/design` remains owner-only.
+- **Completed — generated-page flow:** the recovery seed is invisible and non-publishable; real revisions render identically in private preview and public profile with trusted Buildmates controls outside generated authority.
 - **Required before launch — Networking Pulse explanation:** before one approval, explain intent, similar/adjacent/balanced matching, local/global geography, weekly introduction cap, quiet hours, serendipity, exclusions, and that expiry is when the temporary networking intent is reconfirmed rather than silently becoming permanent.
 - **Required before launch — Work Pulse default:** when recurring automations are available, recommend one Buildmates Work Pulse on Tuesdays and Fridays. Explain that it reviews only permitted sources, refreshes approved profile/project topics and Work Signals, checks the bounded candidate shortlist and relevance watch, and posts a concise result to the Codex task inbox. Manual-only is a platform-unavailable fallback or an explicit user override, never the recommended default.
-- **Required before launch — setup completion:** remove `first_useful_outcome` from the mandatory setup state. A reviewed profile, published page, Networking Pulse, acceptance mode, and configured automation complete onboarding. Then offer an optional personal invite link, explain that joined invitees are attributed to the inviter, and end with canonical profile, edit, automation, and share actions.
+- **Completed — setup completion:** `first_useful_outcome` is no longer mandatory. Automation completes the 10-step flow; the completion state links profile, edit, design, automation, and an optional personal invite whose accepted joins are attributed to the inviter.
 - **Deferred pending a supported metric source — token usage:** do not present tokens consumed as proof of shipping or infer weekly totals by scraping private Codex task logs. If Codex later exposes a verified usage API, tokens may be an optional private activity statistic with explicit publication; launch metrics should use honest project updates, shipped projects, connections, and successful invitations.
+
+## SurfaceSpec v2 and onboarding repair - 2026-07-17
+
+- SurfaceSpec v2 replaces the former bounded profile card with governed full-page composition while keeping scripts, forms, remote URLs, arbitrary fonts, raw SVG, permission controls, and unapproved assets outside generated authority.
+- New uploads accept PNG and JPEG only, validate signatures and dimensions, remove container metadata including EXIF/GPS fields before content-addressed R2 storage, and authorize public reads only when the exact asset remains referenced by a viewer-authorized published revision. This removes container metadata, not information intentionally encoded into image pixels.
+- Public and preview rendering resolve the same deliberately public profile, project, and approved-media bindings. Private Work Signals never enter either rendering path.
+- The mandatory setup state is 10 steps. Networking Pulse explains every configurable value; Work Pulse recommends Tuesdays and Fridays; automation completes setup; referral creation is optional afterward.
+- The personal invite page infers the signed-in inviter, tracks accepted joins, caps active links, and does not ask for a redundant username.
+- Verification evidence: 89/89 unit tests, 12/12 security tests, 5/5 rendered-source tests, 8/8 Surface Lab desktop/phone tests, 12/16 combined affected E2E tests on the first run plus all 4 repaired failures passing on rerun, two focused surface-media integration regressions passing, both plugin bundles validating, workspace typechecks, clean ESLint, `git diff --check`, and the production web build. The Windows Vitest contract runner completed its assertions in earlier focused runs but failed to exit cleanly in the final combined process; it was terminated without treating the hung process as new pass evidence.
 
 ## Anonymous Map and Build Graph repair
 

@@ -58,7 +58,7 @@ export function OnboardingClient({
     initialSnapshot.profile?.acceptanceMode ?? "manual",
   );
   const [cadence, setCadence] = useState<Cadence>(
-    initialSnapshot.automation?.cadence ?? "automatic",
+    initialSnapshot.automation?.cadence ?? "twice_weekly",
   );
   const hydrated = useSyncExternalStore(
     emptySubscribe,
@@ -409,8 +409,8 @@ export function OnboardingClient({
         )}
         {step === "automation" && (
           <Step
-            title="Configure one Buildmates automation"
-            description="Your Buildmates automation can refresh approved signals, evaluate a small shortlist, request feedback, and prepare scheduling actions you allow."
+            title="Set up your Work Pulse"
+            description="Recommended: Tuesdays and Fridays. On each scheduled run, Codex refreshes only approved sources, keeps your profile context current, checks a small relevant-builder shortlist and your relevance watch, then posts a concise update here."
           >
             <AutomationCadence value={cadence} onChange={setCadence} />
             <label className={styles.checkLabel}>
@@ -435,23 +435,8 @@ export function OnboardingClient({
             </button>
           </Step>
         )}
-        {step === "first_useful_outcome" && (
-          <FirstOutcome busy={busy} onSubmit={onboarding} />
-        )}
         {!step && (
-          <Step
-            title="Buildmates setup is complete"
-            description="Your profile, privacy choices, Networking Pulse, and automation settings are saved."
-          >
-            <div className={styles.completion}>
-              <strong>Next useful paths</strong>
-              <a href="/settings/privacy">Review what Buildmates knows</a>
-              <a href="/settings/automation">Change automation cadence</a>
-              <a href="/settings/connections">
-                Finish or review the Codex connection
-              </a>
-            </div>
-          </Step>
+          <CompletionStep handle={snapshot.profile?.handle} />
         )}
         <p className={styles.liveMessage} role="status" aria-live="polite">
           {busy ? "Saving…" : message}
@@ -609,7 +594,7 @@ function NetworkingStep({
     avoidRepeatedClusters: initial?.controls.avoidRepeatedClusters ?? true,
     expiresAt:
       initial?.expiresAt ??
-      new Date(Date.parse(generatedAt) + 28 * 864e5).toISOString().slice(0, 10),
+      new Date(Date.parse(generatedAt) + 30 * 864e5).toISOString().slice(0, 10),
   });
   return (
     <Step
@@ -629,6 +614,7 @@ function NetworkingStep({
         <div className={styles.twoColumns}>
           <label>
             Builder mix
+            <span>Similar favors closely related work. Adjacent favors complementary work. Balanced uses both.</span>
             <select
               value={form.builderSimilarity}
               onChange={(event) =>
@@ -646,6 +632,7 @@ function NetworkingStep({
           </label>
           <label>
             Geography
+            <span>Choose whether nearby builders, builders anywhere, or both should be considered.</span>
             <select
               value={form.geography}
               onChange={(event) =>
@@ -665,6 +652,7 @@ function NetworkingStep({
         <div className={styles.rangeGrid}>
           <label>
             Serendipity <output>{form.serendipity}%</output>
+            <span>How much room to leave for thoughtful matches beyond the most obvious overlap.</span>
             <input
               type="range"
               min="0"
@@ -677,6 +665,7 @@ function NetworkingStep({
           </label>
           <label>
             Introductions per week
+            <span>A hard cap on new introductions, not a target Buildmates must fill.</span>
             <input
               type="number"
               min="0"
@@ -694,6 +683,7 @@ function NetworkingStep({
         <div className={styles.twoColumns}>
           <label>
             Quiet hours start
+            <span>Scheduled introduction activity stays quiet during these local hours.</span>
             <input
               type="time"
               value={form.quietStart}
@@ -715,6 +705,7 @@ function NetworkingStep({
         </div>
         <label>
           Reconfirm on
+          <span>Codex will ask whether this temporary intent still fits. Your profile is not deleted.</span>
           <input
             type="date"
             value={form.expiresAt.slice(0, 10)}
@@ -746,6 +737,17 @@ function NetworkingStep({
             }
           />{" "}
           Avoid repeated introductions from the same narrow cluster
+        </label>
+        <label>
+          Exclusions <span className={styles.optional}>Optional</span>
+          <span>One person, company, industry, topic, or project category per line.</span>
+          <textarea
+            rows={4}
+            value={form.exclusions}
+            onChange={(event) =>
+              setForm({ ...form, exclusions: event.target.value })
+            }
+          />
         </label>
       </div>
       <button
@@ -784,24 +786,20 @@ function NetworkingStep({
     </Step>
   );
 }
-function FirstOutcome({
-  busy,
-  onSubmit,
-}: {
-  busy: boolean;
-  onSubmit: (body: Record<string, unknown>) => Promise<void>;
-}) {
+function CompletionStep({ handle }: { handle?: string | null }) {
   return (
     <Step
-      title="Keep watch for a relevant builder"
-      description="During each scheduled Buildmates automation, Codex checks for someone who fits your profile and current Networking Pulse. If it finds a strong possibility, the automation result will tell you."
+      title="Your Buildmates profile is ready"
+      description="Your profile is published, and your Work Pulse will keep its approved context and networking intent current. Return to Codex any time you want to redesign your page or change how Buildmates represents your work."
     >
-      <button
-        onClick={() => onSubmit({ action: "complete_outcome" })}
-        disabled={busy}
-      >
-        Turn on relevance watch and finish
-      </button>
+      <div className={styles.completion}>
+        <strong>Choose where to go next</strong>
+        {handle ? <a href={`/builders/${handle}`}>View your public profile</a> : null}
+        <a href="/profile/edit">Edit your profile details</a>
+        <a href="/profile/design">Redesign your page with Codex</a>
+        <a href="/settings/automation">Review your Tuesday and Friday Work Pulse</a>
+        <a href="/invite">Create a personal link to invite builders you know</a>
+      </div>
     </Step>
   );
 }

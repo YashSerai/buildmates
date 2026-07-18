@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  async rewrites() {
-    return [{ source: "/@:handle", destination: "/builders/:handle" }];
+  async redirects() {
+    return [{ source: "/@:handle", destination: "/builders/:handle", permanent: true }];
   },
 };
 

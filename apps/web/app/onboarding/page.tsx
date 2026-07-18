@@ -13,7 +13,7 @@ export default async function OnboardingPage() {
   const { DB } = await getPlatformBindings();
   const snapshot = await getOnboardingSnapshot(DB, user.id, user.identity.displayName);
   const nextLabel = snapshot.setup.nextStep ? setupLabel(snapshot.setup.nextStep) : "setup complete";
-  const profileHref = snapshot.profile?.handle ? `/@${snapshot.profile.handle}` : "/profile";
+  const profileHref = snapshot.profile?.handle ? `/builders/${snapshot.profile.handle}` : "/profile";
 
   return <><ProductHeader signedIn/><main className={styles.page}>
     <section className={styles.intro}>
@@ -49,4 +49,4 @@ export default async function OnboardingPage() {
   </main></>;
 }
 
-function setupLabel(step:string){return ({identity_link:"account",storage_explanation:"what to share",source_selection:"connected apps",context_collection:"about you",signal_privacy_review:"review context",basic_profile:"profile",page_preview:"page",networking_pulse:"who to meet",acceptance_mode:"introductions",automation:"updates",first_useful_outcome:"finish"} as Record<string,string>)[step]??"next step"}
+function setupLabel(step:string){return ({identity_link:"account",storage_explanation:"what to share",source_selection:"connected apps",context_collection:"about you",signal_privacy_review:"review context",basic_profile:"profile",page_preview:"page",networking_pulse:"who to meet",acceptance_mode:"introductions",automation:"updates"} as Record<string,string>)[step]??"next step"}

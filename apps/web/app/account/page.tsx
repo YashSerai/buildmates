@@ -22,7 +22,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     {user ? <>
       <p className={styles.lead}>Signed in as {profile?.displayName ?? "a Buildmates member"}.</p>
       <div className={styles.status}><strong>{profile ? `@${profile.handle}` : "Profile setup is not finished"}</strong><span>{profile ? "Your profile and network controls are ready." : "Complete onboarding to publish a builder profile."}</span></div>
-      <Link className={styles.action} href={profile ? `/@${profile.handle}` : "/onboarding"}>{profile ? "View your profile" : "Finish onboarding"}</Link>
+      <Link className={styles.action} href={profile ? `/builders/${profile.handle}` : "/onboarding"}>{profile ? "View your profile" : "Finish onboarding"}</Link>
       <SignOutButton className={styles.secondary} />
     </> : <>
       <p className={styles.lead}>Sign in with GitHub to create your Buildmates website account. Buildmates uses your GitHub account ID for sign-in only; it does not request repository access. You can then link this account to Buildmates in Codex with a separate one-time approval.</p>

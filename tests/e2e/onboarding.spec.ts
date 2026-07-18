@@ -16,7 +16,7 @@ test("website directs first run to Codex without impersonating an identity link"
   await expect(
     page.getByRole("link", { name: "Continue setup in Codex" }),
   ).toBeVisible();
-  await expect(page.getByText("0 of 11", { exact: true })).toBeVisible();
+  await expect(page.getByText("0 of 10", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Set up manually instead" }),
   ).toHaveAttribute("href", "/onboarding/manual");
@@ -67,13 +67,15 @@ test("sparse-context builder completes the mandatory first run and resumes", asy
   await page.getByRole("button", { name: "Save acceptance mode" }).click();
   await page.getByLabel(/local repositories and device-bound sources/).check();
   await page.getByRole("button", { name: "Save automation" }).click();
-  await page.getByRole("button", { name: "Turn on relevance watch and finish" }).click();
 
   await expect(
-    page.getByRole("heading", { name: "Buildmates setup is complete" }),
+    page.getByRole("heading", { name: "Your Buildmates profile is ready" }),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: "View your public profile" })).toHaveAttribute("href", `/builders/${handle}`);
+  await expect(page.getByRole("link", { name: "Redesign your page with Codex" })).toHaveAttribute("href", "/profile/design");
+  await expect(page.getByRole("link", { name: "Create a personal link to invite builders you know" })).toHaveAttribute("href", "/invite");
   await page.reload();
-  await expect(page.getByText("11 of 11")).toBeVisible();
+  await expect(page.getByText("10 of 10")).toBeVisible();
   await expect(page.getByText("Codex connected")).toBeVisible();
   await assertNoOverflow(page);
   await page.screenshot({

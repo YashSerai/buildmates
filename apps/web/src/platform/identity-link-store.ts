@@ -39,7 +39,7 @@ export function createD1IdentityLinkStore(DB: D1BatchDatabase): IdentityLinkStor
   };
 }
 
-const SETUP_ORDER=["identity_link","storage_explanation","source_selection","context_collection","signal_privacy_review","basic_profile","page_preview","networking_pulse","acceptance_mode","automation","first_useful_outcome"] as const;
+const SETUP_ORDER=["identity_link","storage_explanation","source_selection","context_collection","signal_privacy_review","basic_profile","page_preview","networking_pulse","acceptance_mode","automation"] as const;
 function orderedSetupSteps(value:string|null):string[]{let stored:string[]=[];try{const parsed:unknown=JSON.parse(value??"[]");if(Array.isArray(parsed))stored=parsed.filter((item):item is string=>typeof item==="string")}catch{}return SETUP_ORDER.filter((step)=>step==="identity_link"||stored.includes(step))}
 
 export async function completeIdentityLink(

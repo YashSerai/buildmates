@@ -7,6 +7,6 @@ export default async function MyProfilePage() {
   const profile = await DB.prepare(`SELECT handle.handle,profile.published_at AS publishedAt
     FROM profiles profile LEFT JOIN handles handle ON handle.user_id=profile.user_id
     WHERE profile.user_id=? LIMIT 1`).bind(user.id).first<{ handle: string | null; publishedAt: number | null }>();
-  if (profile?.handle && profile.publishedAt) redirect(`/@${encodeURIComponent(profile.handle)}`);
+  if (profile?.handle && profile.publishedAt) redirect(`/builders/${encodeURIComponent(profile.handle)}`);
   redirect("/profile/edit");
 }

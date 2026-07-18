@@ -4,10 +4,13 @@ import {
   DESIGN_POLICY_ID,
   DESIGN_POLICY_VERSION,
   parseSurfaceSpecJson,
+  profileMediaBinding,
+  profileSurfaceMediaIsAuthorized,
 } from "@buildmates/surfaces";
 import { isAuthResponse, requireApiUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { requireSameOriginMutation } from "@/src/platform/same-origin";
+import { listApprovedProfileMedia } from "@/src/platform/surface-assets";
 import { consumeWebRateLimit } from "@/src/security/rate-limit";
 
 type ProfileSurface = { id: string; publishedRevisionId: string | null; publishedRevisionNumber: number | null; governanceVersion: number };
@@ -34,7 +37,7 @@ export async function GET() {
   if (isAuthResponse(user)) return user;
   try {
     const { profile, surface } = await getProfileSurface(DB, user.id);
-    const [fields, projects, history] = await Promise.all([
+    const [fields, projects, history, approvedMedia] = await Promise.all([
       // A generated public layout may outlive a later audience change. Give
       // Codex only deliberately public profile material so private or
       // connection-scoped values cannot be copied into static fallback or
@@ -44,9 +47,16 @@ export async function GET() {
       DB.prepare(`SELECT revision.id,revision.revision_number AS revisionNumber,revision.base_revision_number AS baseRevisionNumber,
         revision.status,revision.spec_json AS spec,revision.created_at AS createdAt
         FROM surface_revisions revision WHERE revision.surface_id=? ORDER BY revision.revision_number DESC LIMIT 30`).bind(surface.id).all(),
+      listApprovedProfileMedia({ DB, actorId: user.id }),
     ]);
-    const facts = fields.results.map((field) => ({ label: field.key.replaceAll("_", " "), value: safeJson(field.valueJson) }));
+    const facts = fields.results.map((field) => ({ label: field.key.replaceAll("_", " "), value: surfaceFactValue(field.valueJson) }));
     const visibleProjects = projects.results.map((project) => ({ id: project.id, title: project.title, summary: project.summary, href: `/projects/${project.slug}` }));
+    const mediaFields = approvedMedia.map((media) => ({
+      key: profileMediaBinding(media.assetId).altKey,
+      label: `${media.projectTitle} image description`,
+      value: media.altText,
+      bindingType: "text" as const,
+    }));
     const brief = createProfileGenerationBrief({
       handle: profile.handle,
       fields: [
@@ -54,15 +64,21 @@ export async function GET() {
         { key: "profile.summary", label: "Summary", value: profile.summary, bindingType: "text" },
         { key: "profile.facts", label: "Profile facts", value: facts, bindingType: "facts" },
         { key: "profile.projects", label: "Projects", value: visibleProjects, bindingType: "projects" },
+        ...mediaFields,
       ],
+      media: approvedMedia.map((media) => {
+        const binding = profileMediaBinding(media.assetId);
+        return { key: binding.key, altKey: binding.altKey, label: `${media.projectTitle} image`, approvedAssetIds: [media.assetId] };
+      }),
+      approvedAssets: approvedMedia.map((media) => ({ id: media.assetId, src: media.src })),
     });
     return Response.json({
       brief,
       surface,
-      history: history.results.map((row) => {
+      history: history.results.flatMap((row) => {
         const value = row as Record<string, unknown>;
-        try { return { ...value, spec: JSON.parse(String(value.spec)) }; }
-        catch { return { ...value, spec: null }; }
+        const spec = safeJson(String(value.spec));
+        return spec && !isHiddenRecoveryStarter(spec) ? [{ ...value, spec }] : [];
       }),
     }, { headers: { "cache-control": "private, no-store" } });
   } catch (error) {
@@ -82,6 +98,9 @@ export async function POST(request: Request) {
     const repositories = createD1Repositories(DB);
     if (body.action === "publish") {
       if (!body.revisionId) throw new Error("revision_required");
+      const candidate = await DB.prepare("SELECT spec_json AS spec FROM surface_revisions WHERE id=? AND surface_id=?")
+        .bind(body.revisionId, surface.id).first<{ spec: string }>();
+      if (!candidate || isHiddenRecoveryStarter(safeJson(candidate.spec))) throw new Error("starter_spec_not_publishable");
       await repositories.surfaces.publishRevision({ actorId: user.id, surfaceId: surface.id, revisionId: body.revisionId, expectedPublishedRevisionNumber: body.expectedPublishedRevisionNumber ?? null, governanceVersion: surface.governanceVersion, at: new Date() });
       return Response.json({ published: true });
     }
@@ -96,6 +115,15 @@ export async function POST(request: Request) {
       parsed = parseSurfaceSpecJson(JSON.stringify(body.spec));
     }
     if (parsed.kind !== "profile") throw new Error("wrong_surface_kind");
+    const approvedMedia = await listApprovedProfileMedia({ DB, actorId: user.id });
+    if (!profileSurfaceMediaIsAuthorized(
+      parsed,
+      approvedMedia.map((media) => {
+        const binding = profileMediaBinding(media.assetId);
+        return { key: binding.key, altKey: binding.altKey, label: `${media.projectTitle} image`, approvedAssetIds: [media.assetId] };
+      }),
+      approvedMedia.map((media) => ({ id: media.assetId, src: media.src })),
+    )) throw new Error("surface_asset_not_authorized");
     const maximum = await DB.prepare("SELECT COALESCE(MAX(revision_number),0) AS value FROM surface_revisions WHERE surface_id=?").bind(surface.id).first<{ value: number }>();
     const revisionNumber = Number(maximum?.value ?? 0) + 1;
     const id = `revision_${crypto.randomUUID()}`;
@@ -121,4 +149,36 @@ export async function POST(request: Request) {
 function safeJson(value: string): unknown {
   try { return JSON.parse(value); }
   catch { return null; }
+}
+
+function isHiddenRecoveryStarter(spec: unknown): boolean {
+  if (!spec || typeof spec !== "object") return false;
+  const candidate = spec as {
+    title?: unknown;
+    root?: { type?: unknown; children?: unknown };
+    bindingManifest?: { content?: unknown };
+  };
+  if (candidate.title === "Buildmates recovery seed") return true;
+  return candidate.title === "Buildmates page" && candidate.root?.type === "section" &&
+    Array.isArray(candidate.root.children) && candidate.root.children.length === 2 &&
+    Array.isArray(candidate.bindingManifest?.content) && candidate.bindingManifest.content.length === 2;
+}
+
+function surfaceFactValue(valueJson: string): string {
+  const value = safeJson(valueJson);
+  if (Array.isArray(value)) return value.map(surfaceText).filter(Boolean).join(", ");
+  return surfaceText(value);
+}
+
+function surfaceText(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (value && typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "";
+    }
+  }
+  return "";
 }

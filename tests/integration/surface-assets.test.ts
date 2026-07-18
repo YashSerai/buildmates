@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { asUserId, type ProfileId } from "@buildmates/domain";
 import { createD1Repositories, type RepositoryD1 } from "@buildmates/database";
 import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, seedDesignPolicy, surfaceSpecSchema, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
-import { MAX_SURFACE_ASSET_BYTES, readRequestBodyWithLimit, readSurfaceAsset, uploadSurfaceAsset } from "../../apps/web/src/platform/surface-assets";
+import { listApprovedProfileMedia, MAX_SURFACE_ASSET_BYTES, readRequestBodyWithLimit, readSurfaceAsset, sanitizeSurfaceAssetUpload, uploadSurfaceAsset } from "../../apps/web/src/platform/surface-assets";
 import type { R2Like } from "../../apps/web/src/platform/r2";
 
 describe("protected surface asset API service", () => {
@@ -34,9 +34,9 @@ describe("protected surface asset API service", () => {
   afterEach(async () => mf.dispose());
 
   it("uses no-store for every authorized read and revokes anonymous reads immediately", async () => {
-    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).buffer;
+    const png = validPng();
     const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
-    expect(asset).toMatchObject({ id: expect.stringMatching(/^asset_/), contentType: "image/png", byteSize: 12, src: expect.stringMatching(/^\/api\/surface-assets\/user_asset_alice\//) });
+    expect(asset).toMatchObject({ id: expect.stringMatching(/^asset_/), contentType: "image/png", byteSize: png.byteLength, sanitization: "container_metadata_stripped", src: expect.stringMatching(/^\/api\/surface-assets\/user_asset_alice\//) });
     const filename = asset.src.split("/").at(-1)!;
     const response = await readSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, viewerId: alice, ownerId: alice, filename });
     expect(response.status).toBe(200);
@@ -85,13 +85,37 @@ describe("protected surface asset API service", () => {
   it("rejects claimed-type forgery, executable bytes, and unknown owners", async () => {
     const html = new TextEncoder().encode("<html><script>alert(1)</script></html>").buffer;
     await expect(uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: html, claimedContentType: "image/png" })).rejects.toThrow(/signature/);
-    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer;
+    const png = validPng();
     await expect(uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/svg+xml" })).rejects.toThrow(/mismatch/);
     await expect(uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: "missing", bytes: png, claimedContentType: "image/png" })).rejects.toThrow(/owner/);
+    const webp = Uint8Array.from([...new TextEncoder().encode("RIFF"),0,0,0,0,...new TextEncoder().encode("WEBP")]).buffer;
+    await expect(uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: webp, claimedContentType: "image/webp" })).rejects.toThrow("surface_asset_type_forbidden");
   }, 15_000);
 
+  it("strips PNG text metadata before content addressing and R2 storage", async () => {
+    const tagged = pngWithText(new Uint8Array(validPng()), "Comment", "GPS: 49.2827,-123.1207");
+    const sanitized = sanitizeSurfaceAssetUpload(tagged, "image/png");
+    expect(sanitized.byteLength).toBeLessThan(tagged.byteLength);
+    expect(new TextDecoder().decode(sanitized)).not.toContain("GPS:");
+    const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: tagged.buffer, claimedContentType: "image/png" });
+    expect(asset.byteSize).toBe(sanitized.byteLength);
+    const object = await bucket.get(`surface-assets/${alice}/${asset.src.split("/").at(-1)}`);
+    expect(object).not.toBeNull();
+    expect(new TextDecoder().decode(await object!.arrayBuffer())).not.toContain("GPS:");
+  });
+
+  it("offers only owner-bound media attached to currently public published projects", async () => {
+    const now = Date.now();
+    const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: validPng(), claimedContentType: "image/png" });
+    await db.prepare("INSERT INTO projects (id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES ('project-media-public',?,'public-media','Public media','Deliberately public project','public',1,'active','building',0,?,?,?)").bind(alice,now,now,now).run();
+    await db.prepare("INSERT INTO project_media (id,project_id,asset_id,alt_text,position,created_at) VALUES ('project-media-row','project-media-public',?,'Screenshot of the public project',0,?)").bind(asset.id,now).run();
+    await expect(listApprovedProfileMedia({ DB: db as unknown as RepositoryD1, actorId: alice })).resolves.toEqual([expect.objectContaining({ assetId: asset.id, altText: "Screenshot of the public project", projectId: "project-media-public" })]);
+    await db.prepare("UPDATE projects SET audience='private' WHERE id='project-media-public'").run();
+    await expect(listApprovedProfileMedia({ DB: db as unknown as RepositoryD1, actorId: alice })).resolves.toEqual([]);
+  });
+
   it("rejects a generated revision that claims another builder's asset", async () => {
-    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).buffer;
+    const png = validPng();
     const aliceAsset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
     const repositories = createD1Repositories(db as unknown as RepositoryD1);
     await repositories.profiles.create({ actorId: charlie, id: "profile-asset-owner-charlie" as ProfileId, userId: charlie, handle: "asset-owner-charlie", displayName: "Charlie", summary: "Own surface", audience: "public", cohortScopeId: null, allowMatching: true, acceptanceMode: "manual" });
@@ -112,7 +136,7 @@ describe("protected surface asset API service", () => {
   }, 15_000);
 
   it("serves a raster referenced by a published historical-policy profile after the active policy is seeded", async () => {
-    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3, 4]).buffer;
+    const png = validPng();
     const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
     const repositories = createD1Repositories(db as unknown as RepositoryD1);
     await repositories.profiles.create({ actorId: alice, id: "profile-asset-historical" as ProfileId, userId: alice, handle: "asset-historical", displayName: "Historical Alice", summary: "Published under policy one", audience: "public", cohortScopeId: null, allowMatching: true, acceptanceMode: "manual" });
@@ -144,7 +168,7 @@ describe("protected surface asset API service", () => {
   });
 
   it("never deletes a content-addressed object after an ambiguous database failure", async () => {
-    const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).buffer;
+    const png = validPng();
     const existing = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
     const filename = existing.src.split("/").at(-1)!;
     const objectKey = `surface-assets/${alice}/${filename}`;
@@ -194,6 +218,29 @@ function streamingRequest(chunkSizes: number[], contentLength?: string): Request
 }
 
 function assetSpecJson(kind: "profile" | "circle", asset: { id: string; src: string }, policyVersion: "2026-07-14.1" | typeof DESIGN_POLICY_VERSION = DESIGN_POLICY_VERSION): string {
+  if (policyVersion === DESIGN_POLICY_VERSION) {
+    const spec: SurfaceSpec = {
+      schemaVersion: "2", designPolicyVersion: policyVersion, kind, title: "Asset surface",
+      theme: {
+        mode: "light",
+        colors: { canvas: "#ffffff", surface: "#f8f8f4", ink: "#171814", mutedInk: "#55584f", accent: "#cad7ad", accentInk: "#181b12", secondary: "#26382f", secondaryInk: "#ffffff", highlight: "#f3c76d", highlightInk: "#221900", rule: "#c4c6bd", focusInner: "#000000", focusOuter: "#ffffff" },
+        typography: { display: "book-serif", body: "warm-grotesk", data: "engine-mono", scale: "comfortable", headingWeight: "bold", headingCase: "as-written", letterSpacing: "tight" },
+        shape: { corners: "soft", density: "comfortable", border: "hairline" },
+        atmosphere: { motif: "none", density: "quiet", tone: "accent", continuity: "section" },
+        motion: { preset: "none", durationMs: 400, iterations: 1 },
+      },
+      root: { id: "root", type: "section", tone: "canvas", layout: "flow", padding: "md", bleed: false, minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center", children: [
+        { id: "title", type: "heading", level: 1, binding: "surface.title", fallback: "Surface", size: "display", align: "start", width: "balanced", weight: "bold", lineHeight: "tight", tracking: "tight" },
+        { id: "hero", type: "media", binding: "surface.hero", altBinding: "surface.alt", aspect: "landscape", fit: "cover", focalPoint: "center", treatment: "plain" },
+      ] },
+      bindingManifest: { content: [{ key: "surface.title", type: "text" }, { key: "surface.alt", type: "text" }], media: [{ key: "surface.hero", altKey: "surface.alt", approvedAssetIds: [asset.id], authorization: "surface-approved" }] },
+      approvedAssets: [{ id: asset.id, src: asset.src }], decorativeRegions: [],
+      responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true },
+      accessibility: { label: "Asset surface", primaryHeadingNodeId: "title", reducedMotion: "required" },
+    };
+    surfaceSpecSchema.parse(spec);
+    return JSON.stringify(spec);
+  }
   const spec: SurfaceSpec = {
     schemaVersion: "1", designPolicyVersion: policyVersion, kind, title: "Asset surface",
     theme: { mode: "light", colors: { canvas: "#ffffff", surface: "#f8f8f4", ink: "#171814", mutedInk: "#55584f", accent: "#cad7ad", accentInk: "#181b12", rule: "#c4c6bd", focusInner: "#000000", focusOuter: "#ffffff" }, typography: { display: "editorial", body: "humanist", scale: "comfortable" }, shape: { corners: "soft", density: "comfortable" } },
@@ -202,4 +249,40 @@ function assetSpecJson(kind: "profile" | "circle", asset: { id: string; src: str
     responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable" }, accessibility: { label: "Asset surface", primaryHeadingNodeId: "title", reducedMotion: "required" },
   };
   return JSON.stringify(spec);
+}
+
+function validPng(): ArrayBuffer {
+  return Uint8Array.from(Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64")).buffer;
+}
+
+function pngWithText(png: Uint8Array, keyword: string, value: string): Uint8Array {
+  const data = new TextEncoder().encode(`${keyword}\0${value}`);
+  const type = new TextEncoder().encode("tEXt");
+  const chunk = new Uint8Array(12 + data.length);
+  writeU32(chunk, 0, data.length);
+  chunk.set(type, 4);
+  chunk.set(data, 8);
+  writeU32(chunk, 8 + data.length, testCrc32(chunk.slice(4, 8 + data.length)));
+  const iend = png.length - 12;
+  const result = new Uint8Array(png.length + chunk.length);
+  result.set(png.slice(0, iend));
+  result.set(chunk, iend);
+  result.set(png.slice(iend), iend + chunk.length);
+  return result;
+}
+
+function writeU32(bytes: Uint8Array, offset: number, value: number) {
+  bytes[offset] = (value >>> 24) & 0xff;
+  bytes[offset + 1] = (value >>> 16) & 0xff;
+  bytes[offset + 2] = (value >>> 8) & 0xff;
+  bytes[offset + 3] = value & 0xff;
+}
+
+function testCrc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const value of bytes) {
+    crc ^= value;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
 }
