@@ -34,6 +34,8 @@ On the current Codex host, call `list_threads` with `limit: 50`; this is the lar
 
 Explicitly name every product-bearing root and every product in the GBrain product index. Never collapse product roots into “other,” “several dated roots,” or an unnamed remainder. Non-product utility tasks may be summarized separately only when their total count and exclusion from profile research are stated.
 
+Render one line per product as `Product — exact absolute normalized root(s) — task count(s)`. “Project root plus worktree” is not an acceptable substitute for the paths. Product counts plus the non-product count must equal the total returned task count.
+
 Before presenting source choices, use the host's task-listing capability (`list_threads` in Codex) to inventory metadata for every accessible task without filtering to the current directory. Group the returned titles, working directories, dates, and summaries by normalized project root, retain an unscoped group when needed, and combine that inventory with the GBrain index plus relevant product and memory indexes. Do not open task bodies before consent. If task discovery is unavailable, say so and offer a clearly labeled current-project review; never describe the current directory alone as the user's Codex workspace.
 
 Present these combinable paths with the first one recommended. The first prompt is the consent gate for workspace research, so name every discovered project, its root, the number or range of tasks found, and the GBrain or memory files Codex proposes to review before the user chooses:
