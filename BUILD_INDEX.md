@@ -221,6 +221,13 @@ Continue the active first-run QA through the generated profile preview and prese
 - The MCP contract, public `/llms.txt`, public and beta onboarding skills, plugin READMEs, and package cachebusters carry the same rules. Both plugin packages validate, 18/18 focused MCP contract tests pass, workspace typechecks pass, and the public agent contract passes on desktop and phone.
 - Exact implementation commit `c7a62b41dbb6e49cb68fae04f2ee80e885775a90` is live as ChatGPT Sites version 20 and MCP Worker version `0f5a30d4-d9e0-4479-915c-88e251460d84`. The versioned live contract returned all new markers; the plain `/llms.txt` path initially retained the prior edge response while caches propagated.
 
+## Profile-design QA findings
+
+- The initial starter SurfaceSpec and a second Codex revision remained visibly bounded to the same simple themed card. The current SurfaceSpec can vary palette, typography family, density, trusted component composition, and sandboxed decoration, but it cannot yet produce a fully art-directed portfolio page comparable in depth to Serai Labs or the user's portfolio. This is an architectural capability limit, not a prompt-only defect.
+- Do not repair the generative profile architecture during the active 11-step QA. Continue the run with the current revision as temporary functional evidence, then design SurfaceSpec v2 before launch. The target flow is profile approval, a user-reviewed Codex design brief and available-skill choice, real generation, full-page private preview, then publication. The starter remains an invisible validation fallback and must not count as `Design 1`.
+- The published profile should make the generated Surface the primary page while trusted Buildmates navigation, connect, report, privacy, revision, and rollback controls remain outside generated authority. The design workspace keeps its explanatory header and shows the full-page preview below it.
+- Privacy review copy now explains profile visibility, matching, search indexing, aggregate city-map inclusion, private design notes, acceptance mode, and recurring Work Signals individually before one approval. Search indexing means Google and other search engines; city-map inclusion uses only a chosen city in anonymous aggregate bubbles and never precise or live location.
+
 ## Codex acquisition path added 2026-07-16
 
 - The landing page now states that Codex creates the profile and routes the primary action through a canonical public setup guide instead of assuming visitors already know or have installed Buildmates.

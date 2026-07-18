@@ -119,6 +119,19 @@ describe("Buildmates MCP contract", () => {
     expect(collectionState.guidance.fallback).toContain("workspace review was skipped");
   });
 
+  it("explains profile privacy and networking settings before approval", async () => {
+    const { services, links, repository } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation", "source_selection", "context_collection", "signal_privacy_review"], updatedAt: "2026-07-17T12:00:00.000Z" }, now: "2026-07-17T12:00:00.000Z" });
+
+    const state = await invoke(services, "get_setup_state", {});
+    expect(state).toMatchObject({ nextStep: "basic_profile" });
+    expect(state.guidance.nextAction).toContain("Google and other search engines");
+    expect(state.guidance.nextAction).toContain("anonymous aggregate bubble");
+    expect(state.guidance.nextAction).toContain("never precise or live location");
+    expect(state.guidance.nextAction).toContain("not displayed");
+  });
+
   it("requires valid input for every linked mutation", async () => {
     const { services, links } = fixture();
     links.set(SUBJECT_A, "user_alice");

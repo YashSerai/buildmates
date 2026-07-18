@@ -60,7 +60,17 @@ Status: researching | ready for review | approved
 ## Approved profile fields
 ```
 
-Before saving the profile, explain and confirm profile visibility, matching participation, Manual versus Full Autopilot, search-engine indexing, and optional aggregate city-map inclusion. Inferred style or personality observations are private design inputs until the user explicitly approves a public field.
+Before saving the profile, present the proposed settings line by line and explain each one before asking for approval:
+
+- **Profile visibility** controls who can open the profile inside Buildmates.
+- **Matching enabled** lets Buildmates use only approved matching fields to suggest relevant builders. It does not expose raw workspace sources.
+- **Search-engine indexing** controls whether Google and other search engines may list an otherwise public profile. It has no effect while the profile is not public.
+- **City map inclusion** uses only a city the user chooses and contributes to an anonymous aggregate bubble. It never uses precise or live location.
+- **Private style and personality notes** guide Codex's profile design and are not displayed unless the user deliberately publishes equivalent profile content.
+- **Manual versus Full Autopilot** controls interpersonal acceptance, not profile visibility.
+- **Recurring Work Signals** exist only for ongoing sources the user explicitly permits.
+
+Do not compress these settings into one unexplained approval sentence. Inferred style or personality observations remain private design inputs until the user explicitly approves a public field.
 
 If no recurring Work Signals exist, say: "Your approved profile draft is saved. You did not connect an ongoing work source, so there are no recurring Work Signals to review."
 

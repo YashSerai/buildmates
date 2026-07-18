@@ -108,6 +108,9 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(instructions).toContain("Use my Codex workspace");
   expect(instructions).toContain("Skip workspace review");
   expect(instructions).toContain("without asking for permission again");
+  expect(instructions).toContain("Search-engine indexing");
+  expect(instructions).toContain("anonymous aggregate bubble");
+  expect(instructions).toContain("Do not compress these settings into one unexplained approval sentence");
   expect(instructions).toContain("Do not treat GitHub website sign-in as repository permission");
   expect(instructions).toContain("submit only reviewed structured profile fields");
 });
