@@ -109,7 +109,9 @@ describe("Buildmates MCP contract", () => {
 
     const sourceState = await invoke(services, "get_setup_state", {});
     expect(sourceState).toMatchObject({ nextStep: "source_selection" });
-    expect(sourceState.guidance.requiredHostDiscovery).toContain("every accessible Codex task");
+    expect(sourceState.guidance.requiredHostDiscovery).toContain("every returned task");
+    expect(sourceState.guidance.requiredHostResultLimit).toBe(50);
+    expect(sourceState.guidance.requiredHostDiscovery).toContain("limit 50");
     expect(sourceState.guidance.completionGate).toContain("current-directory-only");
     expect(sourceState.guidance.nextAction).toContain("Skip workspace review");
     expect(sourceState.guidance.nextAction).toContain("without a second permission prompt");

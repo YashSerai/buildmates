@@ -237,6 +237,8 @@ Run one clean 0/10 Codex onboarding QA against the production MCP and preserve t
 
 ## Source-consent and clean-task handoff repair
 
+- Task discovery uses the current Codex host's largest accepted result window (`list_threads({ limit: 50 })`) instead of the shallow default. If a future host rejects that limit, Codex retries once with its largest accepted value and labels the inventory as bounded.
+
 - The `source_selection` and `context_collection` records remain separate resumable backend steps, but they are one user consent event when Codex states the exact local research scope first. Selecting **Use my Codex workspace** authorizes immediate review of that stated scope and completion of both records without another permission prompt.
 - Before that consent prompt, Codex performs a metadata-only inventory of every host-visible task without filtering to the current directory, groups tasks by project root, and names every discovered project, task count or range, and proposed GBrain or memory source. After approval it accounts for every task in every project in `.buildmates/profile-context.md`; context collection cannot advance while discovered projects or tasks remain unreviewed. If task discovery is unavailable, the fallback is explicitly labeled current-project review rather than Codex-workspace review.
 - Source selection now includes **Skip workspace review**. That route inspects no other tasks, project folders, GBrain, or memory files and continues with approved connected sources or focused questions instead of dead-ending.

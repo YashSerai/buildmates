@@ -86,3 +86,14 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Fix candidate: require task/project discovery before the source-selection prompt. Build a deduplicated research plan from accessible recent tasks, their project roots, GBrain index/product entries, and high-signal project documentation. Disclose that plan once, then review representative evidence across every discovered product without uploading raw material.
 - Quality impact: the resulting profile can overfit to Buildmates and miss the founder's other products, current work, cross-project systems, and aesthetic preferences. Do not count this profile draft as a passing context result.
 - QA rule added: stop immediately if task discovery is available but the proposed workspace scope contains only the current directory, or if context collection advances before every inventoried project and task is accounted for.
+
+### 2026-07-18 — workspace inventory rerun
+
+- Task: `019f7721-d70d-7cf0-b689-8161d7c86c38`
+- Prompt: exact production setup prompt from the Buildmates site, run on GPT-5.6 Luna High.
+- Reset result: Pass. The incomplete account and stale `.buildmates/profile-context.md` were removed; the new task began at authoritative `0/10`, identity linking completed, and source selection stopped at `2/10`.
+- First inventory result: Fail-fast worked. The revised agent found six project groups instead of only Buildmates, but it still omitted known host-visible work such as Soulspace and SafariGigs. Setup did not advance past source selection.
+- Cause: `list_threads` defaults to a shallow result window. The written requirement said to use the widest safe window but did not state the host's accepted maximum, so Luna used the default-sized inventory.
+- Verified host boundary: `list_threads({ limit: 50 })` succeeds and reveals 28 project/unscoped groups, including Soulspace, SafariGigs, AfterYou, Clearfeed/X, Serai Labs, and Buildmates; `limit: 100` is rejected.
+- Fix: require `limit: 50` in the plugin skill, MCP guidance, and public agent contract; if another host rejects 50, retry once at its largest accepted limit and disclose that the inventory is bounded.
+- QA rule added: a workspace inventory fails if it relies on the default task window or omits a known host-visible product present in the maximum accepted metadata listing.

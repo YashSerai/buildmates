@@ -30,6 +30,8 @@ At each checkpoint, show up to three concrete next actions in order. State what 
 
 ## Source selection
 
+On the current Codex host, call `list_threads` with `limit: 50`; this is the largest accepted result window. Never rely on its smaller default. If another host rejects 50, retry once with its largest accepted limit and tell the user the inventory is bounded.
+
 Before presenting source choices, use the host's task-listing capability (`list_threads` in Codex) to inventory metadata for every accessible task without filtering to the current directory. Group the returned titles, working directories, dates, and summaries by normalized project root, retain an unscoped group when needed, and combine that inventory with the GBrain index plus relevant product and memory indexes. Do not open task bodies before consent. If task discovery is unavailable, say so and offer a clearly labeled current-project review; never describe the current directory alone as the user's Codex workspace.
 
 Present these combinable paths with the first one recommended. The first prompt is the consent gate for workspace research, so name every discovered project, its root, the number or range of tasks found, and the GBrain or memory files Codex proposes to review before the user chooses:

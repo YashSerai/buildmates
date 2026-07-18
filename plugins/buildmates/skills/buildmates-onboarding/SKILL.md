@@ -21,6 +21,8 @@ Before linking, use only the read-only `get_setup_state`, `get_link_url`, and `c
 
 Always use the literal workspace scope `global`. Do not invent or forward organization, project, account, or workspace identifiers; multi-workspace linking is not part of the public contract.
 
+On the current Codex host, call `list_threads` with `limit: 50`; this is the largest accepted result window. Never rely on its smaller default. If another host rejects 50, retry once with its largest accepted limit and disclose that the inventory is bounded.
+
 Explain that Codex reads only under existing host permissions; Buildmates stores only structured summaries permitted by the user's Buildmates source policies. Before presenting source choices, perform a metadata-only workspace inventory. When host task controls are available, search for and use the task-listing capability (`list_threads` in Codex) with the widest safe result limit; do not filter it to the current directory. Group every returned task by normalized working directory or project root, keep tasks without a project root in an explicit unscoped group, and combine that inventory with the GBrain index plus relevant product and memory indexes. At this pre-consent stage, inspect titles, working directories, dates, and summaries only—do not open task bodies. The proposed scope must name every discovered project, its root, the number or range of tasks found, and the GBrain or memory files proposed for review. If host task discovery is unavailable, say so and offer a clearly labeled current-project review; never call a current-directory-only inventory the user's Codex workspace.
 
 Then present four combinable paths and explain each one before asking:
