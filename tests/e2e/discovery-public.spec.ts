@@ -108,6 +108,7 @@ test("Codex can read the public setup contract", async ({ request }) => {
   expect(instructions).toContain("Use my Codex workspace");
   expect(instructions).toContain("every accessible task without filtering to the current directory");
   expect(instructions).toContain("limit: 50");
+  expect(instructions).toContain("Never collapse product roots");
   expect(instructions).toContain("every project and every task in the approved inventory");
   expect(instructions).toContain("only the current project is represented");
   expect(instructions).toContain("Skip workspace review");
