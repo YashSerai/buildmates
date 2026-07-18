@@ -11,6 +11,27 @@ import {
 } from "./schemas";
 import type { CompleteIdentityLinkResult } from "./tools/identity";
 
+const BUILD_GRAPH_TOPICS = [
+  ["ai", "AI", null], ["developer-tools", "Developer tools", null], ["consumer-products", "Consumer products", null],
+  ["social-community", "Social and community", null], ["productivity-workflows", "Productivity and workflows", null],
+  ["design-creative", "Design and creative", null], ["marketplaces-commerce", "Marketplaces and commerce", null],
+  ["data-infrastructure", "Data and infrastructure", null], ["robotics-hardware", "Robotics and hardware", null],
+  ["chatgpt", "ChatGPT", "ai"], ["openai-platform", "OpenAI platform", "ai"], ["voice-ai", "Voice AI", "ai"],
+  ["retrieval-augmented-generation", "Retrieval-augmented generation", "ai"], ["fine-tuning", "Fine-tuning", "ai"],
+  ["ai-agents", "AI agents", "ai"], ["mcp", "Model Context Protocol", "ai"], ["ai-evals", "AI evaluations", "ai"],
+  ["frontend", "Frontend engineering", "developer-tools"], ["backend", "Backend engineering", "developer-tools"],
+  ["authentication", "Authentication", "developer-tools"], ["deployment", "Deployment", "developer-tools"],
+  ["mobile-apps", "Mobile apps", "developer-tools"], ["databases", "Databases", "data-infrastructure"],
+  ["analytics", "Analytics", "data-infrastructure"], ["cloud-infrastructure", "Cloud infrastructure", "data-infrastructure"],
+  ["automation", "Automation", "productivity-workflows"], ["presentations", "Presentations", "productivity-workflows"],
+  ["growth-marketing", "Growth and marketing", "social-community"], ["social-products", "Social products", "social-community"],
+  ["communities", "Communities", "social-community"], ["privacy", "Privacy", "consumer-products"],
+  ["creator-tools", "Creator tools", "design-creative"], ["marketplaces", "Marketplaces", "marketplaces-commerce"],
+  ["payments", "Payments", "marketplaces-commerce"],
+] as const;
+
+const BUILD_GRAPH_RELATIONSHIPS = BUILD_GRAPH_TOPICS.flatMap(([id, , parentId]) => parentId ? [{ parentId, childId: id }] : []);
+
 export type BuildmatesToolServices = {
   linkBaseUrl: string;
   repository: McpProductRepository;
@@ -90,6 +111,7 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   })),
 
   tool("list_work_signals", "List approved Work Signals", "Lists only the linked user's approved structured summaries; raw connector content is never returned.", z.object(pageInput).strict(), readAnnotations, async (input, context, services) => { const page = await services.repository.listPageForMember("work_signal", context.userId!, pageOptions(input)); return { signals: page.records.map(value), nextCursor: page.nextCursor }; }),
+  tool("list_topic_taxonomy", "List Build Graph topics", "Returns canonical high-level and nested topic identifiers Codex may attach to an approved profile, project, or Work Signal. It contains no user data.", z.object(workspaceInput).strict(), readAnnotations, async () => ({ taxonomyVersion: "taxonomy-buildmates-v1", topics: BUILD_GRAPH_TOPICS.map(([id, label, parentId]) => ({ id, label, parentId })), relationships: BUILD_GRAPH_RELATIONSHIPS })),
   tool("submit_work_signal", "Submit permitted Work Signal", "Stores a concise summary used only for matching, along with approved topics and tools. Ask each time requires a one-time approval. Raw prompts, chats, documents, repository contents, email bodies, calendar contents, and credentials are not accepted.", z.object({ signal: workSignalSchema, ...workspaceInput }).strict(), writeAnnotations, async (input, context, services) => {
     const signal = input.signal as z.infer<typeof workSignalSchema>;
     const source = await services.repository.readForMember<Record<string, unknown>>("source_policy", signal.sourceId, context.userId!);
@@ -386,7 +408,7 @@ function setupGuidance(step: string | null) {
   if (step === "source_selection") return { goal: "Choose how Codex should understand the builder.", recommended: "codex_workspace", nextAction: "Present the exact workspace scope Codex proposes to review, then offer Use my Codex workspace, connected sources, direct answers, and Skip workspace review. Approval of the stated workspace scope covers immediate private context collection too: complete source_selection, review only that scope, maintain .buildmates/profile-context.md, and complete context_collection without a second permission prompt.", fallback: "If workspace review is skipped, continue with approved connected sources or focused questions and accept project or portfolio links." };
   if (step === "context_collection") return { goal: "Create a rich private profile draft.", nextAction: "If the user already approved the exact workspace scope during source selection, proceed without asking again. Maintain .buildmates/profile-context.md with projects, relationships between projects, current work, stack, interests, ambitions, meeting intent, confirmed style preferences, sources checked, and uncertainties. Show the synthesized draft for approval before submission. Ask again only if the research scope expands.", fallback: "If workspace review was skipped or context is sparse, use approved connected sources or ask focused profile questions." };
   if (step === "signal_privacy_review") return { goal: "Review recurring matching signals separately from the saved profile draft.", nextAction: "Say whether the profile draft is saved, then list recurring Work Signals. If there are none, explicitly say no ongoing source was connected." };
-  if (step === "basic_profile") return { goal: "Review the complete structured profile and behavioral settings.", nextAction: "Present the proposed profile and explain each setting in plain language before asking for one approval. Profile visibility controls who can open the profile inside Buildmates. Matching enabled lets Buildmates use only approved matching fields to suggest relevant builders; it does not expose raw workspace sources. Search-engine indexing controls whether Google and other search engines may list an otherwise public profile. If the user supplies a city, it joins the anonymous Map by default; precise or live location is never collected, and the user may hide the city contribution. Classify the reviewed profile and projects against the current canonical taxonomy and include those canonicalTopicIds so they join the anonymous Build Graph; never submit raw workspace text to the graph. Private style and personality notes guide Codex's design but are not displayed. Explain Manual versus Full Autopilot and whether recurring Work Signals exist. Ask only about fields Codex could not infer confidently." };
+  if (step === "basic_profile") return { goal: "Review the complete structured profile and behavioral settings.", nextAction: "Present the proposed profile and explain each setting in plain language before asking for one approval. Profile visibility controls who can open the profile inside Buildmates. Matching enabled lets Buildmates use only approved matching fields to suggest relevant builders; it does not expose raw workspace sources. Search-engine indexing controls whether Google and other search engines may list an otherwise public profile. If the user supplies a city, it appears only inside an anonymous aggregate bubble on the Map, never as a personal pin; the Map receives the chosen city and never precise or live location, and the user may hide the city contribution. Call list_topic_taxonomy, classify the reviewed profile and projects using only returned IDs, and include those canonicalTopicIds so they join the anonymous Build Graph; never submit raw workspace text to the graph. Private style and personality notes guide Codex's design but are not displayed. Explain Manual versus Full Autopilot and whether recurring Work Signals exist. Ask only about fields Codex could not infer confidently." };
   if (step === "page_preview") return { goal: "Generate and review a private custom profile page.", nextAction: "Use the returned starterSpec, validate it, submit a private preview, and provide the preview URL. If customization fails, submit the unchanged valid starterSpec rather than blocking setup." };
   return step ? { goal: `Complete ${step}.`, nextAction: "Explain the choice and complete only the returned setup step.", fallback: "Re-read setup state and report the exact next action." } : { goal: "Setup is complete.", nextAction: "Summarize the profile, networking settings, automation, and first useful action." };
 }

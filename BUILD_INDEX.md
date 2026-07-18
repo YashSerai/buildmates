@@ -158,7 +158,7 @@ All findings below were implemented and regression-tested. The integrated source
 - Generated Surface revisions can reference only exact, undeleted R2 assets owned by that Surface owner; route-specific asset isolation headers cannot be weakened by Worker-wide defaults.
 - Profile generation briefs include only deliberately public profile fields and projects, preventing private or connection-scoped content from leaking into static generated copy.
 - Blocking fails closed across Circle metadata, chat, modules, design/governance actions, notifications, invitations, and invitation acceptance.
-- Aggregate privacy thresholds are enforced at the data boundary: Build Graph topics require at least two distinct builders, Map cities require five opt-ins, and mapped-user totals exclude hidden cities.
+- Aggregate privacy is enforced at the data boundary: Map and Build Graph responses contain only counts and canonical labels, never builder identities, profile text, project titles, precise locations, or hidden cities.
 - Account deletion removes or pseudonymizes residual inferred-work, identity-link, evaluation, response, idempotency, cross-user notification, relationship, collaborator, and audit payload data while preserving only necessary opaque integrity history.
 - Request observability redacts bearer invite tokens. The dependency toolchain has no high or critical advisories; the remaining moderate Next/PostCSS scanner finding is outside the vinext/Vite production compiler path and is tracked as an upstream transitive advisory.
 - Verification after repair: all workspace typechecks, security 12/12, focused auth/surface/observability tests, D1 Surface assets 7/7, D1 privacy/abuse suites 12/12, production build, and diff check pass.
@@ -234,6 +234,7 @@ Continue the active first-run QA through the generated profile preview and prese
 - Map participation is independent of profile publication. When a user deliberately supplies a supported city, anonymous aggregation is enabled by default unless they hide it. The first participating builder can create a city bubble; Buildmates never infers precise or live location.
 - Setup and recurring Work Pulses classify only reviewed work into canonical topic IDs. The graph aggregates those IDs from reviewed profiles, active project taxonomy, and approved unexpired Work Signals; raw text, source excerpts, prompts, handles, project titles, and user IDs never enter its response.
 - The graph returns topic nodes, weighted co-occurrence edges, and canonical parent/child relationships. Its interactive field opens on broad/root topics, supports click-to-focus drill-down, and shows the strongest child and neighboring topics with keyboard and reduced-motion support.
+- A built-in versioned topic hierarchy gives Codex stable IDs from `list_topic_taxonomy`; setup and Work Pulse skills must read it before classification. The migration backfills only canonical IDs from already-approved profile summaries so existing builders are not left out after launch.
 - Focused source proof: workspace typechecks pass, anonymous Map/Graph Miniflare tests pass 4/4, lint exits without new errors, and the production web build passes. Production deployment and rendered browser truth remain separate until published and inspected.
 
 ## Codex acquisition path added 2026-07-16

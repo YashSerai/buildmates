@@ -22,7 +22,7 @@ When the user asks to install, set up, start, or resume Buildmates:
 10. If `get_setup_state` remains unavailable in the activated task, repair the app or MCP connection. Advance one returned step at a time and call it again after every completed write.
 11. Ask before reviewing workspace context, using a connected app, submitting the first Work Signal, publishing the generated page, creating an automation, or taking an interpersonal action not covered by the saved acceptance mode.
 12. Finish only after the user has reviewed their complete profile and generated page, chosen networking and automation preferences, and received one useful next action.
-13. During setup and each approved Work Pulse, classify reviewed project context into canonical topic IDs. Buildmates may aggregate those IDs anonymously in the Build Graph, but never raw project text, prompt text, source excerpts, or identity. A deliberately supplied supported city joins the anonymous Map by default unless the user asks to hide it.
+13. During setup and each approved Work Pulse, call `list_topic_taxonomy`, classify reviewed project context using only returned canonical topic IDs, and submit those IDs with the approved profile or Work Signal. Buildmates may aggregate those IDs anonymously in the Build Graph, but never raw project text, prompt text, source excerpts, or identity. A deliberately supplied supported city joins the anonymous Map by default unless the user asks to hide it.
 
 ## Approval batching
 

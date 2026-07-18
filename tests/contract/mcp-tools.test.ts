@@ -172,6 +172,20 @@ describe("Buildmates MCP contract", () => {
     expect(links.size).toBe(1);
   });
 
+  it("lists the canonical Build Graph hierarchy without user data", async () => {
+    const { services, links } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    const taxonomy = await invoke(services, "list_topic_taxonomy", {}) as { taxonomyVersion: string; topics: Array<{ id: string; parentId: string | null }>; relationships: Array<{ parentId: string; childId: string }> };
+    expect(taxonomy.taxonomyVersion).toBe("taxonomy-buildmates-v1");
+    expect(taxonomy.topics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "ai", parentId: null }),
+      expect.objectContaining({ id: "voice-ai", parentId: "ai" }),
+      expect.objectContaining({ id: "retrieval-augmented-generation", parentId: "ai" }),
+    ]));
+    expect(taxonomy.relationships).toContainEqual({ parentId: "ai", childId: "voice-ai" });
+    expect(JSON.stringify(taxonomy)).not.toContain("user_alice");
+  });
+
   it("replays identical idempotent writes and rejects key reuse with different input", async () => {
     const { services, links } = fixture();
     links.set(SUBJECT_A, "user_alice");
