@@ -190,7 +190,7 @@ async function seedCandidateSpectrum(DB: D1Database, viewerUserId: string, ids: 
 
   for (const [key, name, summary, topics, score, components] of rows) {
     const candidateId = ids.candidates[key];
-    await upsertCandidate(DB, candidateId, `${ids.prefix}profile_${key}`, `${key}-${ids.prefix.slice(3, 11)}`, name, summary, topics, taxonomy.id, now);
+    await upsertCandidate(DB, candidateId, `${ids.prefix}profile_${key}`, `${key}_${ids.prefix.slice(3, 11)}`, name, summary, topics, taxonomy.id, now);
     await upsertScore(DB, viewerUserId, candidateId, ids.scores[key], score, components, taxonomy.version, now);
   }
 
@@ -219,7 +219,7 @@ async function seedReciprocalConnection(DB: D1Database, viewerUserId: string, id
   await seedCandidateSpectrum(DB, viewerUserId, ids, now);
   const peer = ids.candidates.connected;
   const taxonomy = await activeTaxonomy(DB);
-  await upsertCandidate(DB, peer, `${ids.prefix}profile_connected`, `rowan-${ids.prefix.slice(3, 11)}`, "Rowan Patel", "Designing dependable agent workflows that stay understandable.", '["ai","mcp","observability"]', taxonomy.id, now);
+  await upsertCandidate(DB, peer, `${ids.prefix}profile_connected`, `rowan_${ids.prefix.slice(3, 11)}`, "Rowan Patel", "Designing dependable agent workflows that stay understandable.", '["ai","mcp","observability"]', taxonomy.id, now);
   await upsertScore(DB, viewerUserId, peer, ids.scores.connected, 9000, ["topicOverlap", "toolDomainFit"], taxonomy.version, now);
   const pair = canonicalPair(viewerUserId, peer);
   await DB.batch([

@@ -82,6 +82,7 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Clarity: Partial. The browser handoff was explained well, but the task cited stale local `10/11` evidence before it had an authoritative live `get_setup_state` result.
 - Friction: Partial. One installation confirmation was reasonable. The first GitHub callback returned `authentication_failed`; a same-tab retry from Buildmates succeeded without new credentials. The MCP retry then completed successfully.
 - Issue: The successful MCP consent redirected the browser to Codex's loopback callback, but Brave displayed `ERR_BLOCKED_BY_CLIENT` even though the CLI had already received the callback and authenticated. This is a misleading completion state: a normal user can reasonably believe authorization failed after it succeeded.
+- Mitigation: The public setup contract and both onboarding skill bundles now require Codex to check the MCP login result first. A successful login is reported as connected, the blocked local page may be closed, and no duplicate authorization is opened. **Pre-launch TODO:** determine whether the Codex/Brave loopback completion page can render a calm success state instead of `ERR_BLOCKED_BY_CLIENT`; this browser-owned page is not controlled by Buildmates.
 - Recovery behavior: Pass. Codex waited for one transaction, checked authentication after timeout, opened exactly one retry, and did not create duplicate authorization flows.
 - Codex evidence: task transcript retained under the task ID. Direct Codex-app screenshot capture is not available to the automation surface; the task remains user-visible for inspection. Website screenshots will be saved for every browser-visible gate.
 
@@ -281,6 +282,14 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Round-trip proof: every canonical topic returned by `list_topic_taxonomy`, including `ai`, is written through both `update_profile_model` and `submit_work_signal` in bounded batches.
 - Tool-call clarity: the published `update_profile_model` schema and description explicitly place `idempotencyKey` inside `profile`; a top-level misplaced key remains invalid.
 - Verification: `@buildmates/mcp-core` typecheck passed; the complete MCP tool contract passed `24/24`; repository lint and final diff checks are recorded after the aggregate gate.
+
+### 2026-07-18 - cumulative Work Pulse scenario harness
+
+- Scenario contract: Pass. One real-D1 integration run applies candidate spectrum, incoming interest, reciprocal Connection, new message, Circle invitation, renewed relevance, positive feedback, permission exclusion, and no-change in order against one dedicated viewer.
+- State proof: the cumulative digests record five ranked candidates, one pending proposal, one Connection, one room message, one Circle invitation, one renewed-relevance project update, and positive private feedback. Reapplying the candidate spectrum is idempotent.
+- Privacy proof: the exclusion scenario stores `QA_PRIVATE_SENTINEL_NEVER_RENDER` only as a private, nonmatching field and keeps the excluded candidate in the viewer's exclusion table. The no-change scenario performs no writes, returns `changed: false`, and preserves the exact previous digest.
+- Cleanup proof: `resetQaScenarios` removes all scoped candidate users, relationships, rooms, Circle state, and QA notifications while leaving the viewer principal intact. The full scenario regression passes 1/1 through the real D1 adapter. Fixture handles now use the same underscore-only format as production handles.
+- Remaining visible gate: Codex must run these state transitions through the single configured Work Pulse after the clean production account finishes authorization; this source/integration proof does not substitute for the judged task output.
 
 ### 2026-07-18 - rendered page screenshot and copy audit
 
