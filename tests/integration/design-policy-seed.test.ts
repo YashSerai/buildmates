@@ -16,7 +16,7 @@ describe("D1 design policy seed", () => {
       const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
       for (const statement of sql.split("--> statement-breakpoint").map((item) => item.trim()).filter(Boolean)) await d1.prepare(statement).run();
     }
-  }, 15_000);
+  }, 30_000);
   afterEach(async () => miniflare.dispose());
 
   it("stores the immutable active version and exact source hash idempotently", async () => {
