@@ -14,6 +14,7 @@ const assets = [
 const contentManifest = [
   { key: "profile.name", type: "text" }, { key: "profile.role", type: "text" },
   { key: "profile.bio", type: "text" }, { key: "profile.note", type: "text" },
+  { key: "profile.workHeading", type: "text" }, { key: "profile.approachHeading", type: "text" },
   { key: "profile.quote", type: "text" }, { key: "profile.heroAlt", type: "text" },
   { key: "profile.workAlt", type: "text" }, { key: "profile.fieldAlt", type: "text" },
   { key: "profile.facts", type: "facts" }, { key: "profile.projects", type: "projects" },
@@ -30,6 +31,8 @@ export const PROFILE_FIXTURE_BINDINGS: SurfaceBindings = Object.freeze({
   "profile.role": "Builder - product systems and applied AI",
   "profile.bio": "I turn ambiguous workflows into small, dependable products. My current work sits between agent tooling, collaboration, and interfaces that explain themselves.",
   "profile.note": "Open to comparing notes with builders working on durable agent products and unusual interaction models.",
+  "profile.workHeading": "Selected work",
+  "profile.approachHeading": "Build the system, then make it legible.",
   "profile.quote": "The useful thing is usually hiding one layer beneath the obvious interface.",
   "profile.heroAlt": "Mira working beside a wall of product sketches",
   "profile.workAlt": "A close view of a modular workflow prototype",
@@ -46,6 +49,28 @@ export const PROFILE_FIXTURE_BINDINGS: SurfaceBindings = Object.freeze({
     { id: "project-orbit", title: "Orbit Notes", summary: "A working memory surface that keeps decisions attached to the work that produced them.", href: "/projects/orbit-notes", tags: ["Agents", "Memory"], metrics: [{ label: "Stage", value: "Private beta" }, { label: "Focus", value: "Decision trails" }] },
     { id: "project-fieldkit", title: "Fieldkit", summary: "A compact research tool for turning observations into testable product questions.", href: "/projects/fieldkit", tags: ["Research", "Workflow"], metrics: [{ label: "Stage", value: "Prototype" }, { label: "Mode", value: "Local-first" }] },
     { id: "project-relay", title: "Relay", summary: "A handoff format for people and agents that preserves intent without dragging along an entire transcript.", href: "/projects/relay", tags: ["Collaboration", "Context"], metrics: [{ label: "Stage", value: "Exploring" }] },
+  ] satisfies readonly SurfaceProject[],
+});
+
+export const PORTFOLIO_QUALITY_BINDINGS: SurfaceBindings = Object.freeze({
+  ...PROFILE_FIXTURE_BINDINGS,
+  "profile.name": "Yash Serai",
+  "profile.role": "Product builder · AI-native systems · Vancouver",
+  "profile.bio": "I build AI-native products and Codex-directed workflows focused on real human connection, reliable automation, and thoughtful product experiences.",
+  "profile.note": "Current work spans builder networks, social products, consumer products, marketplaces, and the systems that help them ship.",
+  "profile.workHeading": "A portfolio of living systems",
+  "profile.approachHeading": "From rough idea to working product.",
+  "profile.quote": "Direct, evidence-led, product-specific, and focused on complete working systems.",
+  "profile.facts": [
+    { label: "Current focus", value: "AI-native products" }, { label: "Based in", value: "Vancouver" },
+    { label: "Working mode", value: "Build, test, refine" }, { label: "Interested in", value: "Builders shipping thoughtful systems" },
+  ],
+  "profile.tags": ["Product systems", "Codex", "MCP", "Automation", "Social products", "Production reliability"],
+  "profile.projects": [
+    { id: "project-buildmates", title: "Buildmates", summary: "A Codex-native builder network that helps people meet through the work they are doing now, not a static list of credentials.", href: "/projects/buildmates", tags: ["Builder network", "Codex", "MCP"], metrics: [{ label: "Stage", value: "Building" }, { label: "Focus", value: "Human connection" }] },
+    { id: "project-soulspace", title: "Soulspace", summary: "A social product centered on real human connection and thoughtful product experiences.", href: "/projects/soulspace", tags: ["Social product", "Connection"], metrics: [{ label: "Stage", value: "Building" }, { label: "Mode", value: "Product system" }] },
+    { id: "project-safari-gigs", title: "Safari Gigs", summary: "A shipped marketplace product supported by a Codex-directed system for running its marketing work.", href: "/projects/safari-gigs", tags: ["Marketplace", "Automation"], metrics: [{ label: "Stage", value: "Shipped" }, { label: "System", value: "Marketing workflow" }] },
+    { id: "project-afteryou", title: "AfterYou", summary: "A shipped consumer product in Yash's active portfolio of relationship-centered ideas.", href: "/projects/afteryou", tags: ["Consumer product", "Relationships"], metrics: [{ label: "Stage", value: "Shipped" }] },
   ] satisfies readonly SurfaceProject[],
 });
 
@@ -147,6 +172,56 @@ export const DATA_LEDGER_PROFILE = base("Data ledger", "poster-condensed", "none
   { id: "ledger-projects", type: "project-list", binding: "profile.projects", emptyMessage: "No projects", layout: "cards", columns: 3 }, { id: "ledger-actions", type: "action-slot", placement: "footer", actions: [{ id: "ledger-follow", action: "follow" }] },
 ], "lg")], "wide")], { tone: "surface", background: "solid" }));
 
+const atlasTitleId = "working-atlas-title";
+const atlasRoot = section("atlas-root", [
+  section("atlas-hero", [container("atlas-hero-container", [
+    { id: "atlas-hero-canvas", type: "canvas", columns: 12, rows: 12, gap: "md", minHeight: "viewport", clip: true, children: [
+      layer("atlas-hero-copy-layer", [stack("atlas-hero-copy", [text("atlas-role", "profile.role", "Product builder", "eyebrow"), heading(atlasTitleId, 1, "profile.name", "Builder", "hero"), text("atlas-bio", "profile.bio", "Building complete product systems.", "lead"), { id: "atlas-actions", type: "action-slot", placement: "hero", actions: [{ id: "atlas-connect", action: "connect" }, { id: "atlas-follow", action: "follow" }] }], "lg")], place(1, 6, 2, 9, 1, "center"), place(1, 7, 1, 8, 1), place(1, 12, 1, 1, 1)),
+      layer("atlas-hero-artifact-layer", [{ id: "atlas-hero-artifact", type: "project-artifact", binding: "profile.projects", index: 0, variant: "orbit-map", tone: "secondary", scale: "hero" }], place(7, 6, 1, 12, 2), place(7, 6, 2, 10, 2), place(1, 12, 1, 1, 2), "strong"),
+      layer("atlas-hero-mark-layer", [{ id: "atlas-hero-mark", type: "decorative-mark", mark: "bracket", size: "lg", position: "inline", tone: "highlight" }], place(6, 2, 10, 2, 3), place(5, 3, 10, 2, 3), place(1, 12, 1, 1, 3), "soft"),
+    ] },
+  ], "full")], { tone: "ink", layout: "hero", padding: "none", minHeight: "viewport", background: "spotlight" }),
+  section("atlas-intro", [container("atlas-intro-container", [
+    { id: "atlas-intro-grid", type: "split", ratio: "1-2", gap: "2xl", align: "start", reverseOnMobile: false, children: [
+      stack("atlas-intro-meta", [text("atlas-index-label", "profile.role", "Builder", "data"), { id: "atlas-facts", type: "fact-list", binding: "profile.facts", emptyMessage: "Details coming soon", layout: "rail", emphasis: "quiet" }], "lg"),
+      stack("atlas-intro-copy", [heading("atlas-work-title", 2, "profile.workHeading", "Selected work", "display"), text("atlas-note", "profile.note", "Current work and projects.", "lead"), { id: "atlas-tags", type: "tag-list", binding: "profile.tags", emptyMessage: "Interests coming soon", style: "plain" }], "lg"),
+    ] },
+  ], "wide")], { padding: "xl", background: "paper-rule" }),
+  section("atlas-project-one", [container("atlas-project-one-container", [
+    { id: "atlas-project-one-split", type: "split", ratio: "3-2", gap: "xl", align: "stretch", reverseOnMobile: false, children: [
+      { id: "atlas-project-one-artifact", type: "project-artifact", binding: "profile.projects", index: 1, variant: "stacked-planes", tone: "accent", scale: "large" },
+      stack("atlas-project-one-copy", [text("atlas-project-one-label", "profile.workHeading", "Selected work", "eyebrow"), { id: "atlas-project-one-detail", type: "featured-project", binding: "profile.projects", index: 1, layout: "media-left", showTags: true, showMetrics: true }], "md"),
+    ] },
+  ], "wide")], { tone: "surface", padding: "xl", background: "solid" }),
+  section("atlas-project-two", [container("atlas-project-two-container", [
+    { id: "atlas-project-two-split", type: "split", ratio: "2-3", gap: "xl", align: "stretch", reverseOnMobile: true, children: [
+      stack("atlas-project-two-copy", [text("atlas-project-two-label", "profile.role", "Product builder", "eyebrow"), { id: "atlas-project-two-detail", type: "featured-project", binding: "profile.projects", index: 2, layout: "media-right", showTags: true, showMetrics: true }], "md"),
+      { id: "atlas-project-two-artifact", type: "project-artifact", binding: "profile.projects", index: 2, variant: "type-field", tone: "accent", scale: "large" },
+    ] },
+  ], "wide")], { tone: "canvas", padding: "xl", background: "wash" }),
+  section("atlas-project-three", [container("atlas-project-three-container", [
+    { id: "atlas-project-three-artifact", type: "project-artifact", binding: "profile.projects", index: 3, variant: "signal-path", tone: "canvas", scale: "hero" },
+    { id: "atlas-project-three-detail", type: "featured-project", binding: "profile.projects", index: 3, layout: "poster", showTags: true, showMetrics: true },
+  ], "wide")], { tone: "secondary", padding: "xl", background: "registration" }),
+  section("atlas-close", [container("atlas-close-container", [
+    { id: "atlas-close-split", type: "split", ratio: "2-1", gap: "2xl", align: "end", reverseOnMobile: false, children: [heading("atlas-approach-title", 2, "profile.approachHeading", "From idea to working product.", "display"), stack("atlas-close-note", [text("atlas-quote", "profile.quote", "Focused on complete working systems.", "quote"), { id: "atlas-footer-actions", type: "action-slot", placement: "footer", actions: [{ id: "atlas-footer-connect", action: "connect" }] }], "lg")] },
+  ], "wide")], { tone: "accent", padding: "2xl", background: "solid" }),
+], { padding: "none", bleed: true, background: "solid" });
+
+const atlasTheme = theme("gallery-serif", "orbit");
+export const WORKING_ATLAS_PROFILE: SurfaceSpecV2 = {
+  ...base("Working atlas", "gallery-serif", "orbit", atlasRoot),
+  theme: {
+    ...atlasTheme,
+    mode: "dark",
+    colors: { canvas: "#f2efe7", surface: "#d7d8ce", ink: "#101815", mutedInk: "#344039", accent: "#b8ca9b", accentInk: "#101810", secondary: "#0f1917", secondaryInk: "#f4f0e6", highlight: "#e66d32", highlightInk: "#15130f", rule: "#788079", focusInner: "#ffffff", focusOuter: "#0f1917" },
+    typography: { ...atlasTheme.typography, scale: "cinematic", headingWeight: "black" },
+    shape: { corners: "square", density: "spacious", border: "strong" },
+    atmosphere: { motif: "orbit", density: "bold", tone: "highlight", continuity: "page" },
+    motion: { preset: "drift", durationMs: 10_000, iterations: 2 },
+  },
+};
+
 export const PROFILE_V2_FIXTURES = Object.freeze([
-  ORBITAL_BUILDER_PROFILE, EDITORIAL_RESEARCH_PROFILE, FIELD_JOURNAL_PROFILE, MAKER_COLLAGE_PROFILE, DATA_LEDGER_PROFILE,
+  ORBITAL_BUILDER_PROFILE, EDITORIAL_RESEARCH_PROFILE, FIELD_JOURNAL_PROFILE, MAKER_COLLAGE_PROFILE, DATA_LEDGER_PROFILE, WORKING_ATLAS_PROFILE,
 ]);

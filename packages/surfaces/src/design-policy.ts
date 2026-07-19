@@ -1,6 +1,10 @@
-export const DESIGN_POLICY_VERSION = "2026-07-17.4" as const;
-export const DESIGN_POLICY_ID = "design_policy_2026_07_17_4" as const;
-export const DESIGN_POLICY_ACTIVATED_AT = "2026-07-17T20:00:00.000Z" as const;
+export const DESIGN_POLICY_VERSION = "2026-07-18.1" as const;
+export const DESIGN_POLICY_ID = "design_policy_2026_07_18_1" as const;
+export const DESIGN_POLICY_ACTIVATED_AT = "2026-07-18T12:00:00.000Z" as const;
+
+export const LEGACY_V2_DESIGN_POLICY_VERSION = "2026-07-17.4" as const;
+export const LEGACY_V2_DESIGN_POLICY_ID = "design_policy_2026_07_17_4" as const;
+export const LEGACY_V2_DESIGN_POLICY_SOURCE_HASH = "ffb40e9bcd1d041561d469fb73f57fc7c21dce353355c04772323a2cf6ce3303" as const;
 
 export const PREVIOUS_DESIGN_POLICY_VERSION = "2026-07-15.2" as const;
 export const PREVIOUS_DESIGN_POLICY_ID = "design_policy_2026_07_15_2" as const;
@@ -73,10 +77,10 @@ const previousDesignPolicy = {
   },
 } as const;
 
-export const designPolicy = {
+const legacyV2DesignPolicy = {
   ...previousDesignPolicy,
-  id: DESIGN_POLICY_ID,
-  version: DESIGN_POLICY_VERSION,
+  id: LEGACY_V2_DESIGN_POLICY_ID,
+  version: LEGACY_V2_DESIGN_POLICY_VERSION,
   status: "active",
   purpose:
     "Enable portfolio-level, full-page builder profiles through governed composition without giving generated code authority over identity, data, navigation, or execution.",
@@ -115,6 +119,20 @@ export const designPolicy = {
   },
 } as const;
 
+export const designPolicy = {
+  ...legacyV2DesignPolicy,
+  id: DESIGN_POLICY_ID,
+  version: DESIGN_POLICY_VERSION,
+  authority: {
+    ...legacyV2DesignPolicy.authority,
+    generatedCodeMay: [
+      ...legacyV2DesignPolicy.authority.generatedCodeMay,
+      "compose trusted project-specific visual artifacts from approved project bindings",
+    ],
+  },
+  trustedComponents: [...legacyV2DesignPolicy.trustedComponents, "project-artifact"],
+} as const;
+
 export type DesignPolicy = typeof designPolicy;
 
 export function canonicalJson(value: unknown): string {
@@ -132,7 +150,9 @@ export function canonicalJson(value: unknown): string {
 
 export const DESIGN_POLICY_SOURCE = canonicalJson(designPolicy);
 // SHA-256 of DESIGN_POLICY_SOURCE. The seed test recomputes this value.
-export const DESIGN_POLICY_SOURCE_HASH = "ffb40e9bcd1d041561d469fb73f57fc7c21dce353355c04772323a2cf6ce3303";
+export const DESIGN_POLICY_SOURCE_HASH = "dbc6b5e1a8b37b4cf0dfa644680d571b4b09d852206ac817839552e73eb6cc5b";
+
+export const LEGACY_V2_DESIGN_POLICY_SOURCE = canonicalJson(legacyV2DesignPolicy);
 
 export const PREVIOUS_DESIGN_POLICY_SOURCE = canonicalJson(previousDesignPolicy);
 // Exact launch-candidate policy retained for validation of stored revisions.

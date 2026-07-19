@@ -3,6 +3,7 @@ import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION } from "./design-policy";
 export type ProfileBriefField = { key: string; label: string; value: unknown; bindingType: "text" | "facts" | "projects" | "strings" };
 export type ProfileBriefMedia = { key: string; label: string; altKey: string; approvedAssetIds: string[] };
 export type ProfileBriefAsset = { id: string; src: string };
+export type ProfileDesignReference = { url: string; principles: string[] };
 type ProfileMediaSpec = {
   approvedAssets: Array<{ id: string; src: string }>;
   bindingManifest: { media: Array<{ key: string; altKey: string; approvedAssetIds: string[] }> };
@@ -32,7 +33,7 @@ export function profileSurfaceMediaIsAuthorized(
   return spec.approvedAssets.every((asset) => referenced.has(asset.id) && allowedAssets.get(asset.id) === asset.src);
 }
 
-export function createProfileGenerationBrief(input: { handle: string; fields: ProfileBriefField[]; media?: ProfileBriefMedia[]; approvedAssets?: ProfileBriefAsset[] }) {
+export function createProfileGenerationBrief(input: { handle: string; fields: ProfileBriefField[]; media?: ProfileBriefMedia[]; approvedAssets?: ProfileBriefAsset[]; references?: ProfileDesignReference[] }) {
   const seen = new Set<string>();
   const fields = input.fields.filter((field) => validBinding(field.key) && !seen.has(field.key) && (seen.add(field.key), true));
   const assets = new Map((input.approvedAssets ?? []).filter((asset) => /^asset_[a-z0-9_-]{8,80}$/i.test(asset.id) && /^\/api\/surface-assets\/[a-z0-9_-]+\/[a-f0-9]{64}\.(?:avif|gif|jpe?g|png|webp)$/i.test(asset.src)).map((asset) => [asset.id, asset]));
@@ -44,19 +45,36 @@ export function createProfileGenerationBrief(input: { handle: string; fields: Pr
     mediaSeen.add(item.key);
     return [{ key: item.key, label: item.label, altKey: item.altKey, approvedAssetIds, authorization: "surface-approved" as const }];
   });
+  const references = (input.references ?? []).flatMap((reference) => {
+    const url = safeReferenceUrl(reference.url);
+    const principles = [...new Set(reference.principles.map((principle) => principle.trim()).filter(Boolean))].slice(0, 6).map((principle) => principle.slice(0, 120));
+    return url && principles.length ? [{ url, principles }] : [];
+  }).slice(0, 2);
   return {
     kind: "profile" as const,
     schemaVersion: "2" as const,
     handle: input.handle,
     designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION },
-    instruction: "Compose a trusted, responsive full-page profile SurfaceSpec v2. Use only the bindings and identity-bound assets supplied here. Keep product actions trusted and keep private fields outside the spec.",
+    instruction: "Compose an original, trusted, responsive full-page profile SurfaceSpec v2. Use only the bindings and identity-bound assets supplied here. Treat any references as design-language direction only: apply the named principles without copying their layout, copy, brand, or assets. Keep product actions trusted and keep private fields outside the spec.",
     allowedBindings: fields.map(({ key, label, bindingType }) => ({ key, label, type: bindingType })),
     authorizedContent: Object.fromEntries(fields.map(({ key, value }) => [key, value])),
     authorizedMedia: media,
     approvedAssets: media.length ? [...assets.values()].filter((asset) => media.some((item) => item.approvedAssetIds.includes(asset.id))) : [],
-    capabilities: ["full-bleed sections", "nested containers", "12-column responsive canvas", "bounded overlap", "approved media backgrounds", "featured project compositions", "curated typography", "trusted action slots", "declarative reduced-motion-safe motion"],
+    referenceDirection: references,
+    capabilities: ["full-bleed sections", "nested containers", "12-column responsive canvas", "bounded overlap", "approved media backgrounds", "featured project compositions", "project-specific visual artifacts", "curated typography", "trusted action slots", "declarative reduced-motion-safe motion"],
     forbidden: ["scripts", "forms", "remote URLs", "arbitrary CSS", "external fonts", "permission controls", "private or unlisted fields"],
   };
+}
+
+function safeReferenceUrl(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" || url.username || url.password) return null;
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 function validBinding(value: string): boolean {

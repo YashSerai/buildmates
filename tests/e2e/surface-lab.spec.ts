@@ -12,7 +12,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   await signInTestUser(page, `surfaces-${testInfo.project.name}-${testInfo.title}`);
 });
 
-test("five v2 profile concepts keep distinct structure without horizontal overflow", async ({ page }, testInfo) => {
+test("six v2 profile concepts keep distinct structure without horizontal overflow", async ({ page }, testInfo) => {
   await page.route("**/api/surface-assets/fixture/**", async (route) => route.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=", "base64") }));
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/surface-lab");
@@ -29,11 +29,17 @@ test("five v2 profile concepts keep distinct structure without horizontal overfl
     expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
   }
 
-  await concepts.selectOption("editorial");
+  await concepts.selectOption("atlas");
+  await expect(page.locator(".surface-project-artifact-orbit-map")).toBeVisible();
+  await expect(page.getByText("Safari Gigs", { exact: true }).first()).toBeVisible();
+  expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: testInfo.outputPath("working-atlas-desktop.png"), fullPage: true });
+
+  await concepts.selectOption("atlas");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Phone" }).click();
   expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: testInfo.outputPath("editorial-phone.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("working-atlas-phone.png"), fullPage: true });
   await page.setViewportSize({ width: 320, height: 568 });
   expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
   await page.evaluate(() => { document.documentElement.style.zoom = "2"; });

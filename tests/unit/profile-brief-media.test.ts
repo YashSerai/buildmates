@@ -34,4 +34,22 @@ describe("profile Surface media authorization", () => {
     expect(profileSurfaceMediaIsAuthorized({ ...valid, bindingManifest: { media: [{ ...valid.bindingManifest.media[0], approvedAssetIds: ["asset_mallory00000000"] }] } }, authorizedMedia, [asset])).toBe(false);
     expect(profileSurfaceMediaIsAuthorized({ ...valid, bindingManifest: { media: [] } }, authorizedMedia, [asset])).toBe(false);
   });
+
+  it("carries bounded reference principles without authorizing remote assets or cloning", () => {
+    const brief = createProfileGenerationBrief({
+      handle: "alice",
+      fields: [{ key: "profile.displayName", label: "Display name", value: "Alice", bindingType: "text" }],
+      references: [
+        { url: "https://recent.design/websites/example#hero", principles: ["Layered editorial depth", "Project chapters with distinct rhythm"] },
+        { url: "http://insecure.example", principles: ["Ignore"] },
+        { url: "https://linear.app", principles: ["High information density with disciplined hierarchy"] },
+      ],
+    });
+    expect(brief.referenceDirection).toEqual([
+      { url: "https://recent.design/websites/example", principles: ["Layered editorial depth", "Project chapters with distinct rhythm"] },
+      { url: "https://linear.app/", principles: ["High information density with disciplined hierarchy"] },
+    ]);
+    expect(brief.instruction).toMatch(/without copying their layout, copy, brand, or assets/i);
+    expect(brief.approvedAssets).toEqual([]);
+  });
 });

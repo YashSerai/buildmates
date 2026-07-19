@@ -8,6 +8,10 @@ import {
   HISTORICAL_DESIGN_POLICY_SOURCE,
   HISTORICAL_DESIGN_POLICY_SOURCE_HASH,
   HISTORICAL_DESIGN_POLICY_VERSION,
+  LEGACY_V2_DESIGN_POLICY_ID,
+  LEGACY_V2_DESIGN_POLICY_SOURCE,
+  LEGACY_V2_DESIGN_POLICY_SOURCE_HASH,
+  LEGACY_V2_DESIGN_POLICY_VERSION,
   PREVIOUS_DESIGN_POLICY_ID,
   PREVIOUS_DESIGN_POLICY_SOURCE,
   PREVIOUS_DESIGN_POLICY_SOURCE_HASH,
@@ -114,6 +118,7 @@ export type SurfaceNodeV2 =
   | { id: string; type: "tag-list"; binding: string; emptyMessage: string; style: "plain" | "boxed" | "stamp" }
   | { id: string; type: "project-list"; binding: string; emptyMessage: string; layout: "cards" | "editorial" | "featured"; columns: 1 | 2 | 3 }
   | { id: string; type: "featured-project"; binding: string; index: number; layout: "media-left" | "media-right" | "poster" | "artifact"; showTags: boolean; showMetrics: boolean }
+  | { id: string; type: "project-artifact"; binding: string; index: number; variant: "orbit-map" | "type-field" | "signal-path" | "stacked-planes"; tone: "canvas" | "surface" | "accent" | "secondary" | "ink"; scale: "medium" | "large" | "hero" }
   | { id: string; type: "media"; binding: string; altBinding: string; aspect: "portrait" | "landscape" | "square" | "panoramic" | "auto"; fit: "cover" | "contain"; focalPoint: "center" | "top" | "bottom" | "left" | "right"; treatment: "plain" | "framed" | "offset" | "monochrome" }
   | { id: string; type: "gallery"; items: Array<{ binding: string; altBinding: string }>; layout: "grid" | "filmstrip" | "masonry"; columns: 2 | 3 | 4; treatment: "plain" | "framed" | "offset" | "monochrome" }
   | { id: string; type: "callout"; titleBinding: string; bodyBinding: string; variant: "note" | "manifesto" | "quote"; tone: "surface" | "accent" | "secondary" | "ink" }
@@ -175,6 +180,7 @@ export const surfaceNodeSchema: z.ZodType<SurfaceNodeV2> = z.lazy(() => z.discri
   baseNode.extend({ type: z.literal("tag-list"), binding: bindingSchema, emptyMessage: z.string().max(160), style: z.enum(["plain", "boxed", "stamp"]) }).strict(),
   baseNode.extend({ type: z.literal("project-list"), binding: bindingSchema, emptyMessage: z.string().max(160), layout: z.enum(["cards", "editorial", "featured"]), columns: z.union([z.literal(1), z.literal(2), z.literal(3)]) }).strict(),
   baseNode.extend({ type: z.literal("featured-project"), binding: bindingSchema, index: z.number().int().min(0).max(11), layout: z.enum(["media-left", "media-right", "poster", "artifact"]), showTags: z.boolean(), showMetrics: z.boolean() }).strict(),
+  baseNode.extend({ type: z.literal("project-artifact"), binding: bindingSchema, index: z.number().int().min(0).max(11), variant: z.enum(["orbit-map", "type-field", "signal-path", "stacked-planes"]), tone: z.enum(["canvas", "surface", "accent", "secondary", "ink"]), scale: z.enum(["medium", "large", "hero"]) }).strict(),
   baseNode.extend({ type: z.literal("media"), binding: bindingSchema, altBinding: bindingSchema, aspect: z.enum(["portrait", "landscape", "square", "panoramic", "auto"]), fit: z.enum(["cover", "contain"]), focalPoint: z.enum(["center", "top", "bottom", "left", "right"]), treatment: z.enum(["plain", "framed", "offset", "monochrome"]) }).strict(),
   baseNode.extend({ type: z.literal("gallery"), items: z.array(z.object({ binding: bindingSchema, altBinding: bindingSchema }).strict()).min(2).max(12), layout: z.enum(["grid", "filmstrip", "masonry"]), columns: z.union([z.literal(2), z.literal(3), z.literal(4)]), treatment: z.enum(["plain", "framed", "offset", "monochrome"]) }).strict(),
   baseNode.extend({ type: z.literal("callout"), titleBinding: bindingSchema, bodyBinding: bindingSchema, variant: z.enum(["note", "manifesto", "quote"]), tone: z.enum(["surface", "accent", "secondary", "ink"]) }).strict(),
@@ -215,16 +221,21 @@ function createV1SurfaceSpecSchema<const Version extends string>(policyVersion: 
   }).strict().superRefine((spec, context) => refineSurfaceSpec(spec, context, 160, 12));
 }
 
-export const activeSurfaceSpecSchema = z.object({
-  schemaVersion: z.literal("2"), designPolicyVersion: z.literal(DESIGN_POLICY_VERSION), kind: z.enum(["profile", "room", "circle"]), title: z.string().min(1).max(120),
-  theme: surfaceThemeSchema, root: surfaceNodeSchema, bindingManifest: bindingManifestV2,
-  approvedAssets: approvedAssetsSchema(), decorativeRegions: z.array(decorativeRegionSchema).max(12),
-  responsive: z.object({
-    collapseGridsBelow: z.enum(["sm", "md", "lg"]), contentWidth: z.enum(["narrow", "standard", "wide", "full"]), edgePadding: z.enum(["compact", "comfortable", "generous"]),
-    heroStackBelow: z.enum(["sm", "md", "lg"]), preserveContentOrder: z.literal(true),
-  }).strict(),
-  accessibility: accessibilitySchema(),
-}).strict().superRefine((spec, context) => refineSurfaceSpec(spec, context, 240, 14));
+function createV2SurfaceSpecSchema<const Version extends string>(policyVersion: Version) {
+  return z.object({
+    schemaVersion: z.literal("2"), designPolicyVersion: z.literal(policyVersion), kind: z.enum(["profile", "room", "circle"]), title: z.string().min(1).max(120),
+    theme: surfaceThemeSchema, root: surfaceNodeSchema, bindingManifest: bindingManifestV2,
+    approvedAssets: approvedAssetsSchema(), decorativeRegions: z.array(decorativeRegionSchema).max(12),
+    responsive: z.object({
+      collapseGridsBelow: z.enum(["sm", "md", "lg"]), contentWidth: z.enum(["narrow", "standard", "wide", "full"]), edgePadding: z.enum(["compact", "comfortable", "generous"]),
+      heroStackBelow: z.enum(["sm", "md", "lg"]), preserveContentOrder: z.literal(true),
+    }).strict(),
+    accessibility: accessibilitySchema(),
+  }).strict().superRefine((spec, context) => refineSurfaceSpec(spec, context, 240, 14));
+}
+
+const legacyV2SurfaceSpecSchema = createV2SurfaceSpecSchema(LEGACY_V2_DESIGN_POLICY_VERSION);
+export const activeSurfaceSpecSchema = createV2SurfaceSpecSchema(DESIGN_POLICY_VERSION);
 
 function approvedAssetsSchema() {
   return z.array(z.object({ id: assetIdSchema, src: z.string().regex(/^\/api\/surface-assets\/[a-z0-9_-]+\/[a-f0-9]{64}\.(?:avif|gif|jpe?g|png|webp)$/i) }).strict()).max(60);
@@ -288,6 +299,7 @@ function refineSurfaceSpec(spec: RefinableSpec, context: z.RefinementCtx, maximu
     if (node.type === "tag-list" && contentBindings.get(node.binding) !== "strings") bindingIssue(context, node.binding);
     if (node.type === "project-list" && contentBindings.get(node.binding) !== "projects") bindingIssue(context, node.binding);
     if (node.type === "featured-project" && contentBindings.get(node.binding) !== "projects") bindingIssue(context, node.binding);
+    if (node.type === "project-artifact" && contentBindings.get(node.binding) !== "projects") bindingIssue(context, node.binding);
     if (node.type === "callout") for (const key of [node.titleBinding, node.bodyBinding]) if (contentBindings.get(key) !== "text") bindingIssue(context, key);
     if (node.type === "media") validateMediaBinding(node.binding, node.altBinding, contentBindings, mediaBindings, context);
     if (node.type === "gallery") for (const item of node.items) validateMediaBinding(item.binding, item.altBinding, contentBindings, mediaBindings, context);
@@ -346,18 +358,20 @@ export const surfaceSpecSchema = z.preprocess((input) => surfaceValuePassesPrefl
 export const SURFACE_POLICY_REGISTRY = Object.freeze({
   [HISTORICAL_DESIGN_POLICY_VERSION]: Object.freeze({ version: HISTORICAL_DESIGN_POLICY_VERSION, designPolicyId: HISTORICAL_DESIGN_POLICY_ID, sourceHash: HISTORICAL_DESIGN_POLICY_SOURCE_HASH, policyJson: HISTORICAL_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-1", reading: "allowed", revisionCreation: "allowed" }),
   [PREVIOUS_DESIGN_POLICY_VERSION]: Object.freeze({ version: PREVIOUS_DESIGN_POLICY_VERSION, designPolicyId: PREVIOUS_DESIGN_POLICY_ID, sourceHash: PREVIOUS_DESIGN_POLICY_SOURCE_HASH, policyJson: PREVIOUS_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-1", reading: "allowed", revisionCreation: "allowed" }),
+  [LEGACY_V2_DESIGN_POLICY_VERSION]: Object.freeze({ version: LEGACY_V2_DESIGN_POLICY_VERSION, designPolicyId: LEGACY_V2_DESIGN_POLICY_ID, sourceHash: LEGACY_V2_DESIGN_POLICY_SOURCE_HASH, policyJson: LEGACY_V2_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
   [DESIGN_POLICY_VERSION]: Object.freeze({ version: DESIGN_POLICY_VERSION, designPolicyId: DESIGN_POLICY_ID, sourceHash: DESIGN_POLICY_SOURCE_HASH, policyJson: DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
 } as const);
 
 type SurfacePolicyVersion = keyof typeof SURFACE_POLICY_REGISTRY;
 export type SurfaceSpecV1 = z.infer<typeof historicalSurfaceSpecSchema> | z.infer<typeof previousSurfaceSpecSchema>;
-export type SurfaceSpecV2 = z.infer<typeof activeSurfaceSpecSchema>;
+export type SurfaceSpecV2 = z.infer<typeof activeSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
 export type SurfaceSpec = SurfaceSpecV1 | SurfaceSpecV2;
 export type SurfaceSpecParseResult = { success: true; data: SurfaceSpec } | { success: false; error: z.ZodError };
 
 const policySchemas: Record<SurfacePolicyVersion, z.ZodType<SurfaceSpec>> = {
   [HISTORICAL_DESIGN_POLICY_VERSION]: historicalSurfaceSpecSchema,
   [PREVIOUS_DESIGN_POLICY_VERSION]: previousSurfaceSpecSchema,
+  [LEGACY_V2_DESIGN_POLICY_VERSION]: legacyV2SurfaceSpecSchema,
   [DESIGN_POLICY_VERSION]: activeSurfaceSpecSchema,
 };
 

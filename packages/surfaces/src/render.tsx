@@ -151,6 +151,23 @@ function Node(props: NodeProps): ReactNode {
       if (!project) return <p className="surface-empty">Featured project unavailable</p>;
       return <article className={`surface-featured-project surface-featured-project-${node.layout}`}><span className="surface-project-index" aria-hidden="true">{String(node.index + 1).padStart(2, "0")}</span><div className="surface-featured-project-copy"><h3>{project.title}</h3><p>{project.summary}</p>{node.showTags && project.tags?.length ? <ul className="surface-tags surface-tags-plain">{project.tags.slice(0, 8).map((tag) => <li key={tag}>{tag}</li>)}</ul> : null}{node.showMetrics && project.metrics?.length ? <dl className="surface-facts surface-facts-inline">{project.metrics.slice(0, 6).map((fact) => <div className="surface-fact" key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl> : null}{project.href && isTrustedHref(project.href) ? <a href={project.href}>Open project <span aria-hidden="true">↗</span></a> : null}</div></article>;
     }
+    case "project-artifact": {
+      const projects = bindings[node.binding];
+      const project = isProjectList(projects) ? projects[node.index] : undefined;
+      if (!project) return null;
+      const tags = project.tags?.slice(0, 4) ?? [];
+      return <figure className={`surface-project-artifact surface-project-artifact-${node.variant} surface-project-artifact-${node.scale} surface-tone-${node.tone}`}>
+        <div className="surface-project-artifact-stage" aria-hidden="true">
+          <span className="surface-project-artifact-index">{String(node.index + 1).padStart(2, "0")}</span>
+          <span className="surface-project-artifact-title">{project.title}</span>
+          <span className="surface-project-artifact-line surface-project-artifact-line-a" />
+          <span className="surface-project-artifact-line surface-project-artifact-line-b" />
+          <span className="surface-project-artifact-line surface-project-artifact-line-c" />
+          {tags.map((tag, index) => <span className={`surface-project-artifact-tag surface-project-artifact-tag-${index + 1}`} key={tag}>{tag}</span>)}
+        </div>
+        <figcaption>{project.title}</figcaption>
+      </figure>;
+    }
     case "media": {
       const v2 = "fit" in node;
       return renderMedia(spec, bindings, node.binding, node.altBinding, `surface-media surface-media-${node.aspect}${v2 ? ` surface-media-fit-${node.fit} surface-media-focus-${node.focalPoint} surface-media-${node.treatment}` : ""}`);

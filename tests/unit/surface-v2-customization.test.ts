@@ -2,7 +2,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import {
-  PROFILE_FIXTURE_BINDINGS, PROFILE_V2_FIXTURES, SurfaceRendererCore,
+  PORTFOLIO_QUALITY_BINDINGS, PROFILE_FIXTURE_BINDINGS, PROFILE_V2_FIXTURES, SurfaceRendererCore,
   safeParseSurfaceSpec, surfaceSpecSchema, type SurfaceNodeV2, type SurfaceSpecV2,
 } from "@buildmates/surfaces";
 
@@ -19,6 +19,7 @@ function structuralSignature(spec: SurfaceSpecV2): string {
     if (node.type === "layer") return `layer:${node.placement.desktop.columnStart}/${node.placement.desktop.columnSpan}:${node.placement.phone.order}`;
     if (node.type === "project-list") return `projects:${node.layout}:${node.columns}`;
     if (node.type === "featured-project") return `featured:${node.layout}:${node.index}`;
+    if (node.type === "project-artifact") return `artifact:${node.variant}:${node.index}`;
     if (node.type === "gallery") return `gallery:${node.layout}:${node.columns}`;
     return node.type;
   }).join("|");
@@ -37,18 +38,18 @@ function normalized(spec: SurfaceSpecV2): SurfaceSpecV2 {
 }
 
 describe("SurfaceSpec v2 customization ceiling", () => {
-  it("validates five full-page profile concepts against one realistic binding payload", () => {
-    expect(PROFILE_V2_FIXTURES).toHaveLength(5);
+  it("validates six full-page profile concepts against realistic binding payloads", () => {
+    expect(PROFILE_V2_FIXTURES).toHaveLength(6);
     for (const spec of PROFILE_V2_FIXTURES) {
       const result = surfaceSpecSchema.safeParse(spec);
       if (!result.success) throw new Error(`${spec.title}: ${result.error.issues.map((issue) => `${issue.path.join(".")}: ${issue.message}`).join("; ")}`);
     }
   });
 
-  it("keeps five distinct compositions after palette, fonts, and atmosphere are normalized", () => {
+  it("keeps six distinct compositions after palette, fonts, and atmosphere are normalized", () => {
     const normalizedFixtures = PROFILE_V2_FIXTURES.map(normalized);
     normalizedFixtures.forEach((spec) => expect(safeParseSurfaceSpec(spec).success).toBe(true));
-    expect(new Set(normalizedFixtures.map(structuralSignature)).size).toBe(5);
+    expect(new Set(normalizedFixtures.map(structuralSignature)).size).toBe(6);
   });
 
   it("provides at least four first-viewport silhouettes and four project compositions", () => {
@@ -74,7 +75,7 @@ describe("SurfaceSpec v2 customization ceiling", () => {
   it("renders every concept with trusted bindings, approved assets, responsive classes, and no active generated content", () => {
     for (const spec of PROFILE_V2_FIXTURES) {
       const html = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec, bindings: PROFILE_FIXTURE_BINDINGS, onAction: () => undefined }));
-      expect(html).toContain("Mira Chen");
+      expect(html).toMatch(/Mira Chen|Yash Serai/);
       expect(html).toContain("surface-v2");
       expect(html).toContain("@container");
       expect(html).toContain("prefers-reduced-motion");
@@ -102,5 +103,15 @@ describe("SurfaceSpec v2 customization ceiling", () => {
     expect(html).toContain("pointer-events:none");
     expect(html).toContain("animation:none!important");
     expect(html).not.toMatch(/100vw|position:fixed|javascript:/i);
+  });
+
+  it("renders a multi-section portfolio with differentiated project artifacts and no absent-project dead space", () => {
+    const atlas = PROFILE_V2_FIXTURES[5];
+    const html = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: atlas, bindings: PORTFOLIO_QUALITY_BINDINGS }));
+    expect(walk(atlas.root).filter((node) => node.type === "section")).toHaveLength(7);
+    expect(new Set(walk(atlas.root).filter((node) => node.type === "project-artifact").map((node) => node.type === "project-artifact" ? node.variant : ""))).toEqual(new Set(["orbit-map", "stacked-planes", "type-field", "signal-path"]));
+    for (const project of ["Buildmates", "Soulspace", "Safari Gigs", "AfterYou"]) expect(html).toContain(project);
+    const missing = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: atlas, bindings: { ...PORTFOLIO_QUALITY_BINDINGS, "profile.projects": [] } }));
+    expect(missing).not.toContain("surface-project-artifact-empty");
   });
 });
