@@ -39,12 +39,13 @@ export async function GET() {
   try {
     const { profile, surface } = await getProfileSurface(DB, user.id);
     const [fields, projects, history, approvedMedia] = await Promise.all([
-      // A generated public layout may outlive a later audience change. Give
-      // Codex only deliberately public profile material so private or
-      // connection-scoped values cannot be copied into static fallback or
-      // decorative text inside the stored SurfaceSpec.
-      DB.prepare("SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' ORDER BY field_key").bind(profile.id).all<{ key: string; valueJson: string }>(),
-      DB.prepare("SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' ORDER BY updated_at DESC LIMIT 20").bind(user.id).all<{ id: string; title: string; summary: string; slug: string }>(),
+      // This route is the signed-in owner's private design workspace. Mirror
+      // the MCP generation brief: approved connection-scoped material may be
+      // rendered in a private preview, while truly private fields never cross
+      // the server boundary. The public builder route resolves its own
+      // audience-safe bindings when a revision is published.
+      DB.prepare("SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience<>'private' ORDER BY field_key").bind(profile.id).all<{ key: string; valueJson: string }>(),
+      DB.prepare("SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience<>'private' ORDER BY updated_at DESC LIMIT 20").bind(user.id).all<{ id: string; title: string; summary: string; slug: string }>(),
       DB.prepare(`SELECT revision.id,revision.revision_number AS revisionNumber,revision.base_revision_number AS baseRevisionNumber,
         revision.status,revision.spec_json AS spec,revision.created_at AS createdAt
         FROM surface_revisions revision WHERE revision.surface_id=? ORDER BY revision.revision_number DESC LIMIT 30`).bind(surface.id).all(),

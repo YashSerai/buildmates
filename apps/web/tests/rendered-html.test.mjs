@@ -94,6 +94,8 @@ test("public builder pages are canonical surfaces and keep design controls priva
   assert.match(builder, /"profile\.projects": profile\.surfaceProjects/);
   assert.match(builder, /surfaceFactValue\(field\.valueJson\)/);
   assert.match(surfacePreview, /surfaceFactValue\(field\.valueJson\)/);
+  assert.match(surfacePreview, /profile_fields WHERE profile_id=\? AND audience<>'private'/);
+  assert.match(surfacePreview, /projects WHERE owner_user_id=\? AND status='active' AND audience<>'private'/);
   assert.doesNotMatch(builder, /workSignals/);
   assert.doesNotMatch(builder, /Make this page feel like you\./);
   assert.match(designWorkspace, /Make your page feel like you\./);
