@@ -1,4 +1,5 @@
 import { readFile, readdir } from "node:fs/promises";
+import { createD1McpProductRepository } from "@buildmates/mcp-core";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applyQaScenario, resetQaScenarios } from "../../apps/web/src/testing/qa-scenarios";
@@ -39,13 +40,28 @@ describe("Work Pulse QA scenarios", () => {
     const connected = await applyQaScenario(DB, viewerUserId, "reciprocal_connection", now + 3);
     expect(connected.digest).toMatchObject({ connections: 1 });
     const message = await applyQaScenario(DB, viewerUserId, "new_message", now + 4);
-    expect(message.digest).toMatchObject({ messages: 1 });
+    expect(message.digest).toMatchObject({ messages: 4 });
+    const repository = createD1McpProductRepository(DB);
+    const roomAfterConversation = await repository.readForMember<Record<string, unknown>>("room", message.roomId, viewerUserId);
+    expect(roomAfterConversation?.value).toMatchObject({
+      conversation: { messageCount: 4, meaningful: true },
+      feedback: { submittedByViewer: false, positiveFromViewer: false },
+      upgradeState: "none",
+    });
+    expect(JSON.stringify(roomAfterConversation)).not.toContain("smallest reproducible examples");
     const circle = await applyQaScenario(DB, viewerUserId, "circle_invitation", now + 5);
     expect(circle.digest).toMatchObject({ circleInvitations: 1 });
     const relevance = await applyQaScenario(DB, viewerUserId, "renewed_relevance", now + 6);
     expect(relevance.digest).toMatchObject({ renewedRelevanceUpdates: 1 });
     const feedback = await applyQaScenario(DB, viewerUserId, "positive_feedback", now + 7);
     expect(feedback.digest).toMatchObject({ positiveFeedback: 1 });
+    await expect(repository.readForMember<Record<string, unknown>>("room", feedback.roomId, viewerUserId)).resolves.toMatchObject({
+      value: {
+        conversation: { messageCount: 4, meaningful: true },
+        feedback: { submittedByViewer: true, positiveFromViewer: true },
+        upgradeState: "none",
+      },
+    });
 
     const permission = await applyQaScenario(DB, viewerUserId, "permission_exclusion", now + 8);
     expect(await DB.prepare("SELECT audience,allow_matching AS allowMatching,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND field_key='qa_private_fact'")

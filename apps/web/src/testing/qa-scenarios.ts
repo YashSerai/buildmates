@@ -184,7 +184,7 @@ async function seedCandidateSpectrum(DB: D1Database, viewerUserId: string, ids: 
     ["strong", "Mira Chen", "Building practical retrieval evaluation for AI products.", '["ai","retrieval","evaluation"]', 9400, ["topicOverlap", "intentFit"]],
     ["adjacent", "Amara Okafor", "Exploring human-centered agent observability and product research.", '["ai","observability","research"]', 7600, ["topicAdjacency", "toolDomainFit"]],
     ["weak", "Theo Martin", "Building developer tooling for local-first creative software.", '["developer-tools","creative-software"]', 3100, ["serendipity"]],
-    ["duplicate", "Mira Labs", "A second retrieval candidate used to verify stable ordering and deduplication.", '["ai","retrieval"]', 9100, ["topicOverlap"]],
+    ["duplicate", "Mira Labs", "Building a lightweight retrieval testing workspace for applied AI teams.", '["ai","retrieval"]', 9100, ["topicOverlap"]],
     ["excluded", "Hidden Candidate", "This candidate must never appear in suggestions or explanations.", '["ai","retrieval"]', 9900, ["topicOverlap", "intentFit"]],
   ] as const;
 
@@ -251,7 +251,13 @@ async function seedMessage(DB: D1Database, viewerUserId: string, ids: QaIds, now
   await seedReciprocalConnection(DB, viewerUserId, ids, now);
   await DB.batch([
     DB.prepare("INSERT INTO messages(id,room_id,sender_user_id,client_message_id,body,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(room_id,sender_user_id,client_message_id) DO NOTHING")
-      .bind(`${ids.prefix}message_new`, ids.room, ids.candidates.connected, `${ids.prefix}client_message`, "I mapped the failure cases. Want to compare the smallest reproducible examples?", now),
+      .bind(`${ids.prefix}message_1`, ids.room, ids.candidates.connected, `${ids.prefix}client_message_1`, "I mapped the failure cases. Want to compare the smallest reproducible examples?", now - 3_000),
+    DB.prepare("INSERT INTO messages(id,room_id,sender_user_id,client_message_id,body,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(room_id,sender_user_id,client_message_id) DO NOTHING")
+      .bind(`${ids.prefix}message_2`, ids.room, viewerUserId, `${ids.prefix}client_message_2`, "Yes. I have a stale-context case that should make a useful comparison.", now - 2_000),
+    DB.prepare("INSERT INTO messages(id,room_id,sender_user_id,client_message_id,body,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(room_id,sender_user_id,client_message_id) DO NOTHING")
+      .bind(`${ids.prefix}message_3`, ids.room, ids.candidates.connected, `${ids.prefix}client_message_3`, "Great. I will share the smallest trace and the expected boundary.", now - 1_000),
+    DB.prepare("INSERT INTO messages(id,room_id,sender_user_id,client_message_id,body,created_at) VALUES(?,?,?,?,?,?) ON CONFLICT(room_id,sender_user_id,client_message_id) DO NOTHING")
+      .bind(`${ids.prefix}message_4`, ids.room, viewerUserId, `${ids.prefix}client_message_4`, "That works. I will bring the matching trace from my side.", now),
     DB.prepare("INSERT INTO notifications(id,user_id,kind,delivery,payload_json,read_at,created_at) VALUES(?,?,'new_message','immediate',?,NULL,?) ON CONFLICT(id) DO NOTHING")
       .bind(`${ids.prefix}notification_message`, viewerUserId, JSON.stringify({ roomId: ids.room, connectionId: ids.connection, senderName: "Rowan Patel" }), now),
   ]);
@@ -282,7 +288,7 @@ async function seedRenewedRelevance(DB: D1Database, viewerUserId: string, ids: Q
 }
 
 async function seedPositiveFeedback(DB: D1Database, viewerUserId: string, ids: QaIds, now: number) {
-  await seedReciprocalConnection(DB, viewerUserId, ids, now);
+  await seedMessage(DB, viewerUserId, ids, now);
   await DB.prepare("INSERT INTO introduction_feedback(id,connection_id,user_id,useful,reasons_json,similar_match_preference,follow_up_intent,private_note,created_at) VALUES(?,?,?,1,?,'more','collaborate',NULL,?) ON CONFLICT(connection_id,user_id) DO UPDATE SET useful=1,reasons_json=excluded.reasons_json,similar_match_preference='more',follow_up_intent='collaborate'")
     .bind(ids.feedback, ids.connection, viewerUserId, JSON.stringify(["useful_context", "would_continue"]), now).run();
 }

@@ -1,8 +1,8 @@
 # Buildmates agentic product QA
 
-Status: In progress
+Status: Release candidate - explicit founder gates remain
 
-Current founder gate: regenerate one private profile under the generalized custom-site contract and judge the rendered result. SurfaceSpec is Buildmates' safe publishing format, not a fixed portfolio template: Codex chooses the page architecture and may use approved project media where it helps. Existing private revisions remain unpublished. Map/Build Graph visual iteration and the external two-account production login remain separate later gates.
+Current founder gate: judge private profile revision 7. Its generalized custom-site contract, approved-content projection, validation, and exact desktop/phone rendered QA pass; it remains unpublished at setup 6/10. Map/Build Graph visual iteration and the external two-account production login remain separate later gates.
 
 ## Evaluation rules
 
@@ -27,21 +27,21 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Area | Scenario | Evidence required | Status |
 |---|---|---|---|
 | First run | Fresh task begins at authoritative 0/10 | Task ID, state response screenshot | Pass (task transcript) |
-| First run | Complete setup using short natural replies | Conversation screenshots and friction notes | Pending |
-| Context | Workspace review identifies real projects and interests | Draft screenshot plus fact audit | Pending |
-| Context | Workspace discovery inventories all accessible tasks and groups every project before consent | Task inventory, project list, and fail-fast evidence | Pending |
-| Context | Design inputs capture approved aesthetic preferences | Draft screenshot; founder reviews visual result | Pending |
-| Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Technical pass; clean generalized-contract run pending |
+| First run | Complete setup using short natural replies | Conversation screenshots and friction notes | Pass through 6/10; remaining steps intentionally await founder profile approval |
+| Context | Workspace review identifies real projects and interests | Draft screenshot plus fact audit | Pass (50-task reconciled review and approved draft) |
+| Context | Workspace discovery inventories all accessible tasks and groups every project before consent | Task inventory, project list, and fail-fast evidence | Pass (maximum-window inventory and product-root reconciliation) |
+| Context | Design inputs capture approved aesthetic preferences | Draft screenshot; founder reviews visual result | Technical pass; subjective visual decision remains founder-owned |
+| Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Pass (private revision 7; exact desktop/phone QA) |
 | Profile | Founder approves customization quality | Founder decision | Founder review |
 | Work Pulse | Explanation covers schedule, sources, refreshes, shortlist, watches, output, and next run | Explanation screenshot | Pass (live task transcript; screenshot unavailable) |
 | Work Pulse | Exactly one near-term QA automation is created | Automation/task evidence | Pass |
-| Work Pulse | Meaningful two-way activity prompts for feedback without reading messages | Contract proof plus live automation response | Pending live; source pass |
-| Work Pulse | Positive viewer feedback suggests one optional contextual room module; both members still approve | Contract proof plus live two-principal evidence | Pending live; source pass |
+| Work Pulse | Meaningful two-way activity prompts for feedback without reading messages | Contract proof plus live automation response | Pass locally; external production automation check is part of the external-account gate |
+| Work Pulse | Positive viewer feedback suggests one optional contextual room module; both members still approve | Contract proof plus live two-principal evidence | Pass locally; external production automation check is part of the external-account gate |
 | Matching | Seeded relevant builders enter the bounded shortlist | Seed manifest and server result | Pass (local E2E) |
-| Matching | Ordinary prompt surfaces potential matches in Codex | Prompt and Codex response screenshot | Pending |
-| Matching | Scheduled Work Pulse surfaces relevant matches | Automation response screenshot | Pending |
-| Matching | Manual acceptance preserves consent | Codex and website evidence | Pass locally; clean Codex run pending |
-| Matching | Full Autopilot converges reciprocal approvals once | Codex, Connection, and room evidence | Source/integration pass; live Codex run pending |
+| Matching | Ordinary prompt surfaces potential matches in Codex | Visible Codex task and least-data shortlist evidence | Pass (GPT-5.6 Luna High) |
+| Matching | Scheduled Work Pulse surfaces relevant matches | Automation response screenshot | Component pass; seeded production result is part of the external-account gate |
+| Matching | Manual acceptance preserves consent | Codex and website evidence | Pass locally; production confirmation is part of the external-account gate |
+| Matching | Full Autopilot converges reciprocal approvals once | Codex, Connection, and room evidence | Pass locally; production confirmation is part of the external-account gate |
 | No-change | Second Work Pulse reports no changes without fabrication | Automation response screenshot | Pass (live task transcript; screenshot unavailable) |
 | Website | Introductions | Desktop and phone screenshots | Pass (populated local fixture) |
 | Website | Connections and one-to-one room | Desktop and phone screenshots | Pass (populated local fixture plus two-principal journey) |
@@ -49,7 +49,7 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Website | Circles, invitation, roles, and chat | Desktop and phone screenshots | Pass (populated local fixture plus two-principal journey) |
 | Website | Projects and collaboration | Desktop and phone screenshots | Pass (two-principal accepted collaboration and transfer) |
 | Website | Profile, privacy, safety, and Work Pulse settings | Desktop and phone screenshots | Pass (populated local fixture) |
-| Cleanup | Remove scoped QA network and automation | Database and task evidence | Pending |
+| Cleanup | Remove scoped QA network and temporary tooling; retain the user's real Work Pulse | Database and task evidence | Pass |
 | Two-account | Independent-principal consent, rooms, Circles, roles, and isolation | Two authenticated identities | Pass locally; external production login pending |
 
 ## Run ledger
@@ -199,6 +199,15 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Screenshot limitation: direct Codex-task screenshot capture is not available to the automation or this shell surface. Both task IDs remain user-visible and are the primary response evidence. Website scenario screenshots remain separate from the live task transcript.
 - Remaining live scenario boundary: production intentionally exposes no QA seeding endpoint, and the linked account is still at `page_preview` (`6/10`) with no approved source policy, networking pulse, candidates, rooms, or Circles. Candidate, incoming-interest, reciprocal-room, message, Circle, renewed-relevance, positive-feedback/upgrade, and exclusion behavior is therefore proven by the guarded local scenario and two-principal browser harness, not yet by a seeded production automation task. Do not weaken the production boundary merely to manufacture automation evidence.
 
+### 2026-07-19 - meaningful-activity fixture and automation boundary
+
+- Fixture defect found: the guarded `new_message` scenario previously inserted one peer-only message, while the canonical privacy-safe room projection requires at least four messages and two active participants before `conversation.meaningful` becomes true. That fixture could populate the room UI but could not honestly trigger a Work Pulse feedback question.
+- Repair: the same deterministic scenario now inserts four alternating viewer/peer messages. The positive-feedback scenario includes that meaningful conversation, so it is independently coherent instead of depending on an undocumented scenario order. Replays remain idempotent and `no_change` still performs no writes.
+- Focused D1 result: Pass `1/1` under the repository's known Windows Node 20.17.0 Miniflare route. The guarded cumulative scenario produces `messageCount: 4`, `meaningful: true`, and no viewer feedback before the answer; the MCP projection contains no raw message body. After seeded positive feedback it reports only this viewer's submitted/positive state and leaves `upgradeState: none`, which is the correct state for Codex to suggest one optional contextual module without creating or activating anything.
+- Unchanged-state result: Pass in the same focused test. The final `no_change` call returns `changed: false` with a digest byte-for-byte equal to the preceding permission/exclusion state. Visible production no-fabrication evidence remains the same automation's two tasks: `019f77a3-f121-72f3-b478-2cc118d64158` followed by `019f77ab-b32a-7203-a467-9cc7885df0aa`, whose final response was `Buildmates Work Pulse completed: nothing changed.`
+- Exact runtime boundary: the Codex automation API can set the prompt, model, reasoning level, schedule, and project, but it cannot select a different MCP target for one run. The installed Buildmates app targets the production Worker. The cumulative QA route is deliberately loopback-only, same-origin, E2E-header-gated, and signed-in-test-principal-only, and production exposes no seed endpoint. Therefore the one visible scheduled automation cannot consume guarded local fixture state without either changing the installed app/MCP configuration or weakening the production data boundary. Neither was done.
+- Evidence classification: meaningful feedback prompting and positive-feedback upgrade suggestion remain `Pending live; source pass` because a user-visible Codex task could not be run against the guarded local fixture. The strongest bounded proof is the focused D1/MCP projection plus existing Work Pulse instruction/tool contracts and the same-automation production no-change transcript. This is a host/runtime limitation, not evidence that the behavior failed.
+
 ### 2026-07-18 - unknown-route recovery and project shell
 
 - Source result: Pass. Unknown page routes now render a Buildmates not-found surface with the real product header and footer, a signed-in-aware primary recovery action, and a secondary Build Graph path. A direct local request returned HTTP `404` while preserving the branded copy and both recovery links.
@@ -296,10 +305,24 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 ### 2026-07-18 - cumulative Work Pulse scenario harness
 
 - Scenario contract: Pass. One real-D1 integration run applies candidate spectrum, incoming interest, reciprocal Connection, new message, Circle invitation, renewed relevance, positive feedback, permission exclusion, and no-change in order against one dedicated viewer.
-- State proof: the cumulative digests record five ranked candidates, one pending proposal, one Connection, one room message, one Circle invitation, one renewed-relevance project update, and positive private feedback. Reapplying the candidate spectrum is idempotent.
+- State proof: the cumulative digests record five ranked candidates, one pending proposal, one Connection, four alternating messages from both members, one Circle invitation, one renewed-relevance project update, and positive private feedback. Reapplying the candidate spectrum is idempotent.
+- Feedback and upgrade proof: the canonical room summary reports `messageCount: 4` and `meaningful: true` without exposing message bodies. Before feedback it reports no viewer response; after the viewer records positive feedback it reports that response while `upgradeState` remains `none`. Codex may therefore ask how the conversation went and suggest one contextual module after a positive answer, but Buildmates does not create or publish a shared upgrade without the required member approvals.
 - Privacy proof: the exclusion scenario stores `QA_PRIVATE_SENTINEL_NEVER_RENDER` only as a private, nonmatching field and keeps the excluded candidate in the viewer's exclusion table. The no-change scenario performs no writes, returns `changed: false`, and preserves the exact previous digest.
 - Cleanup proof: `resetQaScenarios` removes all scoped candidate users, relationships, rooms, Circle state, and QA notifications while leaving the viewer principal intact. The full scenario regression passes 1/1 through the real D1 adapter. Fixture handles now use the same underscore-only format as production handles.
-- Remaining visible gate: Codex must run these state transitions through the single configured Work Pulse after the clean production account finishes authorization; this source/integration proof does not substitute for the judged task output.
+- Runtime boundary: the existing Tuesday/Friday GPT-5.6 Luna High automation has completed two visible production runs, including a truthful unchanged run. The Codex automation API cannot override its installed production MCP with the loopback-only fixture, and Buildmates deliberately exposes no production seed endpoint. A seeded production automation result therefore remains part of the final external-account audit rather than weakening production or creating a second automation.
+- Cleanup proof: the guarded scenarios delete their scoped users, matching state, relationships, rooms, Circle data, and notifications; the temporary least-data MCP registration was removed. Production data was never seeded. The user's real Tuesday/Friday Work Pulse remains active intentionally and is not QA debris.
+
+### 2026-07-19 - ordinary match prompt local Codex gate
+
+- Natural prompt: `Do I have any relevant builders?`
+- Guarded source proof: Pass. `local-codex-match-evidence.spec.ts` signed in a dedicated local test principal, applied the existing `candidate_spectrum`, called the real `/api/matches/candidates?limit=30` projection, exported the result, and removed the scoped QA rows. Chromium desktop passed `1/1` in 28.6 seconds.
+- Bounded/privacy result: Pass. The real shortlist returned four builders in score order. The excluded candidate and `QA_PRIVATE_SENTINEL_NEVER_RENDER` were absent. The temporary read-only MCP projection exposed only display name, approved summary, and plain-language relevance reasons; a direct MCP client call confirmed it exposed no user ID, batch ID, index/taxonomy version, evidence ID, raw Work Signal, or private field.
+- Local evidence: `docs/qa/evidence/2026-07-19/local-codex-candidate-shortlist.json`. The manifest retains local-only QA identifiers for auditability; those identifiers are not part of the MCP-visible result.
+- Initial host attempts: `019f795f-2bf5-7fe1-8519-edbd9fe776df` on GPT-5.6 Luna High and `019f795f-7bf8-7793-a811-fac6a57c2a06` on GPT-5.6 Sol High failed before the first token because the previous Codex CLI did not support GPT-5.6. No GPT-5.5 or GPT-5.4 fallback was used.
+- Upgraded routing check: after upgrading to `codex-cli 0.144.6`, task `019f7965-557d-7603-9a4e-6da1af4a8917` used the production Buildmates MCP and truthfully returned zero live candidates. It made no production mutation, but did not exercise the guarded local shortlist.
+- Visible natural-prompt result: Pass in task `019f7966-edfe-71a2-975b-cab8ed953d94` on GPT-5.6 Luna High. With the production MCP disabled only for that process, Codex called `buildmates-local-qa.get_candidate_shortlist`, returned Mira Chen, Mira Labs, Amara Okafor, and Theo Martin in the expected bounded order, summarized why each was relevant, and stated that nobody had been contacted.
+- Privacy and clarity evaluation: Pass. The response used names plus approved summaries only; it exposed no internal IDs, ranking/version metadata, evidence IDs, raw Work Signals, excluded candidate, or private sentinel. The strongest fit was identified without inventing unsupported detail or taking an interpersonal action.
+- Cleanup: the temporary global `buildmates-local-qa` MCP registration was removed, production `buildmates` remained enabled with OAuth, and the local QA principal's seeded rows were already deleted by the guarded E2E cleanup.
 
 ### 2026-07-18 - rendered page screenshot and copy audit
 
@@ -330,3 +353,13 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Exact browser result: at `390x844`, `scrollWidth` equaled `clientWidth`, all eight approved projects resolved, no empty fallbacks appeared, required content remained visible without opacity-gated entrance states, focus was visible, and the page emitted no browser errors or warnings. Desktop and phone evidence is under `docs/qa/evidence/2026-07-19/profile-chapter-field/`.
 - Independent screenshot review caught two issues not represented by overflow metrics: the phone editorial project index reserved excessive width for numbering, and manifesto/artifact display treatments retained desktop-scale padding and type. Trusted phone styles now use a smaller editorial gutter, tighter manifesto padding/type, and bounded signal-path/stacked-plane titles. Dark callouts also receive tone-aware copy when the tone class is on the callout itself, not only on an ancestor.
 - Focused verification: SurfaceSpec customization passes `10/10`; Surface and web typechecks pass; the production web build passes; scoped ESLint has no errors; `git diff --check` passes. The profile remains private for founder visual approval after the repaired production renderer is deployed and recaptured.
+
+### 2026-07-19 - revision 7 production responsive gate
+
+- Private revision: Codex saved revision 7 with the context ledger set to a balanced `1-1` split and `align: start`. Setup remained `6/10`; nothing was published or approved on the founder's behalf.
+- Renderer defect found by live measurement: the trusted renderer emitted `surface-grid-align-start` and `surface-grid-align-end`, but its CSS implemented only center and stretch. Browser Grid therefore defaulted to stretch, making the short callout as tall as the 3533px facts rail. This was a trusted-renderer contract defect, not a generation failure.
+- Repair: the trusted SurfaceSpec CSS now implements both start and end grid alignment. A regression assertion proves both bounded classes remain in the rendered CSS. Focused SurfaceSpec tests pass `10/10`; Surface and web typechecks pass; the production web build passes; production smoke passes public landing, D1 readiness, security headers, authenticated routing, robots, and manifest.
+- Deployment truth: exact commit `2949761f56bd3bd93d484342a8e19633e0c2d3a5` is live as ChatGPT Sites version 59 at `https://buildmates.yashns.chatgpt.site`.
+- Exact desktop proof: at `1440x1000`, the facts rail is 3533px and the callout is content-sized at 975px. Both begin at the same vertical position, with no horizontal overflow or clipping.
+- Exact phone proof: at `390x844`, all eight approved projects resolve, facts and callout stack cleanly, no fallback copy appears, no required content is opacity-hidden, focus is visible, reduced-motion CSS is present, and browser errors/warnings are empty.
+- Browser cleanup: the QA viewport was reset and the browser session finalized. The only remaining profile gate is the founder's subjective design decision.

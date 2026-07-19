@@ -31,7 +31,7 @@ test("cumulative QA scenarios stay coherent across product surfaces and reset cl
   await expect(page.getByRole("link", { name: "Open room" })).toHaveAttribute("href", `/rooms/${reciprocal.roomId}`);
 
   const message = await apply(page, "new_message");
-  expect(message.digest.messages).toBe(1);
+  expect(message.digest.messages).toBe(4);
   await page.goto(`/rooms/${message.roomId}`);
   await expect(page.getByText("smallest reproducible examples", { exact: false })).toBeVisible();
 
