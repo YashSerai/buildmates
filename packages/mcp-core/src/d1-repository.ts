@@ -579,7 +579,8 @@ function dedupeProfileProjects(projects: BoundProfileProject[]) {
 }
 
 async function approvedProfileMedia(DB: Database, actor: string) {
-  const rows = await all(DB, `SELECT media.asset_id AS assetId,media.alt_text AS altText,project.title AS projectTitle,asset.object_key AS objectKey
+  const [projectRows, profileRows] = await Promise.all([
+    all(DB, `SELECT media.asset_id AS assetId,media.alt_text AS altText,project.title AS projectTitle,asset.object_key AS objectKey
     FROM project_media media
     JOIN projects project ON project.id=media.project_id
     JOIN surface_assets asset ON asset.id=media.asset_id
@@ -587,14 +588,30 @@ async function approvedProfileMedia(DB: Database, actor: string) {
       AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
       AND asset.owner_user_id=? AND asset.deleted_at IS NULL
       AND asset.object_key LIKE ?
-    ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor, `surface-assets/${actor}/%`);
-  return rows.flatMap((row) => {
+    ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor, `surface-assets/${actor}/%`),
+    all(DB, `SELECT media.asset_id AS assetId,media.alt_text AS altText,media.project_key AS projectKey,
+      field.value_json AS projectsJson,asset.object_key AS objectKey
+    FROM profile_project_media media
+    JOIN profiles profile ON profile.id=media.profile_id
+    JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects' AND field.audience='public'
+    JOIN surface_assets asset ON asset.id=media.asset_id
+    WHERE profile.user_id=? AND asset.owner_user_id=? AND asset.deleted_at IS NULL
+      AND asset.object_key LIKE ?
+    ORDER BY media.updated_at DESC LIMIT 24`, actor, actor, `surface-assets/${actor}/%`),
+  ]);
+  const approvedDraftMedia = profileRows.flatMap((row) => {
+    const project = profileProjectsValue(row.projectsJson).find((item) => item.id === String(row.projectKey));
+    return project ? [{ ...row, projectTitle: project.title }] : [];
+  });
+  const seen = new Set<string>();
+  return [...approvedDraftMedia, ...projectRows].flatMap((row) => {
     const assetId = String(row.assetId ?? "");
     const objectKey = String(row.objectKey ?? "");
     const prefix = `surface-assets/${actor}/`;
-    if (!/^asset_[a-z0-9_-]{8,80}$/i.test(assetId) || !objectKey.startsWith(prefix) || !String(row.altText ?? "").trim()) return [];
+    if (seen.has(assetId) || !/^asset_[a-z0-9_-]{8,80}$/i.test(assetId) || !objectKey.startsWith(prefix) || !String(row.altText ?? "").trim()) return [];
     let binding;
     try { binding = profileMediaBinding(assetId); } catch { return []; }
+    seen.add(assetId);
     return [{ ...binding, assetId, src: `/api/surface-assets/${actor}/${objectKey.slice(prefix.length)}`, altText: String(row.altText).trim().slice(0, 300), projectTitle: String(row.projectTitle ?? "Project") }];
   });
 }
