@@ -100,7 +100,7 @@ export function customizedProfileSurfaceExample(input: {
     return {
       id: `generated-project-${index + 1}-chapter`, type: "section", tone: index % 2 === 0 ? "canvas" : "secondary", layout: "flow", padding: "xl", bleed: true,
       minHeight: "viewport", background: index % 2 === 0 ? "solid" : "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-      children: [{ id: `generated-project-${index + 1}-split`, type: "split", ratio: "1-1", gap: "xl", align: "stretch", reverseOnMobile: index % 2 === 1, children: [detail, visual] }],
+      children: [{ id: `generated-project-${index + 1}-split`, type: "split", ratio: "1-1", gap: "xl", align: "center", reverseOnMobile: index % 2 === 1, children: [detail, visual] }],
     };
   });
   const [nameBinding, summaryBinding] = textBindings;
@@ -111,7 +111,7 @@ export function customizedProfileSurfaceExample(input: {
     children: [
       {
         id: "generated-identity-chapter", type: "section", tone: "canvas", layout: "hero", padding: "xl", bleed: true,
-        minHeight: "viewport", background: "spotlight", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
+        minHeight: "viewport", background: "spotlight", backgroundMediaBinding: usedMedia[0]?.key ?? null, backgroundMediaOpacity: usedMedia.length ? "medium" : "subtle", backgroundMediaFocalPoint: "center",
         children: [
           { id: "generated-identity-stack", type: "stack", gap: "xl", align: "start", justify: "between", width: "full", children: [
             { id: "generated-signature", type: "decorative-mark", mark: "orbit", size: "xl", position: "top-right", tone: "highlight" },
