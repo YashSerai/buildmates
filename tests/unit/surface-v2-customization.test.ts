@@ -99,6 +99,8 @@ describe("SurfaceSpec v2 customization ceiling", () => {
   it("keeps layout bounds and motion static fallback in trusted CSS", () => {
     const html = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: PROFILE_V2_FIXTURES[0], bindings: PROFILE_FIXTURE_BINDINGS }));
     expect(html).toContain("grid-template-columns:repeat(12,minmax(0,1fr))");
+    expect(html).toContain(".surface-grid-align-start{align-items:start}");
+    expect(html).toContain(".surface-grid-align-end{align-items:end}");
     expect(html).toContain("overflow:hidden");
     expect(html).toContain("pointer-events:none");
     expect(html).toContain("animation:none!important");
