@@ -43,10 +43,22 @@ export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Li
     .bind(input.actorId).first<{objectCount:number;totalBytes:number}>();
   if(Number(usage?.objectCount??0)>=MAX_SURFACE_ASSET_OBJECTS||Number(usage?.totalBytes??0)+bytes.byteLength>MAX_SURFACE_ASSET_TOTAL_BYTES)throw new Error("surface_asset_quota_exceeded");
   const sanitizedBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
-  await input.bucket.put(objectKey, sanitizedBuffer, { httpMetadata: { contentType } });
+  let storedInR2 = true;
   try {
-    await input.DB.prepare("INSERT INTO surface_assets (id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)<? AND (SELECT COALESCE(SUM(byte_size),0) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)+?<=? ON CONFLICT(id) DO NOTHING")
-      .bind(id,input.actorId,objectKey,contentType,bytes.byteLength,sha256,(input.at??new Date()).getTime(),input.actorId,MAX_SURFACE_ASSET_OBJECTS,input.actorId,bytes.byteLength,MAX_SURFACE_ASSET_TOTAL_BYTES).run();
+    await input.bucket.put(objectKey, sanitizedBuffer, { httpMetadata: { contentType } });
+  } catch (error) {
+    if (!isUnavailableR2Write(error)) throw error;
+    storedInR2 = false;
+  }
+  try {
+    const insertAsset = input.DB.prepare("INSERT INTO surface_assets (id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) SELECT ?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)<? AND (SELECT COALESCE(SUM(byte_size),0) FROM surface_assets WHERE owner_user_id=? AND deleted_at IS NULL)+?<=? ON CONFLICT(id) DO NOTHING")
+      .bind(id,input.actorId,objectKey,contentType,bytes.byteLength,sha256,(input.at??new Date()).getTime(),input.actorId,MAX_SURFACE_ASSET_OBJECTS,input.actorId,bytes.byteLength,MAX_SURFACE_ASSET_TOTAL_BYTES);
+    if (storedInR2) await insertAsset.run();
+    else await input.DB.batch([
+      insertAsset,
+      input.DB.prepare("INSERT INTO surface_asset_blobs(asset_id,bytes) SELECT ?,? WHERE EXISTS(SELECT 1 FROM surface_assets WHERE id=? AND owner_user_id=? AND deleted_at IS NULL) ON CONFLICT(asset_id) DO UPDATE SET bytes=excluded.bytes")
+        .bind(id, sanitizedBuffer, id, input.actorId),
+    ]);
   } catch(error) {
     // A failed D1 response does not prove the write was rolled back. Because the
     // R2 key is content-addressed, deleting it here could break a committed row
@@ -56,7 +68,15 @@ export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Li
   }
   const stored = await input.DB.prepare("SELECT id FROM surface_assets WHERE id=? AND owner_user_id=? AND object_key=? AND content_type=? AND byte_size=? AND sha256=? AND deleted_at IS NULL")
     .bind(id, input.actorId, objectKey, contentType, bytes.byteLength, sha256).first();
-  if (!stored) {await input.bucket.delete(objectKey).catch(()=>undefined);throw new Error("surface_asset_quota_exceeded");}
+  const storedBlob = storedInR2 ? true : Boolean(await input.DB.prepare("SELECT asset_id FROM surface_asset_blobs WHERE asset_id=?").bind(id).first());
+  if (!stored || !storedBlob) {
+    if (storedInR2) await input.bucket.delete(objectKey).catch(()=>undefined);
+    else await input.DB.batch([
+      input.DB.prepare("DELETE FROM surface_asset_blobs WHERE asset_id=?").bind(id),
+      input.DB.prepare("DELETE FROM surface_assets WHERE id=? AND owner_user_id=?").bind(id, input.actorId),
+    ]).catch(()=>undefined);
+    throw new Error("surface_asset_quota_exceeded");
+  }
   return { id, src: `/api/surface-assets/${input.actorId}/${sha256}.${EXTENSION[contentType]}`, contentType, byteSize: bytes.byteLength, sha256, sanitization: "container_metadata_stripped" as const };
 }
 
@@ -179,9 +199,14 @@ export async function readSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Like
     if (!authorized) return privateNotFound();
   }
   validateSurfaceAsset({ objectKey, contentType: row.contentType, byteSize: row.byteSize });
-  const object = await input.bucket.get(objectKey);
-  if (!object?.arrayBuffer) return privateNotFound();
-  return new Response(await object.arrayBuffer(), { status: 200, headers: surfaceAssetResponseHeaders(row.contentType) });
+  const object = await input.bucket.get(objectKey).catch(() => null);
+  if (object?.arrayBuffer) return new Response(await object.arrayBuffer(), { status: 200, headers: surfaceAssetResponseHeaders(row.contentType) });
+  const fallback = await input.DB.prepare("SELECT bytes FROM surface_asset_blobs WHERE asset_id=?").bind(row.id).first<{ bytes: ArrayBuffer | Uint8Array }>();
+  if (!fallback?.bytes) return privateNotFound();
+  const fallbackBytes = fallback.bytes instanceof Uint8Array ? fallback.bytes : new Uint8Array(fallback.bytes);
+  if (fallbackBytes.byteLength !== Number(row.byteSize)) return privateNotFound();
+  const fallbackBody = fallbackBytes.buffer.slice(fallbackBytes.byteOffset, fallbackBytes.byteOffset + fallbackBytes.byteLength) as ArrayBuffer;
+  return new Response(fallbackBody, { status: 200, headers: surfaceAssetResponseHeaders(row.contentType) });
 }
 
 export async function readRequestBodyWithLimit(request: Request, limit = MAX_SURFACE_ASSET_BYTES): Promise<ArrayBuffer> {
@@ -330,6 +355,10 @@ async function hexDigest(bytes: Uint8Array): Promise<string> {
 
 function privateNotFound(): Response {
   return Response.json({ error: "not_found" }, { status: 404, headers: { "cache-control": "private, no-store", vary: "Cookie, Authorization" } });
+}
+
+function isUnavailableR2Write(error: unknown): boolean {
+  return error instanceof Error && /RPC receiver does not implement the method ["']put["']/i.test(error.message);
 }
 
 type ProfileMediaRow = { assetId: string; altText: string; projectId: string; projectTitle: string; objectKey: string; contentType: string; byteSize: number };

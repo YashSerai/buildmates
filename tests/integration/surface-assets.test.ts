@@ -104,6 +104,21 @@ describe("protected surface asset API service", () => {
     expect(new TextDecoder().decode(await object!.arrayBuffer())).not.toContain("GPS:");
   });
 
+  it("falls back to a private D1 blob when the Sites R2 proxy cannot write", async () => {
+    const png = validPng();
+    const unavailableBucket: R2Like = {
+      put: async () => { throw new Error('The RPC receiver does not implement the method "put".'); },
+      get: async () => null,
+      delete: async () => undefined,
+    };
+    const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket: unavailableBucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
+    const stored = await db.prepare("SELECT length(bytes) AS byteSize FROM surface_asset_blobs WHERE asset_id=?").bind(asset.id).first<{ byteSize: number }>();
+    expect(Number(stored?.byteSize)).toBe(asset.byteSize);
+    const response = await readSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket: unavailableBucket, viewerId: alice, ownerId: alice, filename: asset.src.split("/").at(-1)! });
+    expect(response.status).toBe(200);
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array(png));
+  });
+
   it("offers only owner-bound media attached to currently public published projects", async () => {
     const now = Date.now();
     const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: validPng(), claimedContentType: "image/png" });
