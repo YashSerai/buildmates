@@ -238,7 +238,10 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
 
   tool("get_surface_generation_brief", "Get surface generation brief", "Returns the current Design Policy, authorized bindings, governance, base revision, accessibility rules, and privacy boundary before generation.", z.object({ surfaceId: idSchema, ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const surface = await services.repository.readForMember<Record<string, unknown>>("surface", input.surfaceId as string, context.userId!);
-    if (!surface || !surfaceBriefIsComplete(surface.value, context.userId!)) throw new Error("surface_brief_unavailable");
+    if (!surface || !surfaceBriefIsComplete(surface.value, context.userId!, surface.ownerUserId)) {
+      if (surface) console.warn("surface_brief_incomplete", surfaceBriefDiagnostics(surface.value, context.userId!, surface.ownerUserId));
+      throw new Error("surface_brief_unavailable");
+    }
     const starterSpec = starterSurfaceSpec(String(surface.value.kind));
     const trustedComponents = surface.value.trustedComponents as string[];
     const authorizedBindingTypes = surface.value.authorizedBindingTypes as Record<string, unknown> | null ?? null;
@@ -434,15 +437,28 @@ function pageOptions(input: Record<string, unknown>, connectionId?: string) {
   return { cursor: typeof input.cursor === "string" ? input.cursor : undefined, limit: typeof input.limit === "number" ? input.limit : 20, filter: connectionId ? { connectionId } : undefined };
 }
 
-function surfaceBriefIsComplete(value: Record<string, unknown>, actor: string): boolean {
+function surfaceBriefIsComplete(value: Record<string, unknown>, actor: string, recordOwnerUserId = actor): boolean {
   if (!Array.isArray(value.allowedModules) || value.allowedModules.length === 0 || !Array.isArray(value.authorizedBindings) || value.authorizedBindings.length === 0 || !Array.isArray(value.trustedComponents) || value.trustedComponents.length === 0) return false;
   const governance = value.governance as Record<string, unknown> | undefined;
   if (!governance || !["profile", "room", "circle"].includes(String(value.kind))) return false;
-  if (value.kind === "profile") return governance.mode === "owner" && governance.ownerUserId === actor && Array.isArray(governance.requiredApproverIds) && governance.requiredApproverIds.length > 0;
+  if (value.kind === "profile") return governance.mode === "owner" && recordOwnerUserId === actor && Array.isArray(governance.requiredApproverIds) && governance.requiredApproverIds.includes(actor);
   if (governance.mode === "unanimous_members") return Array.isArray(governance.memberUserIds) && governance.memberUserIds.includes(actor) && Array.isArray(governance.requiredApproverIds) && governance.requiredApproverIds.length > 0 && governance.requiredApprovals === governance.requiredApproverIds.length;
   if (governance.mode === "circle_vote") return Array.isArray(governance.memberUserIds) && governance.memberUserIds.includes(actor) && Array.isArray(governance.eligibleVoterIds) && governance.eligibleVoterIds.length > 0 && governance.approvalRule === "strict_majority";
   if (governance.mode === "circle_admin") return Array.isArray(governance.memberUserIds) && governance.memberUserIds.includes(actor) && Array.isArray(governance.publisherUserIds) && governance.publisherUserIds.length > 0;
   return false;
+}
+
+function surfaceBriefDiagnostics(value: Record<string, unknown>, actor: string, recordOwnerUserId: string) {
+  const governance = value.governance as Record<string, unknown> | undefined;
+  return {
+    kind: typeof value.kind === "string" ? value.kind : "missing",
+    hasAllowedModules: Array.isArray(value.allowedModules) && value.allowedModules.length > 0,
+    hasAuthorizedBindings: Array.isArray(value.authorizedBindings) && value.authorizedBindings.length > 0,
+    hasTrustedComponents: Array.isArray(value.trustedComponents) && value.trustedComponents.length > 0,
+    hasGovernance: Boolean(governance),
+    ownerRecordMatchesActor: recordOwnerUserId === actor,
+    ownerApproverIncludesActor: Array.isArray(governance?.requiredApproverIds) && governance.requiredApproverIds.includes(actor),
+  };
 }
 
 function result(value: unknown, isError = false) {
