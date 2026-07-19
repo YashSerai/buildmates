@@ -101,118 +101,150 @@ export function RevisionPreview() {
 
   return (
     <main className={`${styles.form} ${styles.designWorkspace}`}>
-      <header>
-        <p className={styles.eyebrow}>Profile design</p>
-        <h1>Make this page feel like you.</h1>
-        <p>
-          Codex designs with only the profile content you approved. It cannot
-          expose private fields or replace Buildmates privacy, sharing, or
-          navigation controls.
-        </p>
-      </header>
-      {message && !loadError ? <p role="status">{message}</p> : null}
-      {!data ? (
-        loadError ? (
-          <div role="alert">
-            <p>{message}</p>
-            <button type="button" onClick={() => void load()}>
-              Try again
-            </button>
+      <div className={styles.designWorkspaceInner}>
+        <header className={styles.designWorkspaceHeader}>
+          <div className={styles.designWorkspaceIntro}>
+            <p className={styles.eyebrow}>Profile design</p>
+            <h1>Make your page feel like you.</h1>
+            <p>
+              Ask Codex to turn your approved profile into a page with its own
+              layout, typography, color, and rhythm. You review every version
+              before it goes live.
+            </p>
           </div>
-        ) : (
-          <p role="status">Loading design permissions...</p>
-        )
-      ) : (
-        <>
-          <div className={styles.actionRow}>
-            <a
-              className={styles.primaryAction}
-              href={`codex://open?prompt=${encodeURIComponent(designPrompt)}`}
-            >
-              Design with Codex
-            </a>
-            <button type="button" onClick={copyDesignPrompt}>
-              Copy Codex prompt
-            </button>
-          </div>
-          <h2>{privatePreview ? "Private preview" : "Design history"}</h2>
-          {privatePreview ? (
-            <section className={styles.currentDesign} aria-label="Current private preview">
-              <SurfaceRenderer
-                spec={privatePreview.spec}
-                bindings={previewSurfaceBindings(data.brief, privatePreview.spec)}
-              />
-              <div className={styles.currentDesignActions}>
-                {previewCanPublish ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      mutate(
-                        {
-                          action: "publish",
-                          revisionId: privatePreview.id,
-                          expectedPublishedRevisionNumber:
-                            data.surface.publishedRevisionNumber,
-                        },
-                        "Profile design published.",
-                      )
-                    }
-                  >
-                    Publish this design
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() =>
-                      mutate(
-                        { action: "restore", revisionId: privatePreview.id },
-                        "A new private preview was created from that design.",
-                      )
-                    }
-                  >
-                    Update this preview
-                  </button>
-                )}
-                <span>Only you can see this preview until you publish it.</span>
-              </div>
-            </section>
+          {data ? (
+            <div className={styles.designWorkspaceActions} aria-label="Profile design actions">
+              <a
+                className={styles.primaryAction}
+                href={`codex://open?prompt=${encodeURIComponent(designPrompt)}`}
+              >
+                Design with Codex
+              </a>
+              <button className={styles.quietAction} type="button" onClick={copyDesignPrompt}>
+                Copy prompt
+              </button>
+            </div>
           ) : null}
-          <h2>Earlier designs</h2>
-          {data.history.length ? (
-            <ol className={styles.designHistory}>
-              {data.history.map((revision) => {
-                const published = data.surface.publishedRevisionId === revision.id;
-                const label = published
-                  ? "Published page"
-                  : `Private preview ${revision.revisionNumber}`;
-                return (
-                  <li key={revision.id}>
-                    <p><strong>{label}</strong><span>{new Date(revision.createdAt).toLocaleDateString()}</span></p>
-                    {!published && revision.id !== privatePreview?.id ? (
-                      <button
-                        type="button"
-                        disabled={busy}
-                        onClick={() =>
-                          mutate(
-                            { action: "restore", revisionId: revision.id },
-                            "A new private preview was created from that design.",
-                          )
-                        }
-                      >
-                        Use as a new preview
-                      </button>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ol>
+        </header>
+
+        {message && !loadError ? <p className={styles.designStatus} role="status">{message}</p> : null}
+        {!data ? (
+          loadError ? (
+            <div className={styles.designLoadState} role="alert">
+              <p>{message}</p>
+              <button type="button" onClick={() => void load()}>
+                Try again
+              </button>
+            </div>
           ) : (
-            <p>No generated designs yet.</p>
-          )}
-        </>
-      )}
+            <p className={styles.designLoadState} role="status">Loading your designs...</p>
+          )
+        ) : (
+          <>
+            <section className={styles.previewWorkspace} aria-labelledby="profile-preview-title">
+              <div className={styles.previewWorkspaceHeader}>
+                <div>
+                  <p className={styles.previewState}>{privatePreview ? "Private" : "No draft"}</p>
+                  <h2 id="profile-preview-title">{privatePreview ? "Your latest preview" : "Start your first design"}</h2>
+                </div>
+                {privatePreview ? <p>Only you can see this version.</p> : null}
+              </div>
+
+              {privatePreview ? (
+                <div className={styles.previewCanvas}>
+                  <SurfaceRenderer
+                    spec={privatePreview.spec}
+                    bindings={previewSurfaceBindings(data.brief, privatePreview.spec)}
+                  />
+                </div>
+              ) : (
+                <div className={styles.emptyPreview}>
+                  <p>Tell Codex how the page should feel. It will build a private version here for you to review.</p>
+                </div>
+              )}
+
+              {privatePreview ? (
+                <div className={styles.currentDesignActions}>
+                  {previewCanPublish ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        mutate(
+                          {
+                            action: "publish",
+                            revisionId: privatePreview.id,
+                            expectedPublishedRevisionNumber:
+                              data.surface.publishedRevisionNumber,
+                          },
+                          "Profile design published.",
+                        )
+                      }
+                    >
+                      Publish this design
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() =>
+                        mutate(
+                          { action: "restore", revisionId: privatePreview.id },
+                          "A new private preview was created from that design.",
+                        )
+                      }
+                    >
+                      Update this preview
+                    </button>
+                  )}
+                  <span>Publishing replaces the page people see at your public profile link.</span>
+                </div>
+              ) : null}
+            </section>
+
+            <section className={styles.historySection} aria-labelledby="design-history-title">
+              <div className={styles.historyHeader}>
+                <h2 id="design-history-title">Design history</h2>
+                <p>{data.history.length ? `${data.history.length} saved ${data.history.length === 1 ? "version" : "versions"}` : "No saved versions"}</p>
+              </div>
+              {data.history.length ? (
+                <ol className={styles.designHistory}>
+                  {data.history.map((revision) => {
+                    const published = data.surface.publishedRevisionId === revision.id;
+                    const activePreview = revision.id === privatePreview?.id;
+                    const label = published
+                      ? "Published"
+                      : activePreview
+                        ? "Current private preview"
+                        : `Private version ${revision.revisionNumber}`;
+                    return (
+                      <li key={revision.id}>
+                        <p><strong>{label}</strong><span>{new Date(revision.createdAt).toLocaleDateString()}</span></p>
+                        {!published && !activePreview ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              mutate(
+                                { action: "restore", revisionId: revision.id },
+                                "A new private preview was created from that design.",
+                              )
+                            }
+                          >
+                            Preview again
+                          </button>
+                        ) : null}
+                      </li>
+                    );
+                  })}
+                </ol>
+              ) : (
+                <p className={styles.historyEmpty}>Your saved designs will appear here.</p>
+              )}
+            </section>
+          </>
+        )}
+      </div>
     </main>
   );
 }
