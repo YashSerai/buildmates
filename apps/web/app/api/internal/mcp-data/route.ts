@@ -80,6 +80,7 @@ export async function POST(request: Request) {
         return Response.json({ value }, { headers: { "cache-control": "no-store" } });
       } catch (error) {
         const message = error instanceof Error ? error.message : "tool_failed";
+        console.warn(JSON.stringify({ event: "delegated_mcp_tool_failed", tool: toolName, message }));
         const status = message === "identity_link_required" ? 403 : message.includes("not_authorized") ? 404 : 400;
         return Response.json({ error: message }, { status, headers: { "cache-control": "no-store" } });
       }
