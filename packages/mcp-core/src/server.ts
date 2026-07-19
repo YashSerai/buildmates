@@ -103,12 +103,28 @@ const designReferenceSchema = z.object({
   title: z.string().trim().min(1).max(120),
   principles: z.array(z.string().trim().min(3).max(180)).min(2).max(6),
 }).strict();
+const designCandidateSchema = z.object({
+  url: z.string().url().refine(safePublicDesignReference, "Use a public HTTPS design reference without credentials or fragments"),
+  title: z.string().trim().min(1).max(120),
+  style: z.array(z.string().trim().min(2).max(40)).min(1).max(6),
+  fit: z.string().trim().min(10).max(360),
+  selected: z.boolean(),
+}).strict();
 const profileDesignBriefSchema = z.object({
   direction: z.string().trim().min(10).max(1000),
   sections: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
   signatureElement: z.string().trim().min(3).max(300).optional(),
+  selectionBasis: z.string().trim().min(20).max(600),
+  candidates: z.array(designCandidateSchema).min(4).max(8),
   references: z.array(designReferenceSchema).min(1).max(2),
-}).strict();
+}).strict().superRefine((brief, context) => {
+  const candidateUrls = new Set(brief.candidates.map((candidate) => candidate.url));
+  if (candidateUrls.size !== brief.candidates.length) context.addIssue({ code: "custom", message: "Reference candidates must be unique", path: ["candidates"] });
+  const selectedUrls = new Set(brief.candidates.filter((candidate) => candidate.selected).map((candidate) => candidate.url));
+  const referenceUrls = new Set(brief.references.map((reference) => reference.url));
+  if (selectedUrls.size < 1 || selectedUrls.size > 2) context.addIssue({ code: "custom", message: "Select one or two researched candidates", path: ["candidates"] });
+  if (selectedUrls.size !== referenceUrls.size || [...referenceUrls].some((url) => !selectedUrls.has(url))) context.addIssue({ code: "custom", message: "Selected candidates must match the chosen references", path: ["references"] });
+});
 
 export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   tool("get_link_url", "Get identity link URL", "Returns the HTTPS Buildmates sign-in and one-time approval-code page for this OAuth principal. It exposes no user data.", z.object(workspaceInput).strict(), readAnnotations, async (_, context, services) => ({ url: new URL("/settings/connections", services.linkBaseUrl).toString(), workspaceScope: context.workspaceScope }), true),
@@ -262,9 +278,9 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
       }),
       referenceResearch: surface.value.kind === "profile" ? {
         source: "https://recent.design/websites",
-        privateMethod: "Privately inspect at least four materially different Portfolio, Technology, SaaS, or otherwise relevant entries without sending profile text, names, project names, handles, or other user data to Recent Design. Compare them against the already reviewed aesthetic and personality notes, then choose one or two entry URLs for this person. Do not choose the first result or a familiar reference by default. Honor a safe public HTTPS reference the user explicitly supplied when it fits.",
+        privateMethod: "Privately inspect four to eight materially different Portfolio, Technology, SaaS, or otherwise relevant entries without sending profile text, names, project names, handles, or other user data to Recent Design. Record every candidate, its style, its fit, and whether it was selected. Compare the set against the reviewed aesthetic, personality, amount and shape of approved content, and available media. Choose one or two entries for this person. Do not choose the first result, the previous user's choice, or a familiar reference by default. Honor a safe public HTTPS reference the user explicitly supplied when it fits.",
         categories: ["Portfolio", "Technology", "SaaS"],
-        selectionRule: "Record why each chosen reference fits this person's approved direction and why the rejected candidates fit less well. Borrow visual language and principles only. Never copy branding, copy, assets, exact layout, or a recognizable composition. Do not choose a reference whose quality depends on photography, 3D, illustration, or product media unless matching approved media exists or the user approves generating the small set the composition needs.",
+        selectionRule: "Selected references need not be unique across all people, but the decision must be person-specific and auditable. State why each chosen reference fits and why the others fit less well. Borrow visual language, hierarchy, pacing, density, and interaction principles without copying branding, copy, assets, exact layout, or a recognizable composition. Do not choose a direction whose quality depends on unavailable photography, 3D, illustration, or product media; either choose a media-independent reference or ask to create the small approved media set first.",
       } : null,
       mediaWorkflow: surface.value.kind === "profile" ? {
         approvedMediaAvailable: Array.isArray(surface.value.authorizedMedia) && surface.value.authorizedMedia.length > 0,
@@ -284,7 +300,7 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
         media: "deliberately_public_project_assets_only", contentCompleteness: "Every non-empty required binding must appear in the page; placeholder copy is rejected.",
         visualCompleteness: "The validator enforces safety, approved content, and structural validity. Codex owns art direction and must reject generic output during rendered visual QA. Approved projects must remain visible, but the page architecture, emphasis, navigation, pacing, and media treatment are free art-direction choices rather than a fixed portfolio template.",
       },
-      nextAction: "Use the strongest available frontend or design skill automatically. Privately compare at least four materially different references and choose one or two for this person's approved aesthetic, explaining the fit without sending user data to the reference site. Author the page from componentReference and the full range of trusted primitives; safe decorative HTML/CSS regions may supply an original visual signature but never data, navigation, privacy controls, or actions. Treat customizedExample only as syntax recovery, not a creative starting point or layout. Keep every required binding visible, while architecture, navigation, pacing, project treatment, and media remain art-direction choices. Validate once and repair exact paths at most twice. Then render desktop and phone screenshots. Reject and regenerate any generic or materially under-authored result before saying it is ready.",
+      nextAction: "Use the strongest available frontend or design skill automatically. Research four to eight materially different references and record the person-specific selection in the design brief without sending user data to the reference site. Let the approved direction and content shape determine the page; do not assemble a showcase of SurfaceSpec components or force a standard portfolio structure. Use componentReference only as the safe publishing grammar and customizedExample only for syntax recovery. Keep every required binding visible. Validate once and repair exact paths at most twice. Then render complete desktop and phone screenshots. Reject and regenerate any generic, reference-disconnected, incomplete, or materially under-authored result before saying it is ready.",
     };
   }),
   tool("validate_surface_spec", "Validate generated page", "Validates a generated SurfaceSpec without saving it and returns exact field-level problems. Author from componentReference; starterSpec is hidden recovery scaffolding and customizedExample is syntax recovery, not art direction.", z.object({ surfaceId: idSchema, spec: z.unknown(), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
@@ -297,7 +313,7 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     const issues = parsed.success ? [!kindMatches ? { path: "kind", message: `Expected ${String(surface.value.kind)}` } : null, !bindingsAllowed ? { path: "bindingManifest", message: "A binding is not authorized for this page" } : null, ...qualityIssues].filter(Boolean) : parsed.error.issues.slice(0, 30).map((issue) => ({ path: issue.path.join("."), message: issue.message }));
     return { valid: false, issues, recovery: "Restart from customizedExample, include every required binding, and replace placeholder or empty-shell content. Repair only the exact returned paths." };
   }),
-  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Pass the complete spec returned from the validated generation workflow. Profile revisions require an approved design brief with one or two safe public design references; Recent Design is the default discovery source, while user-supplied inspiration is allowed. The starterSpec is hidden recovery scaffolding and cannot be submitted or numbered as a user design. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown().describe("Complete SurfaceSpec previously checked with validate_surface_spec."), visibility: z.enum(["private_preview", "personal_view"]), designBrief: profileDesignBriefSchema.optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
+  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Pass the complete spec returned from the validated generation workflow. Profile revisions require an approved direction plus an auditable study of four to eight safe public references, with one or two selected; Recent Design is the default discovery source and user-supplied inspiration is allowed. The starterSpec is hidden recovery scaffolding and cannot be submitted or numbered as a user design. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown().describe("Complete SurfaceSpec previously checked with validate_surface_spec."), visibility: z.enum(["private_preview", "personal_view"]), designBrief: profileDesignBriefSchema.optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
     const surface = await requiredRecord(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     if (!parsed.success) throw new Error("surface_spec_invalid");

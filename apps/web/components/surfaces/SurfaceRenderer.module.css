@@ -159,6 +159,14 @@
   color: var(--surface-muted);
   font-size: clamp(1.05rem, 2vw, 1.3rem);
 }
+.renderer :global(.surface-tone-secondary .surface-text-lead),
+.renderer :global(.surface-tone-secondary .surface-featured-project p),
+.renderer :global(.surface-tone-secondary .surface-callout p),
+.renderer :global(.surface-tone-ink .surface-text-lead),
+.renderer :global(.surface-tone-ink .surface-featured-project p),
+.renderer :global(.surface-tone-ink .surface-callout p) {
+  color: color-mix(in srgb, currentColor 82%, transparent);
+}
 .renderer :global(.surface-text-caption) {
   color: var(--surface-muted);
   font-size: 0.86rem;
@@ -187,7 +195,8 @@
   margin: 0.35rem 0 0;
   font-weight: 650;
   line-height: 1.35;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .renderer :global(.surface-projects) {
   display: grid;

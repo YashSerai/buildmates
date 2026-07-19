@@ -146,6 +146,10 @@ test("two independently authenticated principals complete the relationship journ
     await a.getByRole("button", { name: "Make admin" }).click();
     await expect(a.getByText("Admin / Joined", { exact: true })).toBeVisible();
     await expect(a.getByRole("status")).toBeEmpty();
+    await a.screenshot({ path: testInfo.outputPath("circle-owner-governance.png"), fullPage: true });
+    await b.goto(`/circles/${circleId}`);
+    await expect(b.getByText("Blair joined through a separately authenticated browser session.", { exact: true })).toBeVisible();
+    await b.screenshot({ path: testInfo.outputPath("circle-member-chat.png"), fullPage: true });
 
     const projectSlug = `shared-retrieval-${Date.now()}`;
     const createdProject = await post(a, "/api/projects", {
