@@ -487,11 +487,22 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     const approvers = [String(base.owner_user_id)].filter(Boolean);
     if (approvers.length === 0) return null;
     const media = await approvedProfileMedia(DB, actor);
+    const profile = await first(DB, "SELECT p.display_name AS displayName,p.summary,h.handle FROM profiles p LEFT JOIN handles h ON h.user_id=p.user_id WHERE p.id=? AND p.user_id=?", base.subject_id, actor);
+    if (!profile) return null;
+    const publicFields = await all(DB, "SELECT field_key AS fieldKey,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' ORDER BY field_key", base.subject_id);
+    const facts = publicFields.flatMap((field) => String(field.fieldKey) === "projects" ? [] : [{ label: profileFieldLabel(String(field.fieldKey)), value: profileFactValue(field.valueJson) }]).filter((fact) => fact.value.length > 0);
+    const approvedDraftProjects = publicFields.flatMap((field) => String(field.fieldKey) === "projects" ? profileProjectsValue(field.valueJson) : []);
+    const projectRows = await all(DB, "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' ORDER BY updated_at DESC LIMIT 20", actor);
+    const projects = dedupeProfileProjects([...approvedDraftProjects, ...projectRows.map((project) => ({ id: String(project.id), title: String(project.title), summary: String(project.summary), href: `/projects/${String(project.slug)}`, tags: [], metrics: [] }))]);
+    const authorizedContent = { "profile.displayName": String(profile.displayName), "profile.summary": String(profile.summary), "profile.facts": facts, "profile.projects": projects };
+    const requiredBindings = ["profile.displayName", "profile.summary", ...(facts.length ? ["profile.facts"] : []), ...(projects.length ? ["profile.projects"] : [])];
     return record("surface", id, String(base.owner_user_id), [], {
       kind: "profile", subjectId: base.subject_id, publishedRevisionId: base.published_revision_id, governanceVersion: base.governance_version,
       allowedModules: ["profile.identity", "profile.current_work", "profile.projects"],
       authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects", ...media.flatMap((item) => [item.key, item.altKey])],
       authorizedBindingTypes: { "profile.displayName": "text", "profile.summary": "text", "profile.facts": "facts", "profile.projects": "projects", ...Object.fromEntries(media.flatMap((item) => [[item.key, "media"], [item.altKey, "text"]])) },
+      authorizedContent,
+      requiredBindings,
       authorizedMedia: media.map(({ key, altKey, assetId, projectTitle }) => ({ key, altKey, label: `${projectTitle} image`, approvedAssetIds: [assetId] })),
       approvedAssets: media.map(({ assetId, src }) => ({ id: assetId, src })),
       trustedComponents: [...designPolicy.trustedComponents],
@@ -533,6 +544,38 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
   const publishers = members.filter((member) => ["admin", "owner"].includes(String(member.role))).map((member) => String(member.user_id));
   if (publishers.length === 0) return null;
   return record("surface", id, String(base.owner_user_id), memberIds.filter((user) => user !== base.owner_user_id), { ...common, governance: { mode: "circle_admin", memberUserIds: memberIds, publisherUserIds: publishers, requiredApproverIds: publishers, governanceVersion: circle.governance_version } } as T, Number(base.governance_version), new Date(Number(base.updated_at)).toISOString());
+}
+
+function profileFieldLabel(key: string) {
+  return ({ current_work: "Current work", interests: "Interests", ambitions: "Ambitions", exploring: "Exploring", networking_intent: "Who I want to meet" } as Record<string, string>)[key] ?? key.replaceAll("_", " ");
+}
+
+function profileFactValue(raw: unknown): string {
+  try {
+    const value = typeof raw === "string" ? JSON.parse(raw) as unknown : raw;
+    if (typeof value === "string") return value;
+    if (Array.isArray(value)) return value.filter((item): item is string => typeof item === "string").join(", ");
+    return "";
+  } catch { return ""; }
+}
+
+type BoundProfileProject = { id: string; title: string; summary: string; href?: string; tags?: string[]; metrics?: Array<{ label: string; value: string }> };
+function profileProjectsValue(raw: unknown): BoundProfileProject[] {
+  try {
+    const value = typeof raw === "string" ? JSON.parse(raw) as unknown : raw;
+    if (!Array.isArray(value)) return [];
+    return value.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const project = item as Record<string, unknown>;
+      if (typeof project.id !== "string" || typeof project.title !== "string" || typeof project.summary !== "string") return [];
+      return [{ id: project.id, title: project.title, summary: project.summary, tags: Array.isArray(project.tags) ? project.tags.filter((tag): tag is string => typeof tag === "string") : [], metrics: Array.isArray(project.metrics) ? project.metrics.flatMap((metric) => metric && typeof metric === "object" && typeof (metric as Record<string, unknown>).label === "string" && typeof (metric as Record<string, unknown>).value === "string" ? [{ label: String((metric as Record<string, unknown>).label), value: String((metric as Record<string, unknown>).value) }] : []) : [] }];
+    });
+  } catch { return []; }
+}
+
+function dedupeProfileProjects(projects: BoundProfileProject[]) {
+  const seen = new Set<string>();
+  return projects.filter((project) => !seen.has(project.id) && (seen.add(project.id), true)).slice(0, 20);
 }
 
 async function approvedProfileMedia(DB: Database, actor: string) {

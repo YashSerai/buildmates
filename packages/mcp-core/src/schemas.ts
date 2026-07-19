@@ -61,6 +61,35 @@ export const networkingPulseSchema = z.object({
   idempotencyKey: idempotencyKeySchema,
 }).strict();
 
+const profileProjectSchema = z.object({
+  id: idSchema,
+  title: z.string().trim().min(1).max(120),
+  summary: z.string().trim().min(1).max(1_200),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).default([]),
+  metrics: z.array(z.object({
+    label: z.string().trim().min(1).max(50),
+    value: z.string().trim().min(1).max(80),
+  }).strict()).max(8).default([]),
+}).strict();
+
+const profileTextFieldSchema = z.object({
+  key: z.enum(["current_work", "interests", "ambitions", "exploring", "networking_intent", "style_preferences", "personality_notes"]),
+  value: z.string().trim().min(1).max(4_000),
+  audience: audienceSchema,
+  allowMatching: z.boolean(),
+  provenance: z.enum(["self_reported", "codex_summary", "connected_app"]),
+  sourceStatus: z.enum(["generated", "confirmed"]),
+}).strict();
+
+const profileProjectsFieldSchema = z.object({
+  key: z.literal("projects"),
+  value: z.array(profileProjectSchema).min(1).max(20),
+  audience: audienceSchema,
+  allowMatching: z.boolean(),
+  provenance: z.enum(["self_reported", "codex_summary", "connected_app"]),
+  sourceStatus: z.enum(["generated", "confirmed"]),
+}).strict();
+
 export const profileModelSchema = z.object({
   profileId: idSchema,
   handle: z.string().trim().min(3).max(32).regex(/^[a-z0-9_]+$/),
@@ -77,14 +106,7 @@ export const profileModelSchema = z.object({
   locationMapOptIn: z.boolean().default(true),
   timezone: z.string().trim().min(1).max(80).optional(),
   indexable: z.boolean().default(false),
-  fields: z.array(z.object({
-    key: z.enum(["current_work", "interests", "ambitions", "exploring", "networking_intent", "style_preferences", "personality_notes"]),
-    value: z.string().trim().min(1).max(4_000),
-    audience: audienceSchema,
-    allowMatching: z.boolean(),
-    provenance: z.enum(["self_reported", "codex_summary", "connected_app"]),
-    sourceStatus: z.enum(["generated", "confirmed"]),
-  }).strict()).max(20).default([]),
+  fields: z.array(z.discriminatedUnion("key", [profileTextFieldSchema, profileProjectsFieldSchema])).max(20).default([]),
   statistics: z.array(z.object({
     key: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),
     label: z.string().trim().min(1).max(50),

@@ -89,10 +89,10 @@ export function customizedProfileSurfaceExample(input: {
         { id: "generated-intro", type: "split", ratio: "2-1", gap: "xl", align: "start", reverseOnMobile: true, children: [
           { id: "generated-summary-frame", type: "frame", tone: "surface", padding: "lg", border: "hairline", elevation: "directional", rotation: "none", span: 2, children: [
             { id: "generated-summary", type: "text", style: "lead", binding: summaryBinding, fallback: "Building useful systems.", align: "start", width: "prose", weight: "regular", lineHeight: "relaxed", tracking: "normal" },
-            { id: "generated-projects", type: "project-list", binding: projectsBinding, emptyMessage: "Projects will appear here.", layout: "editorial", columns: 1 },
+            { id: "generated-projects", type: "project-list", binding: projectsBinding, emptyMessage: "No projects are shared on this profile.", layout: "editorial", columns: 1 },
           ] },
           { id: "generated-facts-frame", type: "frame", tone: "accent", padding: "lg", border: "strong", elevation: "tonal", rotation: "right", span: 1, children: [
-            { id: "generated-facts", type: "fact-list", binding: factsBinding, emptyMessage: "Details will appear here.", layout: "rail", emphasis: "strong" },
+            { id: "generated-facts", type: "fact-list", binding: factsBinding, emptyMessage: "No additional profile details are shared.", layout: "rail", emphasis: "strong" },
           ] },
         ] },
       ],

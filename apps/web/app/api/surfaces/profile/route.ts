@@ -50,8 +50,9 @@ export async function GET() {
         FROM surface_revisions revision WHERE revision.surface_id=? ORDER BY revision.revision_number DESC LIMIT 30`).bind(surface.id).all(),
       listApprovedProfileMedia({ DB, actorId: user.id }),
     ]);
-    const facts = fields.results.map((field) => ({ label: field.key.replaceAll("_", " "), value: surfaceFactValue(field.valueJson) }));
-    const visibleProjects = projects.results.map((project) => ({ id: project.id, title: project.title, summary: project.summary, href: `/projects/${project.slug}` }));
+    const facts = fields.results.filter((field) => field.key !== "projects").map((field) => ({ label: profileFieldLabel(field.key), value: surfaceFactValue(field.valueJson) })).filter((fact) => fact.value.length > 0);
+    const approvedDraftProjects = fields.results.flatMap((field) => field.key === "projects" ? surfaceProjectsValue(field.valueJson) : []);
+    const visibleProjects = dedupeProjects([...approvedDraftProjects, ...projects.results.map((project) => ({ id: project.id, title: project.title, summary: project.summary, href: `/projects/${project.slug}`, tags: [], metrics: [] }))]);
     const mediaFields = approvedMedia.map((media) => ({
       key: profileMediaBinding(media.assetId).altKey,
       label: `${media.projectTitle} image description`,
@@ -169,4 +170,25 @@ function surfaceText(value: unknown): string {
     }
   }
   return "";
+}
+
+function profileFieldLabel(key: string) {
+  return ({ current_work: "Current work", interests: "Interests", ambitions: "Ambitions", exploring: "Exploring", networking_intent: "Who I want to meet" } as Record<string, string>)[key] ?? key.replaceAll("_", " ");
+}
+
+type ProfileProjectBinding = { id: string; title: string; summary: string; href?: string; tags: string[]; metrics: Array<{ label: string; value: string }> };
+function surfaceProjectsValue(valueJson: string): ProfileProjectBinding[] {
+  const value = safeJson(valueJson);
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const project = item as Record<string, unknown>;
+    if (typeof project.id !== "string" || typeof project.title !== "string" || typeof project.summary !== "string") return [];
+    return [{ id: project.id, title: project.title, summary: project.summary, tags: Array.isArray(project.tags) ? project.tags.filter((tag): tag is string => typeof tag === "string") : [], metrics: Array.isArray(project.metrics) ? project.metrics.flatMap((metric) => metric && typeof metric === "object" && typeof (metric as Record<string, unknown>).label === "string" && typeof (metric as Record<string, unknown>).value === "string" ? [{ label: String((metric as Record<string, unknown>).label), value: String((metric as Record<string, unknown>).value) }] : []) : [] }];
+  });
+}
+
+function dedupeProjects(projects: ProfileProjectBinding[]) {
+  const seen = new Set<string>();
+  return projects.filter((project) => !seen.has(project.id) && (seen.add(project.id), true)).slice(0, 20);
 }
