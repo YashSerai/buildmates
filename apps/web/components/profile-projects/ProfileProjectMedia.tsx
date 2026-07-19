@@ -74,10 +74,10 @@ export function ProfileProjectMedia({ onChanged }: { onChanged: () => Promise<vo
     <section className={styles.projectMedia} aria-labelledby="project-media-title">
       <div className={styles.projectMediaIntro}>
         <div>
-          <p className={styles.previewState}>Project media</p>
-          <h2 id="project-media-title">Give each project its own visual.</h2>
+          <p className={styles.previewState}>Optional media</p>
+          <h2 id="project-media-title">Give Codex more to work with.</h2>
         </div>
-        <p>Add artwork generated with Codex or a real project screenshot. An upload stays private unless you publish a profile design that uses it.</p>
+        <p>Add a real screenshot or approved artwork when it helps your story. Codex decides how—or whether—to use it. Uploads stay private unless you publish a design that includes them.</p>
       </div>
       {projects.length ? (
         <form className={styles.projectMediaForm} onSubmit={upload}>

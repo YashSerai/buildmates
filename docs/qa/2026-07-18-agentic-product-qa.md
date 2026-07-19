@@ -2,7 +2,7 @@
 
 Status: In progress
 
-Current founder gate: regenerate the private profile after the multi-chapter, approved-media, and screenshot-QA contract ships. Revision 2 is validated and unpublished, but failed the visual-quality gate because it remains a styled project list rather than a complete authored portfolio. Map/Build Graph visual iteration and the external two-account production login remain separate later gates.
+Current founder gate: regenerate one private profile under the generalized custom-site contract and judge the rendered result. SurfaceSpec is Buildmates' safe publishing format, not a fixed portfolio template: Codex chooses the page architecture and may use approved project media where it helps. Existing private revisions remain unpublished. Map/Build Graph visual iteration and the external two-account production login remain separate later gates.
 
 ## Evaluation rules
 
@@ -238,6 +238,14 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Work Signal result: Pass. Website review labels are humanized and the approved summary limit is 12,000 characters rather than 1,200.
 - Focused verification: web typecheck passed; onboarding/privacy integration passed `3/3`; the recovery-seed/private-preview regression passed again `1/1`; targeted ESLint passed; the production web build passed; scoped `git diff --check` passed.
 - Aggregate note: repository-wide lint and the rendered-web suite were also run while other QA lanes were editing. They stopped on unrelated concurrent changes in `RoomClient.tsx` and a stale `RevisionPreview.tsx` static assertion. Neither failure is in this onboarding lane; the primary integration pass must rerun the aggregate gate after all lanes settle.
+
+### 2026-07-18 - generalized custom-site contract
+
+- Founder correction: the media-rich cinematic profile is one valid output, not the Buildmates page schema. Buildmates must not force a portfolio grid, a separate chapter for every project, or an image for every project.
+- Product boundary: Codex learns the person, privately studies suitable references, proposes an art direction, and authors the composition. Buildmates provides approved content and media bindings, safe responsive primitives, isolated decorative HTML/CSS, validation, private preview, revision history, rollback, and publishing.
+- Generation contract: projects remain deliberately visible when approved, but Codex chooses their prominence, grouping, pacing, and media treatment. Media and ImageGen are optional and used only when the approved direction benefits.
+- Security boundary: identity, privacy, navigation, product actions, and private-data enforcement remain in trusted Buildmates code. Decorative/editorial HTML and CSS stay credentialless and sandboxed without scripts, forms, same-origin access, top navigation, or network access.
+- QA boundary: the next private generation must prove expressive range and screenshot-level quality. The founder still provides the subjective design approval; no private revision is implicitly publishable.
 
 ### 2026-07-18 - isolated two-principal browser journey
 

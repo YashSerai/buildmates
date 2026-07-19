@@ -277,7 +277,7 @@ describe("canonical MCP D1 execution", () => {
       return { ...node, ...(Array.isArray(node.children) ? { children: node.children.filter((child) => (child as Record<string, unknown>).type !== "decorative-mark").map((child) => rewrite(child as Record<string, unknown>)) } : {}) };
     };
     artifactProfile.root = rewrite(artifactProfile.root as Record<string, unknown>);
-    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: artifactProfile })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining("two complementary ways") })]) });
+    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: artifactProfile })).resolves.toEqual({ valid: true, issues: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: { kind: "profile" } })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ path: expect.any(String), message: expect.any(String) })]) });
 
     const designBrief = { direction: "A warm editorial workshop page with clear project depth", sections: ["Introduction", "Current work", "Projects"], signatureElement: "A workshop ledger running through the page", references: [{ url: "https://recent.design/i/9b18jw0-harry-atkins", title: "Harry Atkins", principles: ["Use a restrained project index", "Let typography create hierarchy"] }] };
