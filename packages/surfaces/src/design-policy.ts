@@ -1,6 +1,10 @@
-export const DESIGN_POLICY_VERSION = "2026-07-18.1" as const;
-export const DESIGN_POLICY_ID = "design_policy_2026_07_18_1" as const;
+export const DESIGN_POLICY_VERSION = "2026-07-18.2" as const;
+export const DESIGN_POLICY_ID = "design_policy_2026_07_18_2" as const;
 export const DESIGN_POLICY_ACTIVATED_AT = "2026-07-18T12:00:00.000Z" as const;
+
+export const PRIOR_ACTIVE_DESIGN_POLICY_VERSION = "2026-07-18.1" as const;
+export const PRIOR_ACTIVE_DESIGN_POLICY_ID = "design_policy_2026_07_18_1" as const;
+export const PRIOR_ACTIVE_DESIGN_POLICY_SOURCE_HASH = "dbc6b5e1a8b37b4cf0dfa644680d571b4b09d852206ac817839552e73eb6cc5b" as const;
 
 export const LEGACY_V2_DESIGN_POLICY_VERSION = "2026-07-17.4" as const;
 export const LEGACY_V2_DESIGN_POLICY_ID = "design_policy_2026_07_17_4" as const;
@@ -119,10 +123,10 @@ const legacyV2DesignPolicy = {
   },
 } as const;
 
-export const designPolicy = {
+const priorActiveDesignPolicy = {
   ...legacyV2DesignPolicy,
-  id: DESIGN_POLICY_ID,
-  version: DESIGN_POLICY_VERSION,
+  id: PRIOR_ACTIVE_DESIGN_POLICY_ID,
+  version: PRIOR_ACTIVE_DESIGN_POLICY_VERSION,
   authority: {
     ...legacyV2DesignPolicy.authority,
     generatedCodeMay: [
@@ -131,6 +135,13 @@ export const designPolicy = {
     ],
   },
   trustedComponents: [...legacyV2DesignPolicy.trustedComponents, "project-artifact"],
+} as const;
+
+export const designPolicy = {
+  ...priorActiveDesignPolicy,
+  id: DESIGN_POLICY_ID,
+  version: DESIGN_POLICY_VERSION,
+  trustedComponents: [...priorActiveDesignPolicy.trustedComponents, "featured-project"],
 } as const;
 
 export type DesignPolicy = typeof designPolicy;
@@ -150,7 +161,9 @@ export function canonicalJson(value: unknown): string {
 
 export const DESIGN_POLICY_SOURCE = canonicalJson(designPolicy);
 // SHA-256 of DESIGN_POLICY_SOURCE. The seed test recomputes this value.
-export const DESIGN_POLICY_SOURCE_HASH = "dbc6b5e1a8b37b4cf0dfa644680d571b4b09d852206ac817839552e73eb6cc5b";
+export const DESIGN_POLICY_SOURCE_HASH = "65f3b84e0ffff1cf63022afbf2bcce8d4fff44e5ad654b5e89338e34971af284";
+
+export const PRIOR_ACTIVE_DESIGN_POLICY_SOURCE = canonicalJson(priorActiveDesignPolicy);
 
 export const LEGACY_V2_DESIGN_POLICY_SOURCE = canonicalJson(legacyV2DesignPolicy);
 

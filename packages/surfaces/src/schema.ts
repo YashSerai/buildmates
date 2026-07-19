@@ -16,6 +16,10 @@ import {
   PREVIOUS_DESIGN_POLICY_SOURCE,
   PREVIOUS_DESIGN_POLICY_SOURCE_HASH,
   PREVIOUS_DESIGN_POLICY_VERSION,
+  PRIOR_ACTIVE_DESIGN_POLICY_ID,
+  PRIOR_ACTIVE_DESIGN_POLICY_SOURCE,
+  PRIOR_ACTIVE_DESIGN_POLICY_SOURCE_HASH,
+  PRIOR_ACTIVE_DESIGN_POLICY_VERSION,
 } from "./design-policy";
 
 const idSchema = z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/i);
@@ -235,6 +239,7 @@ function createV2SurfaceSpecSchema<const Version extends string>(policyVersion: 
 }
 
 const legacyV2SurfaceSpecSchema = createV2SurfaceSpecSchema(LEGACY_V2_DESIGN_POLICY_VERSION);
+const priorActiveSurfaceSpecSchema = createV2SurfaceSpecSchema(PRIOR_ACTIVE_DESIGN_POLICY_VERSION);
 export const activeSurfaceSpecSchema = createV2SurfaceSpecSchema(DESIGN_POLICY_VERSION);
 
 function approvedAssetsSchema() {
@@ -359,12 +364,13 @@ export const SURFACE_POLICY_REGISTRY = Object.freeze({
   [HISTORICAL_DESIGN_POLICY_VERSION]: Object.freeze({ version: HISTORICAL_DESIGN_POLICY_VERSION, designPolicyId: HISTORICAL_DESIGN_POLICY_ID, sourceHash: HISTORICAL_DESIGN_POLICY_SOURCE_HASH, policyJson: HISTORICAL_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-1", reading: "allowed", revisionCreation: "allowed" }),
   [PREVIOUS_DESIGN_POLICY_VERSION]: Object.freeze({ version: PREVIOUS_DESIGN_POLICY_VERSION, designPolicyId: PREVIOUS_DESIGN_POLICY_ID, sourceHash: PREVIOUS_DESIGN_POLICY_SOURCE_HASH, policyJson: PREVIOUS_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-1", reading: "allowed", revisionCreation: "allowed" }),
   [LEGACY_V2_DESIGN_POLICY_VERSION]: Object.freeze({ version: LEGACY_V2_DESIGN_POLICY_VERSION, designPolicyId: LEGACY_V2_DESIGN_POLICY_ID, sourceHash: LEGACY_V2_DESIGN_POLICY_SOURCE_HASH, policyJson: LEGACY_V2_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
+  [PRIOR_ACTIVE_DESIGN_POLICY_VERSION]: Object.freeze({ version: PRIOR_ACTIVE_DESIGN_POLICY_VERSION, designPolicyId: PRIOR_ACTIVE_DESIGN_POLICY_ID, sourceHash: PRIOR_ACTIVE_DESIGN_POLICY_SOURCE_HASH, policyJson: PRIOR_ACTIVE_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
   [DESIGN_POLICY_VERSION]: Object.freeze({ version: DESIGN_POLICY_VERSION, designPolicyId: DESIGN_POLICY_ID, sourceHash: DESIGN_POLICY_SOURCE_HASH, policyJson: DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
 } as const);
 
 type SurfacePolicyVersion = keyof typeof SURFACE_POLICY_REGISTRY;
 export type SurfaceSpecV1 = z.infer<typeof historicalSurfaceSpecSchema> | z.infer<typeof previousSurfaceSpecSchema>;
-export type SurfaceSpecV2 = z.infer<typeof activeSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
+export type SurfaceSpecV2 = z.infer<typeof activeSurfaceSpecSchema> | z.infer<typeof priorActiveSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
 export type SurfaceSpec = SurfaceSpecV1 | SurfaceSpecV2;
 export type SurfaceSpecParseResult = { success: true; data: SurfaceSpec } | { success: false; error: z.ZodError };
 
@@ -372,6 +378,7 @@ const policySchemas: Record<SurfacePolicyVersion, z.ZodType<SurfaceSpec>> = {
   [HISTORICAL_DESIGN_POLICY_VERSION]: historicalSurfaceSpecSchema,
   [PREVIOUS_DESIGN_POLICY_VERSION]: previousSurfaceSpecSchema,
   [LEGACY_V2_DESIGN_POLICY_VERSION]: legacyV2SurfaceSpecSchema,
+  [PRIOR_ACTIVE_DESIGN_POLICY_VERSION]: priorActiveSurfaceSpecSchema,
   [DESIGN_POLICY_VERSION]: activeSurfaceSpecSchema,
 };
 

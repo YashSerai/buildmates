@@ -2,6 +2,8 @@
 
 Status: In progress
 
+Current founder gate: regenerate the private profile after the multi-chapter, approved-media, and screenshot-QA contract ships. Revision 2 is validated and unpublished, but failed the visual-quality gate because it remains a styled project list rather than a complete authored portfolio. Map/Build Graph visual iteration and the external two-account production login remain separate later gates.
+
 ## Evaluation rules
 
 Every Codex interaction is judged on:
@@ -29,7 +31,7 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Context | Workspace review identifies real projects and interests | Draft screenshot plus fact audit | Pending |
 | Context | Workspace discovery inventories all accessible tasks and groups every project before consent | Task inventory, project list, and fail-fast evidence | Pending |
 | Context | Design inputs capture approved aesthetic preferences | Draft screenshot; founder reviews visual result | Pending |
-| Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Pending |
+| Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Technical pass; visual rework required |
 | Profile | Founder approves customization quality | Founder decision | Founder review |
 | Work Pulse | Explanation covers schedule, sources, refreshes, shortlist, watches, output, and next run | Explanation screenshot | Pass (live task transcript; screenshot unavailable) |
 | Work Pulse | Exactly one near-term QA automation is created | Automation/task evidence | Pass |
@@ -53,6 +55,16 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 ## Run ledger
 
 Add one dated entry per interaction with: task ID, prompt, result, evaluation, screenshot path, and any issue or fix.
+
+### 2026-07-18 - reference-led private profile regeneration
+
+- Task: `019f77cd-7cf9-79f2-a666-b68a30f291f5`, GPT-5.6 Luna High.
+- Prompt: continue from the authoritative saved state and approved local profile context, restore approved projects, and create a private preview without publishing.
+- Content result: Pass. The structured profile now contains six public project objects: Buildmates, Soulspace, After You, Safari Gigs, Serai Labs, and Governed X-growth tooling. No metrics or links were invented.
+- Reference result: Pass. Codex selected two Recent Design entries privately and recorded only reusable principles. The submitted brief explicitly forbids copying branding, copy, assets, or an exact composition.
+- Generation result: Technical pass, visual fail. SurfaceSpec v2 revision 2 validated under Design Policy `2026-07-18.1` and persisted with `private_preview` visibility, but one long editorial project list plus one artifact did not reach the promised portfolio quality. Design Policy `2026-07-18.2` now exposes trusted featured-project chapters; the contract requires at least three authored chapters, an individual feature or visual treatment for every approved project, approved project media where appropriate, and desktop/phone screenshot QA before readiness. Setup remains `6/10`; no profile publication or setup advancement occurred.
+- Workspace result: Pass. The owner design workspace, actions, preview, and history share one alignment axis on desktop and phone. Evidence: `docs/qa/evidence/2026-07-18/profile-design-workspace/chromium-desktop.png` and `chromium-phone.png`.
+- Remaining gate: generate and inspect a stronger private revision under the new contract. Revision 2 must not be treated as publication approval.
 
 ### 2026-07-18 — acquisition and authorization
 

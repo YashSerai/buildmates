@@ -35,16 +35,26 @@ describe("Surface generation reference", () => {
         "profile.displayName": "text", "profile.summary": "text",
         "profile.facts": "facts", "profile.projects": "projects",
       },
+      authorizedContent: { "profile.projects": [{ id: "one" }, { id: "two" }, { id: "three" }] },
       trustedComponents: designPolicy.trustedComponents,
     });
     expect(spec).not.toBeNull();
     expect(safeParseSurfaceSpec(spec, designPolicy.version, { forRevisionCreation: true }).success).toBe(true);
     const types = collectTypes(spec!.root);
-    expect(types).toEqual(expect.arrayContaining(["split", "frame", "decorative-mark", "project-list", "fact-list"]));
+    expect(types).toEqual(expect.arrayContaining(["split", "frame", "decorative-mark", "project-list", "project-artifact", "fact-list"]));
+    expect(types.filter((type) => type === "section").length).toBeGreaterThanOrEqual(3);
+    expect(types.length).toBeGreaterThanOrEqual(16);
+    expect(collectProjectIndexes(spec!.root, "featured-project")).toEqual([0, 1, 2]);
+    expect(collectProjectIndexes(spec!.root, "project-artifact")).toEqual(expect.arrayContaining([0, 1, 2]));
     expect(spec!.title).toBe("Customized builder profile");
   });
 });
 
 function collectTypes(root: SurfaceNodeV2): string[] {
   return [root.type, ...("children" in root ? root.children.flatMap(collectTypes) : [])];
+}
+
+function collectProjectIndexes(root: SurfaceNodeV2, type: "featured-project" | "project-artifact"): number[] {
+  const own = root.type === type ? [root.index] : [];
+  return [...own, ...("children" in root ? root.children.flatMap((child) => collectProjectIndexes(child, type)) : [])].sort((a, b) => a - b);
 }
