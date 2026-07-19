@@ -5,7 +5,7 @@ description: Generate or revise governed Buildmates profile, room, and Circle su
 
 # Buildmates surfaces
 
-Call `get_surface_generation_brief` before every generation. Use its exact Design Policy version, allowed modules, authorized bindings, governance, base revision, accessibility requirements, and privacy boundary.
+Call `get_surface_generation_brief` before every generation. Use its exact Design Policy version, allowed modules, authorized bindings, governance, base revision, accessibility requirements, privacy boundary, and `componentReference`. Adapt `customizedExample` rather than reverse-engineering node properties from errors. Validate once; repair exact returned paths at most twice, then restart from `customizedExample` instead of searching the web or guessing hidden schema details.
 
 Generate only a valid trusted SurfaceSpec. Decorative regions may contain HTML/CSS, but no scripts, forms, imports, popups, top navigation, same-origin access, or arbitrary network requests. Never place private fields in markup and hide them with CSS; use only server-authorized bindings.
 

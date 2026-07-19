@@ -257,9 +257,10 @@ describe("canonical MCP D1 execution", () => {
     await seedDesignPolicy(repositories);
     const surfaceId = String((profile.result as Record<string, unknown>).surfaceId);
     expect(surfaceId).toBe(`surface_profile_${profile.result.id}`);
-    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { starterSpec: Record<string, unknown> };
-    expect(brief).toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, designPolicy: { trustedComponents: expect.arrayContaining(["section", "decorative-region"]) }, starterSpec: { kind: "profile" } });
+    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { starterSpec: Record<string, unknown>; customizedExample: Record<string, unknown>; componentReference: { components: Record<string, unknown> } };
+    expect(brief).toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, designPolicy: { trustedComponents: expect.arrayContaining(["section", "decorative-region"]) }, starterSpec: { kind: "profile" }, customizedExample: { kind: "profile", title: "Customized builder profile" }, componentReference: { components: { split: expect.any(Object), frame: expect.any(Object), "decorative-mark": expect.any(Object) } } });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.starterSpec })).resolves.toEqual({ valid: true, issues: [] });
+    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.customizedExample })).resolves.toEqual({ valid: true, issues: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: { kind: "profile" } })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ path: expect.any(String), message: expect.any(String) })]) });
 
     const designBrief = { direction: "A warm editorial workshop page with clear project depth", sections: ["Introduction", "Current work", "Projects"], signatureElement: "A workshop ledger running through the page" };

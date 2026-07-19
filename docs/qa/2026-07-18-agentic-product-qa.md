@@ -198,6 +198,14 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Regression: the capability gate requires both validation and submission tools and fails if any Buildmates tool schema exceeds 16,000 bytes. Focused integration, MCP typecheck, and surface submission/approval contract verification pass.
 - Deployment: source commit `8c17bd8` is pushed and Cloudflare Worker version `eb7ffaef-bf20-4a3b-95e9-09b060851852` is live. The production endpoint still rejects unauthenticated MCP initialization with `401` and the protected-resource challenge.
 - Resume boundary: reload the MCP catalog in a new task or reconnect. The existing task's loaded catalog cannot acquire a newly exposed tool in place; authoritative onboarding data remains resumable at `page_preview`.
+
+### 2026-07-18 - one-pass Surface generation brief repair
+
+- Live-task reproduction: after the submission tool repair, the resumed page-preview task could save a private preview but needed repeated `validate_surface_spec` calls and a GitHub web search because the brief named trusted components without their strict required properties or enum values. No profile publication occurred.
+- Repair: `get_surface_generation_brief` now returns a compact schema-derived `componentReference` for every trusted component and a privacy-safe `customizedExample` assembled only from that Surface's authorized binding types. The example is a non-starter full-page profile using split, frame, project, fact, divider, and signature-mark primitives.
+- Retry boundary: onboarding and Surface skills now adapt `customizedExample`, validate once, repair exact paths at most twice, and then reset to the known-valid example instead of searching the web or guessing hidden schema details.
+- Regression: the reference must enumerate every trusted component with exact required fields and enum values, remain below 16 KB, and its representative customized profile must pass active revision validation on the first attempt. Focused unit/integration checks pass 10/10; the canonical D1 profile generation, validation, submission, and approval route passes 1/1.
+- Plugin sources validate at `0.3.0+codex.20260718170800` and `0.3.0-beta.1+codex.20260718170800`. The current private preview and profile were not changed.
 - Source-selection result: Pass at source level. Install and manual fallback copy lead with permissioned Codex workspace review, explain that research stays in Codex, and hand the user back to the guided Codex flow. Task-only and internal approval-batch narration were removed.
 - Work Signal result: Pass. Website review labels are humanized and the approved summary limit is 12,000 characters rather than 1,200.
 - Focused verification: web typecheck passed; onboarding/privacy integration passed `3/3`; the recovery-seed/private-preview regression passed again `1/1`; targeted ESLint passed; the production web build passed; scoped `git diff --check` passed.
