@@ -599,9 +599,9 @@ async function approvedProfileMedia(DB: Database, actor: string) {
       AND asset.object_key LIKE ?
     ORDER BY media.updated_at DESC LIMIT 24`, actor, actor, `surface-assets/${actor}/%`),
   ]);
-  const approvedDraftMedia = profileRows.flatMap((row) => {
+  const approvedDraftMedia: Row[] = profileRows.flatMap((row): Row[] => {
     const project = profileProjectsValue(row.projectsJson).find((item) => item.id === String(row.projectKey));
-    return project ? [{ ...row, projectTitle: project.title }] : [];
+    return project ? [{ ...row, projectTitle: project.title } as Row] : [];
   });
   const seen = new Set<string>();
   return [...approvedDraftMedia, ...projectRows].flatMap((row) => {
