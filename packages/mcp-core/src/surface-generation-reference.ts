@@ -98,8 +98,8 @@ export function customizedProfileSurfaceExample(input: {
     } : { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "large" };
     const detail: SurfaceNodeV2 = { id: `generated-project-${index + 1}-detail`, type: "featured-project", binding: projectsBinding, index, layout: index % 2 === 0 ? "media-left" : "media-right", showTags: true, showMetrics: true };
     return {
-      id: `generated-project-${index + 1}-chapter`, type: "section", tone: index % 2 === 0 ? "canvas" : "secondary", layout: "flow", padding: "xl", bleed: true,
-      minHeight: "viewport", background: index % 2 === 0 ? "solid" : "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
+      id: `generated-project-${index + 1}-chapter`, type: "section", tone: index % 2 === 0 ? "canvas" : "secondary", layout: "flow", padding: "lg", bleed: true,
+      minHeight: "half", background: index % 2 === 0 ? "solid" : "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
       children: [{ id: `generated-project-${index + 1}-split`, type: "split", ratio: "1-1", gap: "xl", align: "center", reverseOnMobile: index % 2 === 1, children: [detail, visual] }],
     };
   });
