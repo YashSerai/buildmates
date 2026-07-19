@@ -31,7 +31,7 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Context | Workspace review identifies real projects and interests | Draft screenshot plus fact audit | Pending |
 | Context | Workspace discovery inventories all accessible tasks and groups every project before consent | Task inventory, project list, and fail-fast evidence | Pending |
 | Context | Design inputs capture approved aesthetic preferences | Draft screenshot; founder reviews visual result | Pending |
-| Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Technical pass; visual rework required |
+| Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Technical pass; clean generalized-contract run pending |
 | Profile | Founder approves customization quality | Founder decision | Founder review |
 | Work Pulse | Explanation covers schedule, sources, refreshes, shortlist, watches, output, and next run | Explanation screenshot | Pass (live task transcript; screenshot unavailable) |
 | Work Pulse | Exactly one near-term QA automation is created | Automation/task evidence | Pass |
@@ -62,7 +62,7 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Prompt: continue from the authoritative saved state and approved local profile context, restore approved projects, and create a private preview without publishing.
 - Content result: Pass. The structured profile now contains six public project objects: Buildmates, Soulspace, After You, Safari Gigs, Serai Labs, and Governed X-growth tooling. No metrics or links were invented.
 - Reference result: Pass. Codex selected two Recent Design entries privately and recorded only reusable principles. The submitted brief explicitly forbids copying branding, copy, assets, or an exact composition.
-- Generation result: Technical pass, visual fail. SurfaceSpec v2 revision 2 validated under Design Policy `2026-07-18.1` and persisted with `private_preview` visibility, but one long editorial project list plus one artifact did not reach the promised portfolio quality. Design Policy `2026-07-18.2` now exposes trusted featured-project chapters; the contract requires at least three authored chapters, an individual feature or visual treatment for every approved project, approved project media where appropriate, and desktop/phone screenshot QA before readiness. Setup remains `6/10`; no profile publication or setup advancement occurred.
+- Generation result: Technical pass, visual fail. SurfaceSpec v2 revision 2 validated under Design Policy `2026-07-18.1` and persisted with `private_preview` visibility, but one long editorial project list plus one artifact did not reach the promised quality. This run motivated richer trusted primitives; it is historical evidence, not the current generation contract. Setup remained `6/10`; no profile publication or setup advancement occurred.
 - Workspace result: Pass. The owner design workspace, actions, preview, and history share one alignment axis on desktop and phone. Evidence: `docs/qa/evidence/2026-07-18/profile-design-workspace/chromium-desktop.png` and `chromium-phone.png`.
 - Remaining gate: generate and inspect a stronger private revision under the new contract. Revision 2 must not be treated as publication approval.
 
@@ -70,9 +70,9 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 
 - Task: `019f77fb-fc93-7513-b254-193b6cf67651`, GPT-5.6 Luna High.
 - Ordinary prompt: continue the saved profile design, make the private profile feel fully custom, and show the preview without publishing.
-- Revision 3 result: Structural pass, media fail. The live agent used the complete approved project set, selected private visual references, produced a hero, project index, six individual project chapters, and a closing facts chapter, then validated and submitted the result under Design Policy `2026-07-18.2`. Desktop and phone viewport checks found no console errors. The revision remained private, but its project chapters still relied on trusted geometric artifacts rather than distinct project media, so it is not a founder-quality pass.
+- Revision 3 result: Structural pass, visual fail. The live agent used the complete approved project set, selected private visual references, produced a hero, project index, six individual project chapters, and a closing facts chapter, then validated and submitted the result under Design Policy `2026-07-18.2`. Desktop and phone viewport checks found no console errors. The revision remained private, but the composition was still generic and over-constrained, so it is not a founder-quality pass.
 - Media preparation: Pass. Six approved-facts-only cinematic project covers were generated for Buildmates, Soulspace, After You, Safari Gigs, Serai Labs, and Governed X-growth tooling. They contain no product UI, logos, metrics, testimonials, or fabricated claims. The covers remain private until attached through the owner-only project-media path and referenced by a private SurfaceSpec.
-- Remaining gate: attach all six covers, generate revision 4 with one prominent media treatment per project, visually inspect desktop and phone screenshots, repair any rendered issues, and leave the result unpublished for founder review.
+- Historical note: the forced chapter-per-project and image-per-project requirement was later removed. Media remains available, but the clean rerun must let Codex choose a coherent full-page architecture for the person and leave it unpublished for founder review.
 
 ### 2026-07-18 — acquisition and authorization
 
@@ -246,6 +246,17 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Generation contract: projects remain deliberately visible when approved, but Codex chooses their prominence, grouping, pacing, and media treatment. Media and ImageGen are optional and used only when the approved direction benefits.
 - Security boundary: identity, privacy, navigation, product actions, and private-data enforcement remain in trusted Buildmates code. Decorative/editorial HTML and CSS stay credentialless and sandboxed without scripts, forms, same-origin access, top navigation, or network access.
 - QA boundary: the next private generation must prove expressive range and screenshot-level quality. The founder still provides the subjective design approval; no private revision is implicitly publishable.
+
+### 2026-07-18 - clean generalized-contract onboarding rerun
+
+- Production reset: Pass. The authenticated QA account was deleted through `/settings/privacy`; the terminal page at `/account/deleted` confirmed immediate access revocation and removal or anonymization of the profile, projects, pages, messages, and uploaded files.
+- Beta package: Pass. `buildmates-beta` was upgraded to commit `15b9a2c`; the installed onboarding and Surface skill text matches the launch worktree. ChatGPT Sites version 49 and Worker version `60651c7b-1d74-4c94-804a-dae0b47262dc` carry the generalized custom-site contract.
+- Task: `019f7867-25bc-7191-9a75-99c67e616d9c`, GPT-5.6 Luna High.
+- Prompt: `Set up Buildmates for me using the official Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt`
+- First-run result: Pass. The task called `get_setup_state({workspaceScope:"global"})`, reported authoritative `0/10` with `identity_link` next, did not reuse older task progress, and created one current link instead of advancing onboarding speculatively.
+- Current gate: user-owned GitHub sign-in and Buildmates authorization at `/settings/connections`. No credentials, provider consent, profile content, or publication action was automated. Continue this same visible task after authorization with short natural replies.
+- Aggregate verification: web production build and 16/16 web contract tests pass; unit tests pass 95/95; security tests pass 12/12. Two unit fixtures initially failed because one still mandated the old decorative-mark template and one created a revision before Design Policy `2026-07-18.2` was active; both fixtures were corrected without weakening production validation.
+- Harness limitation: aggregate integration and contract commands did not emit assertion results within three-minute bounded runs. Focused Miniflare/D1 files showed the same pre-result hang under both fork and thread pools; exact orphaned launch-worktree Vitest processes were terminated. These suites remain unverified in this rerun and must not be marked passed from prior evidence alone.
 
 ### 2026-07-18 - isolated two-principal browser journey
 

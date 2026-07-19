@@ -41,7 +41,7 @@ describe("Surface generation reference", () => {
     expect(spec).not.toBeNull();
     expect(safeParseSurfaceSpec(spec, designPolicy.version, { forRevisionCreation: true }).success).toBe(true);
     const types = collectTypes(spec!.root);
-    expect(types).toEqual(expect.arrayContaining(["split", "frame", "decorative-mark", "project-list", "project-artifact", "fact-list"]));
+    expect(types).toEqual(expect.arrayContaining(["split", "frame", "project-list", "project-artifact", "fact-list"]));
     expect(types.filter((type) => type === "section").length).toBeGreaterThanOrEqual(3);
     expect(types.length).toBeGreaterThanOrEqual(16);
     expect(collectProjectIndexes(spec!.root, "featured-project")).toEqual([0, 1, 2]);
