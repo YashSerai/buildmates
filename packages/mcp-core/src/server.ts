@@ -256,6 +256,12 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
         categories: ["Portfolio", "Technology", "SaaS"],
         selectionRule: "Borrow visual language and principles only. Never copy branding, copy, assets, exact layout, or a recognizable composition.",
       } : null,
+      mediaWorkflow: surface.value.kind === "profile" ? {
+        approvedMediaAvailable: Array.isArray(surface.value.authorizedMedia) && surface.value.authorizedMedia.length > 0,
+        whenMissing: "If suitable approved project media is missing and ImageGen is available, include a cohesive cover-art set in the proposed direction. Generate from approved project facts only, show every image before attachment, and require approval before upload.",
+        attachAt: new URL("/profile/design", services.linkBaseUrl).toString(),
+        safety: "Never invent product screens, logos, customers, metrics, results, or capabilities. Prefer real approved screenshots when available.",
+      } : null,
       visualQa: surface.value.kind === "profile" ? {
         requiredBeforeReady: true,
         viewports: [{ name: "desktop", width: 1440, height: 1000 }, { name: "phone", width: 390, height: 844 }],
