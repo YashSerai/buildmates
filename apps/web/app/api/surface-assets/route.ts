@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   } catch (error) {
     if(error instanceof WebRateLimitError)return Response.json({error:error.code},{status:429,headers:{"retry-after":String(error.retryAfterSeconds),"cache-control":"no-store"}});
     const code = error instanceof Error ? error.message : "surface_asset_upload_failed";
+    console.warn(JSON.stringify({ event: "surface_asset_upload_failed", code }));
     return Response.json({ error: code }, { status: code.includes("size") ? 413 : code.includes("forbidden") || code.includes("mismatch") ? 415 : code.includes("quota")?409:400 });
   }
 }

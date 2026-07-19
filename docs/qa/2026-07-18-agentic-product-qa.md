@@ -66,6 +66,14 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Workspace result: Pass. The owner design workspace, actions, preview, and history share one alignment axis on desktop and phone. Evidence: `docs/qa/evidence/2026-07-18/profile-design-workspace/chromium-desktop.png` and `chromium-phone.png`.
 - Remaining gate: generate and inspect a stronger private revision under the new contract. Revision 2 must not be treated as publication approval.
 
+### 2026-07-18 - authored multi-chapter profile and approved media rerun
+
+- Task: `019f77fb-fc93-7513-b254-193b6cf67651`, GPT-5.6 Luna High.
+- Ordinary prompt: continue the saved profile design, make the private profile feel fully custom, and show the preview without publishing.
+- Revision 3 result: Structural pass, media fail. The live agent used the complete approved project set, selected private visual references, produced a hero, project index, six individual project chapters, and a closing facts chapter, then validated and submitted the result under Design Policy `2026-07-18.2`. Desktop and phone viewport checks found no console errors. The revision remained private, but its project chapters still relied on trusted geometric artifacts rather than distinct project media, so it is not a founder-quality pass.
+- Media preparation: Pass. Six approved-facts-only cinematic project covers were generated for Buildmates, Soulspace, After You, Safari Gigs, Serai Labs, and Governed X-growth tooling. They contain no product UI, logos, metrics, testimonials, or fabricated claims. The covers remain private until attached through the owner-only project-media path and referenced by a private SurfaceSpec.
+- Remaining gate: attach all six covers, generate revision 4 with one prominent media treatment per project, visually inspect desktop and phone screenshots, repair any rendered issues, and leave the result unpublished for founder review.
+
 ### 2026-07-18 — acquisition and authorization
 
 - Task: `019f76fd-8479-7271-ac82-826ac99d37f4` (`Buildmates autonomous QA - onboarding and Work Pulse`)
