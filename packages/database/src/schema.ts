@@ -536,6 +536,17 @@ export const projectLinks = sqliteTable("project_links", {
 export const projectMedia = sqliteTable("project_media", {
   id: text("id").primaryKey(), projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), assetId: text("asset_id").notNull().references(() => surfaceAssets.id), altText: text("alt_text").notNull(), position: integer("position").notNull().default(0), createdAt: created(),
 });
+export const profileProjectMedia = sqliteTable("profile_project_media", {
+  profileId: text("profile_id").notNull().references(() => profiles.id, { onDelete: "cascade" }),
+  projectKey: text("project_key").notNull(),
+  assetId: text("asset_id").notNull().references(() => surfaceAssets.id),
+  altText: text("alt_text").notNull(),
+  createdAt: created(),
+  updatedAt: updated(),
+}, (t) => [
+  primaryKey({ columns: [t.profileId, t.projectKey] }),
+  uniqueIndex("profile_project_media_asset_unique").on(t.profileId, t.assetId),
+]);
 export const projectUpdates = sqliteTable("project_updates", {
   id: text("id").primaryKey(), projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }), authorUserId: userRef("author_user_id"), body: text("body").notNull(), audience: text("audience", { enum: ["public", "signed_in", "suggested_connections", "mutual_connections", "private"] }).notNull().default("public"), createdAt: created(), editedAt: integer("edited_at", { mode: "timestamp_ms" }),
 }, (t) => [check("project_update_audience_valid", sql`${t.audience} in ('public','signed_in','suggested_connections','mutual_connections','private')`)]);

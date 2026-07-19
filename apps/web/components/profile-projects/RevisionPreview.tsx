@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { SurfaceBindings } from "@buildmates/surfaces";
 import { SurfaceRenderer } from "@/components/surfaces/SurfaceRenderer";
 import { userFacingError } from "@/src/client/user-facing-error";
+import { ProfileProjectMedia } from "./ProfileProjectMedia";
 import styles from "./ProductForms.module.css";
 
 type Revision = {
@@ -141,6 +142,7 @@ export function RevisionPreview() {
           )
         ) : (
           <>
+            <ProfileProjectMedia onChanged={load} />
             <section className={styles.previewWorkspace} aria-labelledby="profile-preview-title">
               <div className={styles.previewWorkspaceHeader}>
                 <div>

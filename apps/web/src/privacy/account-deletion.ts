@@ -46,6 +46,7 @@ export async function beginAccountDeletion(DB: DB, userId: string, assets?: R2Li
     DB.prepare("UPDATE project_updates SET body='[deleted by author]',edited_at=? WHERE author_user_id=?").bind(now,userId),
     DB.prepare("DELETE FROM project_collaborators WHERE user_id=? OR project_id IN (SELECT id FROM projects WHERE owner_user_id=?)").bind(userId,userId),
     DB.prepare("UPDATE profiles SET display_name='Deleted builder',summary='',project_or_interest='',portfolio_links_json='[]',audience='private',allow_matching=0,acceptance_mode='manual',indexable=0,coarse_location=NULL,location_map_opt_in=0,timezone=NULL,published_at=NULL,updated_at=? WHERE user_id=?").bind(now,userId),
+    DB.prepare("DELETE FROM profile_project_media WHERE profile_id IN (SELECT id FROM profiles WHERE user_id=?)").bind(userId),
     DB.prepare("DELETE FROM profile_fields WHERE profile_id IN (SELECT id FROM profiles WHERE user_id=?)").bind(userId),
     DB.prepare("DELETE FROM profile_statistics WHERE profile_id IN (SELECT id FROM profiles WHERE user_id=?)").bind(userId),
     DB.prepare("DELETE FROM handles WHERE user_id=?").bind(userId),

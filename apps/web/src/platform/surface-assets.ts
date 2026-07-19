@@ -20,6 +20,8 @@ export type ApprovedProfileMedia = {
   projectTitle: string;
 };
 
+export type ApprovedProfileProject = { key: string; title: string };
+
 export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Like; actorId: string; bytes: ArrayBuffer; claimedContentType: string; at?: Date }) {
   if (input.bytes.byteLength < 1 || input.bytes.byteLength > MAX_SURFACE_ASSET_BYTES) throw new Error("surface_asset_size_invalid");
   const user = await input.DB.prepare("SELECT id FROM users WHERE id=? AND status='active'").bind(input.actorId).first<{ id: string }>();
@@ -60,7 +62,8 @@ export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Li
 
 export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorId: string; limit?: number }): Promise<ApprovedProfileMedia[]> {
   const limit = Math.min(Math.max(Math.trunc(input.limit ?? 24), 1), 24);
-  const rows = (await input.DB.prepare(`SELECT media.asset_id AS assetId,media.alt_text AS altText,
+  const [projectRows, profileRows] = await Promise.all([
+    input.DB.prepare(`SELECT media.asset_id AS assetId,media.alt_text AS altText,
       project.id AS projectId,project.title AS projectTitle,asset.object_key AS objectKey,
       asset.content_type AS contentType,asset.byte_size AS byteSize
     FROM project_media media
@@ -70,7 +73,24 @@ export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorI
       AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
       AND asset.owner_user_id=? AND asset.deleted_at IS NULL
     ORDER BY project.updated_at DESC,media.position,media.id LIMIT ?`)
-    .bind(input.actorId, input.actorId, limit).all<{ assetId: string; altText: string; projectId: string; projectTitle: string; objectKey: string; contentType: string; byteSize: number }>()).results;
+      .bind(input.actorId, input.actorId, limit).all<ProfileMediaRow>(),
+    input.DB.prepare(`SELECT media.asset_id AS assetId,media.alt_text AS altText,
+        media.project_key AS projectId,field.value_json AS projectsJson,asset.object_key AS objectKey,
+        asset.content_type AS contentType,asset.byte_size AS byteSize
+      FROM profile_project_media media
+      JOIN profiles profile ON profile.id=media.profile_id
+      JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects'
+      JOIN surface_assets asset ON asset.id=media.asset_id
+      WHERE profile.user_id=? AND field.audience='public'
+        AND asset.owner_user_id=? AND asset.deleted_at IS NULL
+      ORDER BY media.updated_at DESC LIMIT ?`)
+      .bind(input.actorId, input.actorId, limit).all<ProfileMediaRow & { projectsJson: string }>(),
+  ]);
+  const profileMediaRows = profileRows.results.flatMap((row) => {
+    const project = parseApprovedProfileProjects(row.projectsJson).find((item) => item.key === row.projectId);
+    return project ? [{ ...row, projectTitle: project.title }] : [];
+  });
+  const rows = [...profileMediaRows, ...projectRows.results];
   const approved: ApprovedProfileMedia[] = [];
   const seen = new Set<string>();
   for (const row of rows) {
@@ -89,6 +109,54 @@ export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorI
     });
   }
   return approved;
+}
+
+export async function listApprovedProfileProjects(input: { DB: RepositoryD1; actorId: string }): Promise<ApprovedProfileProject[]> {
+  const row = await input.DB.prepare(`SELECT field.value_json AS projectsJson
+    FROM profiles profile JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects'
+    WHERE profile.user_id=? AND field.audience='public' LIMIT 1`)
+    .bind(input.actorId).first<{ projectsJson: string }>();
+  return row ? parseApprovedProfileProjects(row.projectsJson) : [];
+}
+
+export async function associateProfileProjectMedia(input: {
+  DB: RepositoryD1;
+  actorId: string;
+  assetId: string;
+  projectKey: string;
+  projectTitle: string;
+  altText: string;
+  at?: Date;
+}): Promise<ApprovedProfileMedia> {
+  const projectKey = input.projectKey.trim();
+  const projectTitle = input.projectTitle.trim();
+  const altText = input.altText.trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,99}$/.test(projectKey)) throw new Error("profile_project_media_invalid");
+  if (!projectTitle || projectTitle.length > 160 || !altText || altText.length > 300) throw new Error("profile_project_media_invalid");
+  const profile = await input.DB.prepare("SELECT id FROM profiles WHERE user_id=? LIMIT 1")
+    .bind(input.actorId).first<{ id: string }>();
+  if (!profile) throw new Error("profile_required");
+  const projects = await listApprovedProfileProjects({ DB: input.DB, actorId: input.actorId });
+  const project = projects.find((item) => item.key === projectKey && item.title === projectTitle);
+  if (!project) throw new Error("profile_project_not_approved");
+  const asset = await input.DB.prepare(`SELECT id,object_key AS objectKey,content_type AS contentType,byte_size AS byteSize
+    FROM surface_assets WHERE id=? AND owner_user_id=? AND deleted_at IS NULL`)
+    .bind(input.assetId, input.actorId).first<{ id: string; objectKey: string; contentType: string; byteSize: number }>();
+  if (!asset) throw new Error("surface_asset_not_owned");
+  validateSurfaceAsset({ objectKey: asset.objectKey, contentType: asset.contentType, byteSize: Number(asset.byteSize) });
+  const at = (input.at ?? new Date()).getTime();
+  await input.DB.prepare(`INSERT INTO profile_project_media(profile_id,project_key,asset_id,alt_text,created_at,updated_at)
+      VALUES(?,?,?,?,?,?) ON CONFLICT(profile_id,project_key) DO UPDATE SET asset_id=excluded.asset_id,alt_text=excluded.alt_text,updated_at=excluded.updated_at`)
+    .bind(profile.id, project.key, asset.id, altText, at, at).run();
+  const prefix = `surface-assets/${input.actorId}/`;
+  if (!asset.objectKey.startsWith(prefix)) throw new Error("surface_asset_not_owned");
+  return {
+    assetId: asset.id,
+    src: `/api/surface-assets/${input.actorId}/${asset.objectKey.slice(prefix.length)}`,
+    altText,
+    projectId: project.key,
+    projectTitle: project.title,
+  };
 }
 
 export async function readSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Like; viewerId: string | null; ownerId: string; filename: string }): Promise<Response> {
@@ -262,4 +330,22 @@ async function hexDigest(bytes: Uint8Array): Promise<string> {
 
 function privateNotFound(): Response {
   return Response.json({ error: "not_found" }, { status: 404, headers: { "cache-control": "private, no-store", vary: "Cookie, Authorization" } });
+}
+
+type ProfileMediaRow = { assetId: string; altText: string; projectId: string; projectTitle: string; objectKey: string; contentType: string; byteSize: number };
+
+function parseApprovedProfileProjects(raw: string): ApprovedProfileProject[] {
+  let value: unknown;
+  try { value = JSON.parse(raw); } catch { return []; }
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const project = item as Record<string, unknown>;
+    const key = typeof project.id === "string" ? project.id.trim() : "";
+    const title = typeof project.title === "string" ? project.title.trim() : "";
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{1,99}$/.test(key) || !title || title.length > 160 || seen.has(key)) return [];
+    seen.add(key);
+    return [{ key, title }];
+  }).slice(0, 20);
 }
