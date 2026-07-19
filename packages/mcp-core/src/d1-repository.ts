@@ -489,10 +489,10 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     const media = await approvedProfileMedia(DB, actor);
     const profile = await first(DB, "SELECT p.display_name AS displayName,p.summary,h.handle FROM profiles p LEFT JOIN handles h ON h.user_id=p.user_id WHERE p.id=? AND p.user_id=?", base.subject_id, actor);
     if (!profile) return null;
-    const publicFields = await all(DB, "SELECT field_key AS fieldKey,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' ORDER BY field_key", base.subject_id);
-    const facts = publicFields.flatMap((field) => String(field.fieldKey) === "projects" ? [] : [{ label: profileFieldLabel(String(field.fieldKey)), value: profileFactValue(field.valueJson) }]).filter((fact) => fact.value.length > 0);
-    const approvedDraftProjects = publicFields.flatMap((field) => String(field.fieldKey) === "projects" ? profileProjectsValue(field.valueJson) : []);
-    const projectRows = await all(DB, "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' ORDER BY updated_at DESC LIMIT 20", actor);
+    const displayableFields = await all(DB, "SELECT field_key AS fieldKey,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience<>'private' ORDER BY field_key", base.subject_id);
+    const facts = displayableFields.flatMap((field) => String(field.fieldKey) === "projects" ? [] : [{ label: profileFieldLabel(String(field.fieldKey)), value: profileFactValue(field.valueJson) }]).filter((fact) => fact.value.length > 0);
+    const approvedDraftProjects = displayableFields.flatMap((field) => String(field.fieldKey) === "projects" ? profileProjectsValue(field.valueJson) : []);
+    const projectRows = await all(DB, "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience<>'private' ORDER BY updated_at DESC LIMIT 20", actor);
     const projects = dedupeProfileProjects([...approvedDraftProjects, ...projectRows.map((project) => ({ id: String(project.id), title: String(project.title), summary: String(project.summary), href: `/projects/${String(project.slug)}`, tags: [], metrics: [] }))]);
     const authorizedContent = { "profile.displayName": String(profile.displayName), "profile.summary": String(profile.summary), "profile.facts": facts, "profile.projects": projects };
     const requiredBindings = ["profile.displayName", "profile.summary", ...(facts.length ? ["profile.facts"] : []), ...(projects.length ? ["profile.projects"] : [])];
@@ -584,7 +584,7 @@ async function approvedProfileMedia(DB: Database, actor: string) {
     FROM project_media media
     JOIN projects project ON project.id=media.project_id
     JOIN surface_assets asset ON asset.id=media.asset_id
-    WHERE project.owner_user_id=? AND project.status='active' AND project.audience='public'
+    WHERE project.owner_user_id=? AND project.status='active' AND project.audience<>'private'
       AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
       AND asset.owner_user_id=? AND asset.deleted_at IS NULL
     ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor),
@@ -592,7 +592,7 @@ async function approvedProfileMedia(DB: Database, actor: string) {
       field.value_json AS projectsJson,asset.object_key AS objectKey
     FROM profile_project_media media
     JOIN profiles profile ON profile.id=media.profile_id
-    JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects' AND field.audience='public'
+    JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects' AND field.audience<>'private'
     JOIN surface_assets asset ON asset.id=media.asset_id
     WHERE profile.user_id=? AND asset.owner_user_id=? AND asset.deleted_at IS NULL
     ORDER BY media.updated_at DESC LIMIT 24`, actor, actor),
