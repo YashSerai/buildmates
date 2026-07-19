@@ -71,7 +71,7 @@ export function customizedProfileSurfaceExample(input: {
   const parsedStarter = safeParseSurfaceSpec(input.starterSpec, DESIGN_POLICY_VERSION);
   if (!parsedStarter.success || parsedStarter.data.schemaVersion !== "2" || parsedStarter.data.kind !== "profile") return null;
   const trusted = new Set(input.trustedComponents);
-  const requiredComponents = ["section", "stack", "split", "frame", "heading", "text", "fact-list", "project-list", "featured-project", "project-artifact", "divider", "decorative-mark", ...(input.authorizedMedia?.length ? ["media"] : [])];
+  const requiredComponents = ["section", "stack", "split", "frame", "heading", "text", "fact-list", "project-list", "featured-project", "divider", ...(input.authorizedMedia?.length ? ["media"] : ["project-artifact"])];
   if (requiredComponents.some((component) => !trusted.has(component))) return null;
   const typedBindings = Object.entries(input.authorizedBindingTypes ?? {});
   const textBindings = typedBindings.filter(([, type]) => type === "text").map(([key]) => key);
@@ -93,7 +93,6 @@ export function customizedProfileSurfaceExample(input: {
       id: `generated-project-${index + 1}-visual`, type: "frame", tone: "transparent", padding: "none", border: "none", elevation: "none", rotation: "none", span: 1,
       children: [
         { id: `generated-project-${index + 1}-media`, type: "media", binding: media.key, altBinding: media.altKey, aspect: "landscape", fit: "cover", focalPoint: "center", treatment: index % 2 === 0 ? "plain" : "offset" },
-        { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "medium" },
       ],
     } : { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "large" };
     const detail: SurfaceNodeV2 = { id: `generated-project-${index + 1}-detail`, type: "featured-project", binding: projectsBinding, index, layout: index % 2 === 0 ? "media-left" : "media-right", showTags: true, showMetrics: true };
@@ -110,19 +109,14 @@ export function customizedProfileSurfaceExample(input: {
     minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
     children: [
       {
-        id: "generated-identity-chapter", type: "section", tone: "canvas", layout: "hero", padding: "xl", bleed: true,
-        minHeight: "viewport", background: "spotlight", backgroundMediaBinding: usedMedia[0]?.key ?? null, backgroundMediaOpacity: usedMedia.length ? "medium" : "subtle", backgroundMediaFocalPoint: "center",
+        id: "generated-identity-chapter", type: "section", tone: usedMedia.length ? "ink" : "canvas", layout: "hero", padding: "xl", bleed: true,
+        minHeight: "viewport", background: "spotlight", backgroundMediaBinding: usedMedia[0]?.key ?? null, backgroundMediaOpacity: usedMedia.length ? "strong" : "subtle", backgroundMediaFocalPoint: "center",
         children: [
-          { id: "generated-identity-stack", type: "stack", gap: "xl", align: "start", justify: "between", width: "full", children: [
-            { id: "generated-signature", type: "decorative-mark", mark: "orbit", size: "xl", position: "top-right", tone: "highlight" },
-            { id: "generated-eyebrow", type: "text", style: "eyebrow", binding: summaryBinding, fallback: "Independent builder", align: "start", width: "narrow", weight: "bold", lineHeight: "snug", tracking: "wide" },
+          { id: "generated-identity-stack", type: "stack", gap: "lg", align: "start", justify: "end", width: "wide", children: [
             { id: headingId, type: "heading", level: 1, binding: nameBinding, fallback: "Builder profile", size: "hero", align: "start", width: "balanced", weight: "black", lineHeight: "tight", tracking: "tight" },
             { id: "generated-rule", type: "divider", style: "stamp" },
-            { id: "generated-identity-split", type: "split", ratio: "2-1", gap: "xl", align: "stretch", reverseOnMobile: true, children: [
-              { id: "generated-summary-frame", type: "frame", tone: "surface", padding: "lg", border: "hairline", elevation: "directional", rotation: "none", span: 2, children: [
-                { id: "generated-summary", type: "text", style: "lead", binding: summaryBinding, fallback: "Building useful systems.", align: "start", width: "prose", weight: "regular", lineHeight: "relaxed", tracking: "normal" },
-              ] },
-              { id: "generated-lead-artifact", type: "project-artifact", binding: projectsBinding, index: 0, variant: "orbit-map", tone: "secondary", scale: "large" },
+            { id: "generated-summary-frame", type: "frame", tone: "transparent", padding: "none", border: "none", elevation: "none", rotation: "none", span: 1, children: [
+              { id: "generated-summary", type: "text", style: "lead", binding: summaryBinding, fallback: "Building useful systems.", align: "start", width: "prose", weight: "medium", lineHeight: "snug", tracking: "normal" },
             ] },
           ] },
         ],
