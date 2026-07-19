@@ -249,7 +249,14 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
       authorizedContent: surface.value.authorizedContent ?? null, requiredBindings: surface.value.requiredBindings ?? [],
       authorizedMedia: surface.value.authorizedMedia ?? [], approvedAssets: surface.value.approvedAssets ?? [], governance: surface.value.governance,
       baseRevision: surface.value.publishedRevisionId ?? null, starterSpec, componentReference: surfaceComponentReference(trustedComponents),
-      customizedExample: customizedProfileSurfaceExample({ starterSpec, authorizedBindingTypes, authorizedContent: surface.value.authorizedContent as Record<string, unknown> | null | undefined, trustedComponents }),
+      customizedExample: customizedProfileSurfaceExample({
+        starterSpec,
+        authorizedBindingTypes,
+        authorizedContent: surface.value.authorizedContent as Record<string, unknown> | null | undefined,
+        authorizedMedia: surface.value.authorizedMedia as Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }> | undefined,
+        approvedAssets: surface.value.approvedAssets as Array<{ id: string; src: string }> | undefined,
+        trustedComponents,
+      }),
       referenceResearch: surface.value.kind === "profile" ? {
         source: "https://recent.design/websites",
         privateMethod: "Browse Portfolio, Technology, and SaaS entries without sending profile text, names, project names, handles, or other user data to Recent Design. Choose one or two entry URLs whose design language fits the already reviewed direction, or honor a safe public HTTPS reference the user explicitly supplied, then record only reusable principles.",

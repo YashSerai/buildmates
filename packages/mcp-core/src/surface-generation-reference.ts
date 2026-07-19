@@ -64,12 +64,14 @@ export function customizedProfileSurfaceExample(input: {
   starterSpec: unknown;
   authorizedBindingTypes: Record<string, unknown> | null;
   authorizedContent?: Record<string, unknown> | null;
+  authorizedMedia?: Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }>;
+  approvedAssets?: Array<{ id: string; src: string }>;
   trustedComponents: readonly string[];
 }): SurfaceSpecV2 | null {
   const parsedStarter = safeParseSurfaceSpec(input.starterSpec, DESIGN_POLICY_VERSION);
   if (!parsedStarter.success || parsedStarter.data.schemaVersion !== "2" || parsedStarter.data.kind !== "profile") return null;
   const trusted = new Set(input.trustedComponents);
-  const requiredComponents = ["section", "stack", "split", "frame", "heading", "text", "fact-list", "project-list", "featured-project", "project-artifact", "divider", "decorative-mark"];
+  const requiredComponents = ["section", "stack", "split", "frame", "heading", "text", "fact-list", "project-list", "featured-project", "project-artifact", "divider", "decorative-mark", ...(input.authorizedMedia?.length ? ["media"] : [])];
   if (requiredComponents.some((component) => !trusted.has(component))) return null;
   const typedBindings = Object.entries(input.authorizedBindingTypes ?? {});
   const textBindings = typedBindings.filter(([, type]) => type === "text").map(([key]) => key);
@@ -77,18 +79,30 @@ export function customizedProfileSurfaceExample(input: {
   const projectsBinding = typedBindings.find(([, type]) => type === "projects")?.[0];
   if (textBindings.length < 2 || !factsBinding || !projectsBinding) return null;
   const projects = input.authorizedContent?.[projectsBinding];
-  const projectCount = Math.max(1, Array.isArray(projects) ? Math.min(projects.length, 12) : 1);
+  const projectItems = Array.isArray(projects) ? projects.slice(0, 12) : [];
+  const projectCount = Math.max(1, projectItems.length);
+  const mediaForProject = (index: number) => {
+    const title = projectItems[index] && typeof projectItems[index] === "object" ? String((projectItems[index] as Record<string, unknown>).title ?? "") : "";
+    return input.authorizedMedia?.find((item) => item.label === `${title} image`) ?? input.authorizedMedia?.[index];
+  };
+  const usedMedia = Array.from({ length: projectCount }, (_, index) => mediaForProject(index)).filter((item): item is NonNullable<typeof item> => Boolean(item));
   const artifactVariants = ["orbit-map", "stacked-planes", "type-field", "signal-path"] as const;
-  const projectChapters: SurfaceNodeV2[] = Array.from({ length: projectCount }, (_, index) => ({
-    id: `generated-project-${index + 1}-chapter`, type: "section", tone: index % 2 === 0 ? "canvas" : "secondary", layout: "flow", padding: "xl", bleed: true,
-    minHeight: "viewport", background: index % 2 === 0 ? "solid" : "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-    children: [
-      { id: `generated-project-${index + 1}-split`, type: "split", ratio: "1-1", gap: "xl", align: "stretch", reverseOnMobile: index % 2 === 1, children: [
-        { id: `generated-project-${index + 1}-detail`, type: "featured-project", binding: projectsBinding, index, layout: index % 2 === 0 ? "media-left" : "media-right", showTags: true, showMetrics: true },
-        { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "large" },
-      ] },
-    ],
-  }));
+  const projectChapters: SurfaceNodeV2[] = Array.from({ length: projectCount }, (_, index) => {
+    const media = mediaForProject(index);
+    const visual: SurfaceNodeV2 = media ? {
+      id: `generated-project-${index + 1}-visual`, type: "frame", tone: "transparent", padding: "none", border: "none", elevation: "none", rotation: "none", span: 1,
+      children: [
+        { id: `generated-project-${index + 1}-media`, type: "media", binding: media.key, altBinding: media.altKey, aspect: "landscape", fit: "cover", focalPoint: "center", treatment: index % 2 === 0 ? "plain" : "offset" },
+        { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "medium" },
+      ],
+    } : { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "large" };
+    const detail: SurfaceNodeV2 = { id: `generated-project-${index + 1}-detail`, type: "featured-project", binding: projectsBinding, index, layout: index % 2 === 0 ? "media-left" : "media-right", showTags: true, showMetrics: true };
+    return {
+      id: `generated-project-${index + 1}-chapter`, type: "section", tone: index % 2 === 0 ? "canvas" : "secondary", layout: "flow", padding: "xl", bleed: true,
+      minHeight: "viewport", background: index % 2 === 0 ? "solid" : "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
+      children: [{ id: `generated-project-${index + 1}-split`, type: "split", ratio: "1-1", gap: "xl", align: "stretch", reverseOnMobile: index % 2 === 1, children: [detail, visual] }],
+    };
+  });
   const [nameBinding, summaryBinding] = textBindings;
   const headingId = "generated-profile-title";
   const root: SurfaceNodeV2 = {
@@ -148,10 +162,11 @@ export function customizedProfileSurfaceExample(input: {
       content: [
         { key: nameBinding, type: "text" }, { key: summaryBinding, type: "text" },
         { key: factsBinding, type: "facts" }, { key: projectsBinding, type: "projects" },
+        ...Array.from(new Set(usedMedia.map((item) => item.altKey))).filter((key) => ![nameBinding, summaryBinding, factsBinding, projectsBinding].includes(key)).map((key) => ({ key, type: "text" as const })),
       ],
-      media: [],
+      media: usedMedia.map((item) => ({ key: item.key, altKey: item.altKey, approvedAssetIds: [...item.approvedAssetIds], authorization: "surface-approved" as const })),
     },
-    approvedAssets: [], decorativeRegions: [],
+    approvedAssets: (input.approvedAssets ?? []).filter((asset) => usedMedia.some((item) => item.approvedAssetIds.includes(asset.id))), decorativeRegions: [],
     responsive: { collapseGridsBelow: "md", contentWidth: "full", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true },
     accessibility: { label: "Customized builder profile", primaryHeadingNodeId: headingId, reducedMotion: "required" },
   };
