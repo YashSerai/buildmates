@@ -587,8 +587,7 @@ async function approvedProfileMedia(DB: Database, actor: string) {
     WHERE project.owner_user_id=? AND project.status='active' AND project.audience='public'
       AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
       AND asset.owner_user_id=? AND asset.deleted_at IS NULL
-      AND asset.object_key LIKE ?
-    ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor, `surface-assets/${actor}/%`),
+    ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor),
     all(DB, `SELECT media.asset_id AS assetId,media.alt_text AS altText,media.project_key AS projectKey,
       field.value_json AS projectsJson,asset.object_key AS objectKey
     FROM profile_project_media media
@@ -596,8 +595,7 @@ async function approvedProfileMedia(DB: Database, actor: string) {
     JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects' AND field.audience='public'
     JOIN surface_assets asset ON asset.id=media.asset_id
     WHERE profile.user_id=? AND asset.owner_user_id=? AND asset.deleted_at IS NULL
-      AND asset.object_key LIKE ?
-    ORDER BY media.updated_at DESC LIMIT 24`, actor, actor, `surface-assets/${actor}/%`),
+    ORDER BY media.updated_at DESC LIMIT 24`, actor, actor),
   ]);
   const approvedDraftMedia: Row[] = profileRows.flatMap((row): Row[] => {
     const project = profileProjectsValue(row.projectsJson).find((item) => item.id === String(row.projectKey));
