@@ -162,9 +162,11 @@
 .renderer :global(.surface-tone-secondary .surface-text-lead),
 .renderer :global(.surface-tone-secondary .surface-featured-project p),
 .renderer :global(.surface-tone-secondary .surface-callout p),
+.renderer :global(.surface-callout.surface-tone-secondary p),
 .renderer :global(.surface-tone-ink .surface-text-lead),
 .renderer :global(.surface-tone-ink .surface-featured-project p),
-.renderer :global(.surface-tone-ink .surface-callout p) {
+.renderer :global(.surface-tone-ink .surface-callout p),
+.renderer :global(.surface-callout.surface-tone-ink p) {
   color: color-mix(in srgb, currentColor 82%, transparent);
 }
 .renderer :global(.surface-text-caption) {

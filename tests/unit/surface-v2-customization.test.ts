@@ -105,6 +105,19 @@ describe("SurfaceSpec v2 customization ceiling", () => {
     expect(html).not.toMatch(/100vw|position:fixed|javascript:/i);
   });
 
+  it("keeps muted copy readable when a callout owns its dark tone", () => {
+    const html = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: PROFILE_V2_FIXTURES[0], bindings: PROFILE_FIXTURE_BINDINGS }));
+    expect(html).toContain(".surface-callout.surface-tone-secondary p");
+    expect(html).toContain(".surface-callout.surface-tone-ink p");
+  });
+
+  it("reclaims phone reading width from editorial gutters and desktop-scale display treatments", () => {
+    const html = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: PROFILE_V2_FIXTURES[0], bindings: PROFILE_FIXTURE_BINDINGS }));
+    expect(html).toContain(".surface-projects-editorial .surface-project{grid-template-columns:1.75rem minmax(0,1fr)");
+    expect(html).toContain(".surface-callout-manifesto{padding:1.25rem;font-size:1.05rem}");
+    expect(html).toContain(".surface-project-artifact-stacked-planes .surface-project-artifact-title{font-size:clamp(2.2rem,12cqw,3.5rem)}");
+  });
+
   it("renders a multi-section portfolio with differentiated project artifacts and no absent-project dead space", () => {
     const atlas = PROFILE_V2_FIXTURES[5];
     const html = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: atlas, bindings: PORTFOLIO_QUALITY_BINDINGS }));
