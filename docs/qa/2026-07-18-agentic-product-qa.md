@@ -31,8 +31,8 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Context | Design inputs capture approved aesthetic preferences | Draft screenshot; founder reviews visual result | Pending |
 | Profile | SurfaceSpec profile is generated and valid | Preview link and validation result | Pending |
 | Profile | Founder approves customization quality | Founder decision | Founder review |
-| Work Pulse | Explanation covers schedule, sources, refreshes, shortlist, watches, output, and next run | Explanation screenshot | Pending |
-| Work Pulse | Exactly one near-term QA automation is created | Automation/task evidence | Pending |
+| Work Pulse | Explanation covers schedule, sources, refreshes, shortlist, watches, output, and next run | Explanation screenshot | Pass (live task transcript; screenshot unavailable) |
+| Work Pulse | Exactly one near-term QA automation is created | Automation/task evidence | Pass |
 | Work Pulse | Meaningful two-way activity prompts for feedback without reading messages | Contract proof plus live automation response | Pending live; source pass |
 | Work Pulse | Positive viewer feedback suggests one optional contextual room module; both members still approve | Contract proof plus live two-principal evidence | Pending live; source pass |
 | Matching | Seeded relevant builders enter the bounded shortlist | Seed manifest and server result | Pass (local E2E) |
@@ -40,7 +40,7 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Matching | Scheduled Work Pulse surfaces relevant matches | Automation response screenshot | Pending |
 | Matching | Manual acceptance preserves consent | Codex and website evidence | Pending |
 | Matching | Full Autopilot converges reciprocal approvals once | Codex, Connection, and room evidence | Pending |
-| No-change | Second Work Pulse reports no changes without fabrication | Automation response screenshot | Pending |
+| No-change | Second Work Pulse reports no changes without fabrication | Automation response screenshot | Pass (live task transcript; screenshot unavailable) |
 | Website | Introductions | Desktop and phone screenshots | Pending |
 | Website | Connections and one-to-one room | Desktop and phone screenshots | Pending |
 | Website | Activity | Desktop and phone screenshots | Pending |
@@ -157,6 +157,17 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - No-change rule: Pass at source/contract level. Guidance requires unchanged runs to say nothing changed and forbids relabeling old activity or unanswered actions as new.
 - Verification: `@buildmates/mcp-core` typecheck passed; `tests/contract/mcp-tools.test.ts` passed `22/22`; the focused canonical D1 privacy/eligibility test passed `1/1`; targeted ESLint and `git diff --check` passed. The full canonical contract file was not used as completion evidence because the all-file run exceeded the initial bounded command window; the focused affected path passed.
 - Remaining live gates: deploy the Site and Worker changes, refresh the installed beta plugin, run the one scheduled Work Pulse against seeded meaningful activity, answer the feedback question naturally, verify the contextual suggestion, approve it from both principals, and run the unchanged scenario to confirm the visible Codex result does not fabricate an update.
+
+### 2026-07-18 - live Work Pulse and no-change proof
+
+- Automation boundary: Pass. Exactly one automation exists at `C:\Users\yashs\.codex\automations\buildmates-work-pulse\automation.toml`; after the bounded QA triggers it was restored to one active Tuesday/Friday schedule at 5:30 PM America/Vancouver using `gpt-5.6-luna` with high reasoning. No duplicate automation was created.
+- First live task: `019f77a3-f121-72f3-b478-2cc118d64158`. Luna High called the production Buildmates MCP, read only authorized state, checked source policies, profile, Work Signals, watches, networking pulse, rooms, Circles, setup state, and a server shortlist capped at 30. With no approved sources or relationship activity and zero candidates, it performed no interpersonal action and persisted a succeeded checkpoint. It recovered from one harmless installed-skill path lookup without exposing that retry in the final result.
+- First-run issue: the checkpoint and final response computed the next run from the execution time and said Tuesday at 4:52 PM instead of the configured 5:30 PM. The automation prompt was tightened to require the named scheduled time.
+- Second live task: `019f77ab-b32a-7203-a467-9cc7885df0aa`. The same automation ran again on Luna High and said `Buildmates Work Pulse completed: nothing changed.` It reported zero candidates out of the 30-candidate bound and no matches, messages, invitations, feedback requests, or room upgrades. It gave the correct intended next run: Tuesday, July 21 at 5:30 PM America/Vancouver.
+- Temporary-trigger noise: because the second task inspected `automation.toml` while its one-time QA trigger was active, it also reported that temporary schedule as a mismatch. The automation was restored immediately after completion, so the live durable configuration is correct even though that task's visible output contains one resolved warning.
+- Truthfulness result: Pass. Two consecutive production MCP runs did not relabel old state as new, fabricate candidates, or create actions when nothing changed. Local automation memory and the server checkpoint preserved the quiet result.
+- Screenshot limitation: direct Codex-task screenshot capture is not available to the automation or this shell surface. Both task IDs remain user-visible and are the primary response evidence. Website scenario screenshots remain separate from the live task transcript.
+- Remaining live scenario boundary: production intentionally exposes no QA seeding endpoint, and the linked account is still at `page_preview` (`6/10`) with no approved source policy, networking pulse, candidates, rooms, or Circles. Candidate, incoming-interest, reciprocal-room, message, Circle, renewed-relevance, positive-feedback/upgrade, and exclusion behavior is therefore proven by the guarded local scenario and two-principal browser harness, not yet by a seeded production automation task. Do not weaken the production boundary merely to manufacture automation evidence.
 
 ### 2026-07-18 - unknown-route recovery and project shell
 
