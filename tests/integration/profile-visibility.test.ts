@@ -100,4 +100,15 @@ describe("profile field audience projection", () => {
     await db.prepare("UPDATE projects SET status='active' WHERE id='draft-project'").run();
     expect((await getProjectBySlug(db,"private-draft",null))?.title).toBe("Draft");
   });
+  it("shares private updates only with the owner and accepted collaborators", async () => {
+    const now=Date.now();
+    await db.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at)VALUES('outsider','active','none',?,?)").bind(now,now).run();
+    await db.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES('shared-project','owner','shared-project','Shared project','Visible project shell','public',0,'active','testing',0,?,?,?)").bind(now,now,now).run();
+    await db.prepare("INSERT INTO project_collaborators(project_id,user_id,role,approved_at)VALUES('shared-project','viewer','editor',?)").bind(now).run();
+    await db.prepare("INSERT INTO project_updates(id,project_id,author_user_id,body,audience,created_at)VALUES('private-update','shared-project','viewer','Members only result','private',?)").bind(now).run();
+    expect((await getProjectBySlug(db,"shared-project","owner"))?.updates.map((update)=>update.body)).toEqual(["Members only result"]);
+    expect((await getProjectBySlug(db,"shared-project","viewer"))?.updates.map((update)=>update.body)).toEqual(["Members only result"]);
+    expect((await getProjectBySlug(db,"shared-project","outsider"))?.updates).toEqual([]);
+    expect((await getProjectBySlug(db,"shared-project",null))?.updates).toEqual([]);
+  });
 }, 20_000);

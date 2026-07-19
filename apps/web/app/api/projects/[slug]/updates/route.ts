@@ -1,14 +1,13 @@
 import { getCurrentUser, isAuthResponse, requireApiUser } from "@/src/auth/require-user";
 import { getPlatformBindings } from "@/src/platform/bindings";
-import { normalizeSlug, AUDIENCES, type Audience } from "@/src/profile-projects/service";
+import { getProjectBySlug, normalizeSlug, AUDIENCES, type Audience } from "@/src/profile-projects/service";
 import { requireSameOriginMutation } from "@/src/platform/same-origin";
 
 export async function GET(_: Request, context: { params: Promise<{ slug: string }> }) {
   const [{ slug }, viewer, { DB }] = await Promise.all([context.params, getCurrentUser(), getPlatformBindings()]);
-  const project = await DB.prepare("SELECT id,owner_user_id AS ownerId,status,audience FROM projects WHERE slug=? AND status<>'deleted'").bind(normalizeSlug(slug)).first<{ id: string; ownerId: string; status: string; audience: Audience }>();
-  if (!project || (project.status !== "active" && project.ownerId !== viewer?.id)) return Response.json({ error: "not_found" }, { status: 404 });
-  const rows = (await DB.prepare("SELECT id,body,audience,created_at AS createdAt,edited_at AS editedAt FROM project_updates WHERE project_id=? AND (author_user_id=? OR audience='public' OR (audience='signed_in' AND ?<>'')) ORDER BY created_at DESC LIMIT 50").bind(project.id, viewer?.id ?? "", viewer?.id ?? "").all()).results;
-  return Response.json({ updates: rows }, { headers: { "cache-control": "private, no-store" } });
+  const project = await getProjectBySlug(DB, slug, viewer?.id ?? null);
+  if (!project) return Response.json({ error: "not_found" }, { status: 404 });
+  return Response.json({ updates: project.updates }, { headers: { "cache-control": "private, no-store" } });
 }
 export async function POST(request: Request, context: { params: Promise<{ slug: string }> }) {
   const origin = requireSameOriginMutation(request); if (origin) return origin;

@@ -3,6 +3,8 @@ import { MATCH_WEIGHT_VERSION } from "@buildmates/matching";
 export type TwoPrincipalNetwork = {
   actorUserId: string;
   peerUserId: string;
+  actorHandle: string;
+  peerHandle: string;
   proposalId: string;
 };
 
@@ -41,10 +43,14 @@ export async function seedTwoPrincipalNetwork(
   const scoreId = `two_principal_score_${suffix}`;
   const proposalId = `two_principal_proposal_${suffix}`;
   const publishedAt = now - 86_400_000;
+  const actorHandle = `avery_${compact(actorUserId)}`;
+  const peerHandle = `blair_${compact(peerUserId)}`;
 
   await DB.batch([
-    upsertProfile(DB, actorUserId, `two_principal_profile_actor_${suffix}`, "Avery Stone", `avery-${compact(actorUserId)}`, publishedAt, now),
-    upsertProfile(DB, peerUserId, `two_principal_profile_peer_${suffix}`, "Blair Lin", `blair-${compact(peerUserId)}`, publishedAt, now),
+    upsertProfile(DB, actorUserId, `two_principal_profile_actor_${suffix}`, "Avery Stone", publishedAt, now),
+    upsertProfile(DB, peerUserId, `two_principal_profile_peer_${suffix}`, "Blair Lin", publishedAt, now),
+    upsertHandle(DB, actorUserId, actorHandle, now),
+    upsertHandle(DB, peerUserId, peerHandle, now),
     matchIndex(DB, actorUserId, taxonomy.id, now),
     matchIndex(DB, peerUserId, taxonomy.id, now),
     DB.prepare("INSERT INTO match_pairs(id,user_a_id,user_b_id,created_at) VALUES(?,?,?,?) ON CONFLICT(user_a_id,user_b_id) DO NOTHING")
@@ -92,7 +98,7 @@ export async function seedTwoPrincipalNetwork(
     evaluation(DB, `${proposalId}:peer`, proposalId, peerUserId, now),
   ]);
 
-  return { actorUserId, peerUserId, proposalId };
+  return { actorUserId, peerUserId, actorHandle, peerHandle, proposalId };
 }
 
 function upsertProfile(
@@ -100,7 +106,6 @@ function upsertProfile(
   userId: string,
   profileId: string,
   displayName: string,
-  handle: string,
   publishedAt: number,
   now: number,
 ) {
@@ -121,6 +126,13 @@ function upsertProfile(
       publishedAt,
       now,
     );
+}
+
+function upsertHandle(DB: D1Database, userId: string, handle: string, now: number) {
+  return DB.prepare(`INSERT INTO handles(user_id,handle,normalized_handle,created_at)
+    VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET
+    handle=excluded.handle,normalized_handle=excluded.normalized_handle`)
+    .bind(userId, handle, handle, now);
 }
 
 function matchIndex(DB: D1Database, userId: string, taxonomyId: string, now: number) {

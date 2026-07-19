@@ -40,15 +40,15 @@ Only the official Buildmates setup prompt may be optimized. After setup begins, 
 | Matching | Seeded relevant builders enter the bounded shortlist | Seed manifest and server result | Pass (local E2E) |
 | Matching | Ordinary prompt surfaces potential matches in Codex | Prompt and Codex response screenshot | Pending |
 | Matching | Scheduled Work Pulse surfaces relevant matches | Automation response screenshot | Pending |
-| Matching | Manual acceptance preserves consent | Codex and website evidence | Pending |
-| Matching | Full Autopilot converges reciprocal approvals once | Codex, Connection, and room evidence | Pending |
+| Matching | Manual acceptance preserves consent | Codex and website evidence | Pass locally; clean Codex run pending |
+| Matching | Full Autopilot converges reciprocal approvals once | Codex, Connection, and room evidence | Source/integration pass; live Codex run pending |
 | No-change | Second Work Pulse reports no changes without fabrication | Automation response screenshot | Pass (live task transcript; screenshot unavailable) |
-| Website | Introductions | Desktop and phone screenshots | Pending |
-| Website | Connections and one-to-one room | Desktop and phone screenshots | Pending |
-| Website | Activity | Desktop and phone screenshots | Pending |
-| Website | Circles, invitation, roles, and chat | Desktop and phone screenshots | Pending |
-| Website | Projects and collaboration | Desktop and phone screenshots | Pending |
-| Website | Profile, privacy, safety, and Work Pulse settings | Desktop and phone screenshots | Pending |
+| Website | Introductions | Desktop and phone screenshots | Pass (populated local fixture) |
+| Website | Connections and one-to-one room | Desktop and phone screenshots | Pass (populated local fixture plus two-principal journey) |
+| Website | Activity | Desktop and phone screenshots | Pass (populated local fixture plus two-principal journey) |
+| Website | Circles, invitation, roles, and chat | Desktop and phone screenshots | Pass (populated local fixture plus two-principal journey) |
+| Website | Projects and collaboration | Desktop and phone screenshots | Pass (two-principal accepted collaboration and transfer) |
+| Website | Profile, privacy, safety, and Work Pulse settings | Desktop and phone screenshots | Pass (populated local fixture) |
 | Cleanup | Remove scoped QA network and automation | Database and task evidence | Pending |
 | Two-account | Independent-principal consent, rooms, Circles, roles, and isolation | Two authenticated identities | Pass locally; external production login pending |
 
@@ -268,6 +268,7 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Circle suffix: Pass. The corrected integrated desktop journey passed 1/1 in 1.4 minutes. The invited principal joined the Circle, sent chat visible to the owner, proposed an experiment tracker, and saw the owner publish it. The member then proposed a governed Circle SurfaceSpec; the owner published it and promoted the member to admin. A third authenticated outsider received `404` for the Connection, room messages, room Surface, and Circle.
 - Browser evidence: `docs/qa/evidence/2026-07-18/two-principal/two-principal-owner.png` and `two-principal-member.png` preserve the final owner and member states from independently authenticated browser contexts.
 - Production repair: commit `f0520ab` rejects stale Circle role changes, and evidence commit `2af2cfc` preserves the completed relationship journey. The exact latter source is live as ChatGPT Sites version 51 (`appgdep_6a5c53ccbbd88191a82dffa5bfd2318f`). Post-deploy smoke passes the public landing, D1 readiness, CSP/framing/MIME guards, authenticated redirect boundary, launch metadata, and the external MCP OAuth boundary.
+- Project collaboration extension: Pass after two repairs. The fixture originally created profiles without handles, so a real handle invitation returned `404`; it now creates normalized production-valid handles and returns the authorized peer handle. The first complete run then exposed that an accepted editor's private update was author-only, so the owner could not see it. Private project updates are now visible to the owner and accepted collaborators through the canonical project authorization service, while a third authenticated outsider still receives `404`. The final browser run passed project creation, invitation, UI acceptance, editor update, owner read, ownership transfer, and outsider denial as part of the same 1/1 relationship journey. The focused audience regression passes 5/5 and proves both signed-in and anonymous nonmembers receive no private update content even when the project shell is public.
 - Evidence limitation: This is a high-fidelity local two-principal simulation using real application sessions, authorization, database rules, and three isolated browser contexts. It is not a substitute for the final test with two independent external GitHub/Codex accounts.
 
 ### 2026-07-18 - canonical taxonomy write contract

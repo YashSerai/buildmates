@@ -23,7 +23,7 @@ test("two independently authenticated principals complete the relationship journ
     const hiddenRoute = await post(a, "/api/testing/two-principal-network", { peerUserId: bUserId }, false);
     expect(hiddenRoute.status).toBe(404);
     const seeded = await post(a, "/api/testing/two-principal-network", { peerUserId: bUserId }, true) as {
-      status: number; body: { proposalId: string };
+      status: number; body: { proposalId: string; peerHandle: string };
     };
     expect(seeded.status).toBe(201);
 
@@ -147,6 +147,43 @@ test("two independently authenticated principals complete the relationship journ
     await expect(a.getByText("Admin / Joined", { exact: true })).toBeVisible();
     await expect(a.getByRole("status")).toBeEmpty();
 
+    const projectSlug = `shared-retrieval-${Date.now()}`;
+    const createdProject = await post(a, "/api/projects", {
+      slug: projectSlug,
+      title: "Shared retrieval field test",
+      summary: "A private project used to verify accepted collaboration and ownership transfer.",
+      audience: "private",
+      allowMatching: false,
+      indexable: false,
+      stage: "Testing",
+      status: "active",
+      links: [],
+      taxonomy: [],
+    }) as { status: number };
+    expect(createdProject.status).toBe(201);
+    const invited = await post(a, `/api/projects/${projectSlug}/collaborators`, {
+      handle: seeded.body.peerHandle,
+      role: "editor",
+    }) as { status: number };
+    expect(invited.status).toBe(201);
+    await b.goto(`/projects/${projectSlug}/collaboration`);
+    await expect(b.getByRole("heading", { name: "Shared retrieval field test" })).toBeVisible();
+    await b.getByRole("button", { name: "Accept collaboration" }).click();
+    await expect(b.getByRole("heading", { name: "Shared retrieval field test" })).toBeVisible();
+    const update = await post(b, `/api/projects/${projectSlug}/updates`, {
+      body: "Blair recorded the first shared retrieval result.",
+      audience: "private",
+    }) as { status: number };
+    expect(update.status).toBe(201);
+    await a.goto(`/projects/${projectSlug}`);
+    await expect(a.getByText("Blair recorded the first shared retrieval result.", { exact: true })).toBeVisible();
+    const transferred = await post(a, `/api/projects/${projectSlug}/collaborators`, { newOwnerUserId: bUserId }, false, "PUT") as { status: number };
+    expect(transferred.status).toBe(200);
+    const transferredProject = await get(b, `/api/projects/${projectSlug}`) as { status: number; body: { ownerUserId: string } };
+    expect(transferredProject.status).toBe(200);
+    expect(transferredProject.body.ownerUserId).toBe(bUserId);
+    expect((await get(outsider, `/api/projects/${projectSlug}`)).status).toBe(404);
+
     for (const path of [
       `/api/connections/${connectionId}`,
       `/api/rooms/${roomId}/messages`,
@@ -210,16 +247,17 @@ async function get(page: Page, path: string) {
   }, path);
 }
 
-async function post(page: Page, path: string, body: unknown, includeTestHeader?: boolean) {
-  return page.evaluate(async ({ url, payload, testHeader }) => {
+async function post(page: Page, path: string, body: unknown, includeTestHeader?: boolean, method: "POST" | "PUT" | "PATCH" = "POST") {
+  return page.evaluate(async ({ url, payload, testHeader, requestMethod }) => {
     const headers: Record<string, string> = { "content-type": "application/json" };
     if (testHeader) headers["x-buildmates-e2e"] = "1";
-    const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+    const response = await fetch(url, { method: requestMethod, headers, body: JSON.stringify(payload) });
     const text = await response.text();
     let parsed: unknown = null; try { parsed = JSON.parse(text); } catch { parsed = text; }
     return { status: response.status, body: parsed };
-  }, { url: path, payload: body, testHeader: includeTestHeader });
+  }, { url: path, payload: body, testHeader: includeTestHeader, requestMethod: method });
 }
+
 
 const circleSurfaceSpec = {
   schemaVersion: "2",
