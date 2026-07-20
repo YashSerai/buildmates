@@ -111,7 +111,8 @@ test("public builder pages are canonical surfaces and keep design controls priva
   assert.match(profile, /if \(profile\?\.handle\) redirect\("\/profile\/design"\)/);
   assert.match(profileReview, /router\.push\("\/profile\/design"\)/);
   assert.match(profileReview, /Save and continue to design/);
-  assert.match(builder, /profile\.fields\.filter\(\(field\) => field\.key !== "projects"\)/);
+  assert.match(builder, /profile\.fields\s*\.filter\(\(field\) => field\.key !== "projects"\)/);
+  assert.match(builder, /field\.key === "current_work"[\s\S]*currentWorkProjectsValue/);
   assert.match(builder, /profile\.surfaceProjects\.map/);
   assert.match(nextConfig, /async redirects\(\)/);
   assert.match(nextConfig, /source: "\/@:handle", destination: "\/builders\/:handle", permanent: true/);
