@@ -19,11 +19,9 @@ export default async function ProfileEditPage() {
       initial={profile ? {
         displayName: profile.displayName,
         summary: profile.summary,
-        audience: profile.audience,
         acceptanceMode: profile.acceptanceMode,
         coarseLocation: profile.coarseLocation ?? "",
         allowMatching: profile.allowMatching,
-        indexable: profile.indexable,
         locationMapOptIn: profile.locationMapOptIn,
         fields: profile.fields,
         statistics: profile.statistics,

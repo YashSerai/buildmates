@@ -57,6 +57,7 @@ export type OnboardingSnapshot = {
     audience: Audience;
     allowMatching: boolean;
     acceptanceMode: AcceptanceMode;
+    publishedAt: string | null;
   };
   profilePreview: null | {
     revisionId: string;
@@ -163,7 +164,7 @@ export async function getOnboardingSnapshot(
       .bind(userId)
       .all(),
     DB.prepare(
-      "SELECT p.id,h.handle,p.display_name AS displayName,p.summary,p.project_or_interest AS projectOrInterest,p.portfolio_links_json AS portfolioLinksJson,p.audience,p.allow_matching AS allowMatching,p.acceptance_mode AS acceptanceMode FROM profiles p LEFT JOIN handles h ON h.user_id=p.user_id WHERE p.user_id=? LIMIT 1",
+      "SELECT p.id,h.handle,p.display_name AS displayName,p.summary,p.project_or_interest AS projectOrInterest,p.portfolio_links_json AS portfolioLinksJson,p.audience,p.allow_matching AS allowMatching,p.acceptance_mode AS acceptanceMode,p.published_at AS publishedAt FROM profiles p LEFT JOIN handles h ON h.user_id=p.user_id WHERE p.user_id=? LIMIT 1",
     )
       .bind(userId)
       .first<Record<string, unknown>>(),
@@ -266,6 +267,7 @@ export async function getOnboardingSnapshot(
           audience: profileRow.audience as Audience,
           allowMatching: Boolean(profileRow.allowMatching),
           acceptanceMode: profileRow.acceptanceMode as AcceptanceMode,
+          publishedAt: profileRow.publishedAt == null ? null : iso(Number(profileRow.publishedAt)),
         }
       : null,
     profilePreview: profilePreview
@@ -505,16 +507,15 @@ export async function mutateOnboarding(
       240,
       "project or active interest",
     );
-    const audience = audienceValue(body.audience);
     const allowMatching = Boolean(body.allowMatching);
     const existing = await DB.prepare("SELECT acceptance_mode AS acceptanceMode FROM profiles WHERE user_id=?").bind(userId).first<{acceptanceMode:AcceptanceMode}>();
     let profileId: string;
     try {
       const saved = await saveProfile(DB,userId,{
-        handle,displayName:name,summary,audience,indexable:audience === "public",allowMatching,
+        handle,displayName:name,summary,allowMatching,
         acceptanceMode:existing?.acceptanceMode??"manual",
         projectOrInterest:project,
-        fields:[{key:"current_work",value:project,audience,allowMatching,sourceStatus:"confirmed",provenance:"self_reported"}],
+        fields:[{key:"current_work",value:project,audience:"suggested_connections",allowMatching,sourceStatus:"confirmed",provenance:"self_reported"}],
       },{publish:false,preserveExistingDetails:true});
       profileId=saved.profileId;
     } catch (error) {
@@ -524,7 +525,7 @@ export async function mutateOnboarding(
     }
     await completeStepInOrder(DB, userId, "basic_profile");
     return audit(DB, userId, "profile.reviewed", "profile", profileId, {
-      audience,
+      publication: "private_draft",
       allowMatching,
     });
   }
@@ -1009,20 +1010,6 @@ function identifier(value: unknown, label: string): string {
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$/.test(result))
     throw new InputError(`Invalid ${label}.`);
   return result;
-}
-function audienceValue(value: unknown): Audience {
-  const result = String(value);
-  if (
-    ![
-      "public",
-      "signed_in",
-      "suggested_connections",
-      "mutual_connections",
-      "private",
-    ].includes(result)
-  )
-    throw new InputError("Invalid visibility.");
-  return result as Audience;
 }
 function workSignalAudienceValue(value: unknown): Audience {
   const result = String(value);

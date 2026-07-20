@@ -99,13 +99,11 @@ export const profileModelSchema = z.object({
   portfolioLinks: z.array(z.string().url().max(500)).max(30).default([]),
   taxonomyVersion: z.string().trim().min(1).max(40).optional(),
   canonicalTopicIds: z.array(canonicalTaxonomyIdSchema).max(30).default([]),
-  audience: audienceSchema,
   allowMatching: z.boolean(),
   acceptanceMode: z.enum(["manual", "full_autopilot"]),
   coarseLocation: z.string().trim().max(120).optional(),
   locationMapOptIn: z.boolean().default(true),
   timezone: z.string().trim().min(1).max(80).optional(),
-  indexable: z.boolean().default(false),
   fields: z.array(z.discriminatedUnion("key", [profileTextFieldSchema, profileProjectsFieldSchema])).max(20).default([]),
   statistics: z.array(z.object({
     key: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/),

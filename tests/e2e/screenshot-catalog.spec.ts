@@ -153,7 +153,6 @@ async function seedFixture(page: Page, testInfo: TestInfo) {
       summary: "A small toolkit for turning agent failures into reproducible evaluations and useful product decisions.",
       audience: "public",
       allowMatching: true,
-      indexable: false,
       status: "active",
       stage: "building",
       links: [{ label: "Project notes", url: "https://example.com/field-notes" }],

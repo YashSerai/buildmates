@@ -158,7 +158,6 @@ test("two independently authenticated principals complete the relationship journ
       summary: "A private project used to verify accepted collaboration and ownership transfer.",
       audience: "private",
       allowMatching: false,
-      indexable: false,
       stage: "Testing",
       status: "active",
       links: [],

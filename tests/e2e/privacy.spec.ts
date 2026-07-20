@@ -9,7 +9,7 @@ test("privacy center audits source revocation, matching pause, export, and delet
   await page.evaluate(async (slug) => {
     const send = async (url: string, body: unknown, method = "POST") => {const response=await fetch(url, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });if(!response.ok)throw new Error(`${url}:${response.status}:${await response.text()}`);};
     await send("/api/connected-apps", { sources: [{ appId: "github", displayName: "GitHub", category: "Projects and code", accessMode: "ask_each_time" }], completeStep: false });
-    await send("/api/projects",{slug,title:"Privacy Project",summary:"A real project controlled from the privacy center.",audience:"private",allowMatching:false,indexable:false,status:"active",stage:"building",links:[],taxonomy:[]});
+    await send("/api/projects",{slug,title:"Privacy Project",summary:"A real project controlled from the privacy center.",audience:"private",allowMatching:false,status:"active",stage:"building",links:[],taxonomy:[]});
   },projectSlug);
   await page.goto("/settings/privacy");
   await expect(page.locator("[data-hydrated=true]")).toBeVisible();

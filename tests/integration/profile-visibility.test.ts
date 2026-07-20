@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getProfileByHandle, getProjectBySlug, saveProfile } from "../../apps/web/src/profile-projects/service";
+import { getProfileByHandle, getProjectBySlug, publishProfile, saveProfile } from "../../apps/web/src/profile-projects/service";
 
 it("exports a server-owned profile projection boundary", async () => {
   const service =
@@ -109,14 +109,33 @@ describe("profile field audience projection", () => {
       handle: "owner",
       displayName: "Owner",
       summary: "An updated public summary",
-      audience: "public",
-      indexable: true,
       allowMatching: true,
       acceptanceMode: "manual",
       fields: [{ key: "current_work", value: "Updated work", audience: "public" }],
     });
     const projectField = await db.prepare("SELECT value_json AS valueJson FROM profile_fields WHERE profile_id='profile-owner' AND field_key='projects'").first<{ valueJson: string }>();
     expect(JSON.parse(projectField?.valueJson ?? "[]")).toEqual(projects);
+  });
+  it("keeps drafts private and makes publication public and indexable without a separate toggle", async () => {
+    await saveProfile(db, "draft-owner", {
+      handle: "draft_owner",
+      displayName: "Draft Owner",
+      summary: "A complete profile draft awaiting a generated design.",
+      allowMatching: true,
+      acceptanceMode: "manual",
+      coarseLocation: "Vancouver",
+      fields: [{ key: "current_work", value: "Building a private draft", audience: "public" }],
+    });
+    const draft = await db.prepare("SELECT audience,indexable,published_at AS publishedAt,allow_matching AS allowMatching,location_map_opt_in AS locationMapOptIn FROM profiles WHERE user_id='draft-owner'").first<{audience:string;indexable:number;publishedAt:number|null;allowMatching:number;locationMapOptIn:number}>();
+    expect(draft).toMatchObject({ audience: "private", indexable: 0, publishedAt: null, allowMatching: 1, locationMapOptIn: 1 });
+    expect(await getProfileByHandle(db, "draft_owner", null)).toBeNull();
+
+    await publishProfile(db, "draft-owner");
+    const published = await db.prepare("SELECT audience,indexable,published_at AS publishedAt FROM profiles WHERE user_id='draft-owner'").first<{audience:string;indexable:number;publishedAt:number|null}>();
+    expect(published?.audience).toBe("public");
+    expect(published?.indexable).toBe(1);
+    expect(published?.publishedAt).not.toBeNull();
+    expect((await getProfileByHandle(db, "draft_owner", null))?.displayName).toBe("Draft Owner");
   });
   it("shares private updates only with the owner and accepted collaborators", async () => {
     const now=Date.now();

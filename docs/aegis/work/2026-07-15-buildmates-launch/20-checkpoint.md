@@ -125,3 +125,11 @@ Read `10-intent.md`, this checkpoint, `GOAL.md`, and `BUILD_INDEX.md`; verify th
 - Reviewed profile topics, active project taxonomy, and approved unexpired Work Signal topic IDs feed the Build Graph. The response contains canonical topic labels, aggregate builder/contribution counts, hierarchy, and co-occurrence strength only.
 - The graph UI is an explorable bubble topology: root topics first, click-to-focus drill-down, child/neighbor expansion, and weighted links for topic overlap. It does not expose project or builder identity.
 - Focused evidence: workspace typecheck passes; Map/Graph integration tests pass 4/4; web production build passes.
+
+## Published profile visibility simplification - 2026-07-20
+
+- Profile drafts are private. Publishing an approved generated profile makes its canonical page public, shareable, and indexable; there is no separate whole-profile visibility or search-indexing setting.
+- Matching remains independent and enabled until paused. Work Signals retain matching-only audiences and never become public profile, Map, Build Graph, metadata, or search content.
+- Deliberately supplied coarse cities and reviewed canonical profile/project topics contribute to anonymous Map and Build Graph aggregates by default. City is ordinary approved profile content, while aggregate participation retains an unobtrusive privacy opt-out.
+- Public active projects are indexed automatically; restricted or draft projects remain inaccessible and non-indexable. Existing published profiles and public projects migrate into the same invariant.
+- Focused evidence: MCP contract 24/24, selected onboarding/discovery/privacy integration 14/14, typecheck, lint, plugin validation, and the production web build pass. A live blind profile-design test remains the final gate for this change set.

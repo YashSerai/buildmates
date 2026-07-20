@@ -251,10 +251,12 @@ export function PrivacyClient({
           />
           <dl className={styles.details}>
             <div>
-              <dt>Profile visibility</dt>
+              <dt>Profile page</dt>
               <dd>
                 {snapshot.profile
-                  ? visibilityLabel(snapshot.profile.audience)
+                  ? snapshot.profile.publishedAt
+                    ? "Published and public"
+                    : "Private draft"
                   : "No profile"}
               </dd>
             </div>

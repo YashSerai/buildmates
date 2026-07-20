@@ -174,9 +174,9 @@ describe("Buildmates MCP contract", () => {
 
     const state = await invoke(services, "get_setup_state", {});
     expect(state).toMatchObject({ nextStep: "basic_profile" });
-    expect(state.guidance.nextAction).toContain("Google and other search engines");
-    expect(state.guidance.nextAction).toContain("anonymous aggregate bubble");
-    expect(state.guidance.nextAction).toContain("never precise or live location");
+    expect(state.guidance.nextAction).toContain("published profile is public, shareable");
+    expect(state.guidance.nextAction).toContain("anonymous aggregate Map bubble");
+    expect(state.guidance.nextAction).toContain("no precise or live location");
     expect(state.guidance.nextAction).toContain("not displayed");
   });
 
@@ -374,7 +374,7 @@ describe("Buildmates MCP contract", () => {
     await expect(invoke(services, "update_automation_checkpoint", { checkpointId: `${mode}-checkpoint`, cursor: null, state: "configured", lastOutcome: "Setup complete", enabled: true, cadence: "twice_weekly", sourceLivenessReviewed: true, nextRunAt: "2026-07-17T12:00:00.000Z", idempotencyKey: `${mode}-automation-01` })).resolves.toMatchObject({ result: { setup: { complete: true, completedCount: 10 } } });
     await invoke(services, "create_invite_link", { inviteId: `${mode}-invite`, kind: "builder", targetId: `${mode}-profile`, headline: "Find builders working on matching", expiresAt: "2026-08-01T00:00:00.000Z", maximumUses: 20, idempotencyKey: `${mode}-invite-01` });
     await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
-    await expect(invoke(services, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ audience: "public" }] });
+    await expect(invoke(services, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ profileId: `${mode}-profile`, allowMatching: true }] });
     await expect(invoke(services, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { state: "configured", kind: "buildmates" } });
   });
 
@@ -389,7 +389,7 @@ describe("Buildmates MCP contract", () => {
     const { services, links, repository } = fixture();
     links.set(SUBJECT_A, "user_alice");
     await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation", "source_selection", "context_collection", "signal_privacy_review"], updatedAt: "2026-07-15T12:00:00.000Z" }, now: "2026-07-15T12:00:00.000Z" });
-    const saved = await invoke(services, "update_profile_model", { profile: { ...validProfile("private-profile"), audience: "private", allowMatching: false } }) as { result: { id: string } };
+    const saved = await invoke(services, "update_profile_model", { profile: { ...validProfile("private-profile"), allowMatching: false } }) as { result: { id: string } };
     await expect(invoke(services, "complete_setup_step", { payload: { step: "basic_profile", profileId: saved.result.id, handle: "private_profile", approved: true }, idempotencyKey: "private-profile-step" })).resolves.toMatchObject({ result: { confirmationState: "completed" } });
   });
 });
@@ -399,7 +399,7 @@ function validSignal() {
 }
 
 function validProfile(profileId: string) {
-  return { profileId, handle: profileId.replaceAll("-", "_"), displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching", portfolioLinks: [], audience: "public", allowMatching: true, acceptanceMode: "manual", idempotencyKey: `${profileId}-key` };
+  return { profileId, handle: profileId.replaceAll("-", "_"), displayName: "Alice", builderSummary: "Builds useful collaboration tools", projectOrInterest: "Builder matching", portfolioLinks: [], allowMatching: true, acceptanceMode: "manual", idempotencyKey: `${profileId}-key` };
 }
 
 

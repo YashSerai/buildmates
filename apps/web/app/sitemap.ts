@@ -7,8 +7,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const { DB } = await getPlatformBindings();
     const [profiles, projects] = await Promise.all([
-      DB.prepare("SELECT handle.handle,profile.updated_at AS updatedAt FROM profiles profile JOIN handles handle ON handle.user_id=profile.user_id WHERE profile.published_at IS NOT NULL AND profile.audience='public' AND profile.indexable=1 ORDER BY profile.updated_at DESC LIMIT 5000").all<{ handle: string; updatedAt: number }>(),
-      DB.prepare("SELECT slug,updated_at AS updatedAt FROM projects WHERE status='active' AND audience='public' AND indexable=1 ORDER BY updated_at DESC LIMIT 5000").all<{ slug: string; updatedAt: number }>(),
+      DB.prepare("SELECT handle.handle,profile.updated_at AS updatedAt FROM profiles profile JOIN handles handle ON handle.user_id=profile.user_id WHERE profile.published_at IS NOT NULL AND profile.audience='public' ORDER BY profile.updated_at DESC LIMIT 5000").all<{ handle: string; updatedAt: number }>(),
+      DB.prepare("SELECT slug,updated_at AS updatedAt FROM projects WHERE status='active' AND audience='public' AND published_at IS NOT NULL ORDER BY updated_at DESC LIMIT 5000").all<{ slug: string; updatedAt: number }>(),
     ]);
     return [...staticEntries,
       ...profiles.results.map((row) => ({ url: `${base}/builders/${encodeURIComponent(row.handle)}`, lastModified: new Date(row.updatedAt), changeFrequency: "weekly" as const })),

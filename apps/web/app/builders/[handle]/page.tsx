@@ -224,7 +224,7 @@ export async function generateMetadata({
       title: "Builder not found",
       robots: { index: false, follow: false },
     };
-  const index = profile.audience === "public" && profile.indexable;
+  const index = profile.audience === "public" && Boolean(profile.publishedAt);
   const title = `${profile.displayName} on Buildmates`;
   const description = String(profile.summary);
   const canonical = `/builders/${encodeURIComponent(profile.handle)}`;

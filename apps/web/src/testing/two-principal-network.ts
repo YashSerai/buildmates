@@ -112,9 +112,9 @@ function upsertProfile(
   return DB.prepare(`INSERT INTO profiles(
     id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,
     allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at
-  ) VALUES(?,?,?,?,?,'[]','suggested_connections',1,'manual',0,?,?,?)
+  ) VALUES(?,?,?,?,?,'[]','public',1,'manual',1,?,?,?)
   ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,
-    project_or_interest=excluded.project_or_interest,audience='suggested_connections',allow_matching=1,
+    project_or_interest=excluded.project_or_interest,audience='public',indexable=1,allow_matching=1,
     acceptance_mode='manual',published_at=excluded.published_at,updated_at=excluded.updated_at`)
     .bind(
       profileId,

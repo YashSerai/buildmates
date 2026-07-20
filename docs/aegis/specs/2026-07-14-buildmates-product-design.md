@@ -143,7 +143,7 @@ Codex proposes a structured profile from approved Work Signals and direct user a
 - social links;
 - per-field privacy.
 
-The canonical audience choices are Public, signed-in members, suggested connections, mutual connections, and Private. Cohort-only is an optional audience constraint, and `allow_matching` is a separate switch. The conversational shortcuts map to those controls:
+Profile drafts are private. Approving and publishing a generated profile makes its canonical page public, shareable, and search-engine indexable. Individual fields may still use Public, signed-in members, suggested connections, mutual connections, or Private, and `allow_matching` remains a separate switch. The conversational shortcuts map to those field-level controls:
 
 - Show on profile.
 - Use privately for matching.
@@ -208,7 +208,7 @@ Invite links never pre-authorize profile visibility, matching, or a connection.
 
 Invites use expiry, revocation, per-sender and per-cohort quotas, repeated-recipient suppression, recipient blocks, abuse reporting, and rate limits. Invite and share-card payloads contain only data already authorized for the recipient or public audience and never include private matching evidence.
 
-Owners control whether each public profile or project is search-engine indexable. Canonical URLs, robots directives, structured metadata, and social previews are generated only from public fields. Private/restricted links use non-indexable metadata and neutral unfurls. Owners can revoke a share card or invite without changing the canonical profile/project URL.
+Every public profile and public project is search-engine indexable by default; there is no separate indexing control. Canonical URLs, robots directives, structured metadata, and social previews are generated only from public fields. Drafts and restricted projects remain non-indexable and use neutral unfurls. Owners can revoke a share card or invite without changing the canonical profile/project URL.
 
 Cohorts are deferred from the current product and navigation. Existing cohort domain tables and authorization code remain dormant for a possible later community release; no day-one flow depends on cohort creation, discovery, invitations, filtering, or audience expansion. Circles remain the active member-created group model.
 
@@ -427,9 +427,9 @@ Buildmates separates immediate product events from scheduled intelligence. Invit
 
 - A “What Buildmates knows about me” page lists all server-held profile fields, Work Signals, permissions, evaluations safe for the owner, rooms, Circles, and automation state.
 - Users can change visibility, revoke a source, disconnect all Codex syncing, delete a signal or project, pause matching, disable Full Autopilot, block another user, leave a room, report abuse, export data, or delete the account.
-- Profile fields and projects use the canonical audience enum: public, signed-in members, suggested connections, mutual connections, or private. Work Signals are restricted to suggested connections, mutual connections, or private and can never enter public search, graph data, metadata, or public pages. `allow_matching` remains independent.
-- Location defaults to coarse city/region or timezone and is opt-in.
-- Map aggregates require at least five opted-in builders per displayed city and suppress exact activity timestamps for sparse regions. Individual city display on a profile is a separate consent from aggregate-map participation. The map exposes city-center coordinates and aggregate counts only, never individual coordinates or a city roster.
+- Published profile pages are public and indexable. Profile fields and projects use the canonical audience enum: public, signed-in members, suggested connections, mutual connections, or private. Work Signals are restricted to suggested connections, mutual connections, or private and can never enter public search, graph data, metadata, or public pages. `allow_matching` remains independent and defaults on until the user pauses it.
+- Location, when deliberately supplied or approved, is coarse city/region or timezone only. Codex may include an approved city naturally in the public profile composition; it is not governed by a separate city-display permission.
+- Anonymous Map and Build Graph contributions are on by default for approved coarse cities and canonical public/profile topics, with an unobtrusive opt-out in privacy settings. The map exposes city-center coordinates and aggregate counts only, never individual coordinates, precise or live location, or a city roster. Work Signals never contribute to public aggregates.
 - Sensitive traits are not inferred for matching.
 - Private match reasoning is not shown to the candidate.
 - Blocks apply before candidate retrieval and prevent new shared spaces.

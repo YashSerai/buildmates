@@ -15,7 +15,6 @@ type InitialProject = {
   status: string;
   audience: string;
   allowMatching: boolean;
-  indexable: boolean;
   links: { label: string; url: string }[];
   taxonomy: TaxonomyItem[];
 };
@@ -57,7 +56,6 @@ export function ProjectEditor({
       status: String(formData.get("status")),
       audience: String(formData.get("audience")),
       allowMatching: Boolean(formData.get("allowMatching")),
-      indexable: Boolean(formData.get("indexable")),
       links: String(formData.get("links") ?? "")
         .split("\n")
         .map((line) => line.trim())
@@ -175,14 +173,6 @@ export function ProjectEditor({
           defaultChecked={initial?.allowMatching}
         />
         Use this project for matching
-      </label>
-      <label className={styles.check}>
-        <input
-          type="checkbox"
-          name="indexable"
-          defaultChecked={initial?.indexable}
-        />
-        Allow search engine indexing when public
       </label>
       <div className={styles.formActions}>
         <button disabled={busy}>{busy ? "Saving..." : "Save project"}</button>

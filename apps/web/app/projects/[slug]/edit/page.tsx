@@ -21,7 +21,7 @@ export default async function EditProjectPage({
     getPlatformBindings(),
   ]);
   const project = await DB.prepare(
-    "SELECT id,title,summary,stage,status,audience,allow_matching AS allowMatching,indexable FROM projects WHERE slug=? AND owner_user_id=? AND status<>'deleted'",
+    "SELECT id,title,summary,stage,status,audience,allow_matching AS allowMatching FROM projects WHERE slug=? AND owner_user_id=? AND status<>'deleted'",
   )
     .bind(normalizeSlug(slug), user.id)
     .first<{
@@ -32,7 +32,6 @@ export default async function EditProjectPage({
       status: string;
       audience: string;
       allowMatching: number;
-      indexable: number;
     }>();
 
   if (!project) {
@@ -64,7 +63,6 @@ export default async function EditProjectPage({
           initial={{
             ...project,
             allowMatching: Boolean(project.allowMatching),
-            indexable: Boolean(project.indexable),
             links: links.results,
             taxonomy: taxonomy.results,
           }}

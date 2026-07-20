@@ -5,7 +5,6 @@ import type {
   SourcePolicy,
   AcceptanceMode as Mode,
   AutomationCadence as Cadence,
-  Audience,
 } from "@/src/platform/onboarding-data";
 import { SetupProgress } from "@/components/onboarding/SetupProgress";
 import {
@@ -485,7 +484,6 @@ function ProfileStep({
     displayName: profile?.displayName ?? defaultDisplayName,
     summary: profile?.summary ?? "",
     projectOrInterest: profile?.projectOrInterest ?? "",
-    audience: profile?.audience ?? "private",
     allowMatching: profile?.allowMatching ?? true,
   });
   return (
@@ -532,20 +530,6 @@ function ProfileStep({
               setForm({ ...form, projectOrInterest: event.target.value })
             }
           />
-        </label>
-        <label>
-          Profile visibility
-          <select
-            value={form.audience}
-            onChange={(event) =>
-              setForm({ ...form, audience: event.target.value as Audience })
-            }
-          >
-            <option value="private">Private</option>
-            <option value="suggested_connections">Suggested connections</option>
-            <option value="signed_in">Signed-in builders</option>
-            <option value="public">Public</option>
-          </select>
         </label>
         <label className={styles.checkLabel}>
           <input

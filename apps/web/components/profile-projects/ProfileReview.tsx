@@ -34,11 +34,9 @@ export function ProfileReview({
   initial?: {
     displayName: string;
     summary: string;
-    audience: string;
     acceptanceMode: string;
     coarseLocation: string;
     allowMatching: boolean;
-    indexable: boolean;
     locationMapOptIn: boolean;
     fields: Array<{ key: string; value: unknown; audience: string }>;
     statistics: Array<{ label: string; value: string }>;
@@ -74,8 +72,6 @@ export function ProfileReview({
       handle,
       displayName: String(formData.get("displayName")),
       summary: String(formData.get("summary")),
-      audience: String(formData.get("audience")),
-      indexable: Boolean(formData.get("indexable")),
       allowMatching: Boolean(formData.get("allowMatching")),
       acceptanceMode: String(formData.get("acceptanceMode")),
       coarseLocation: String(formData.get("coarseLocation") ?? ""),
@@ -170,12 +166,6 @@ export function ProfileReview({
           </select>
         </label>
         <Select
-          name="audience"
-          label="Profile visibility"
-          values={audiences}
-          defaultValue={initial?.audience}
-        />
-        <Select
           name="acceptanceMode"
           label="Introduction approval"
           values={["manual", "full_autopilot"]}
@@ -233,18 +223,10 @@ export function ProfileReview({
       <label className={styles.check}>
         <input
           type="checkbox"
-          name="indexable"
-          defaultChecked={initial?.indexable}
-        />
-        Let Google and other search engines show my public profile
-      </label>
-      <label className={styles.check}>
-        <input
-          type="checkbox"
           name="locationMapOptIn"
           defaultChecked={initial?.coarseLocation ? initial.locationMapOptIn : true}
         />
-        Show my city in the anonymous community map
+        Include this city in anonymous Map totals
       </label>
       <p className={styles.hint}>On by default when you add a city. Buildmates never uses your precise or live location, and the map never identifies you.</p>
       <button disabled={busy}>

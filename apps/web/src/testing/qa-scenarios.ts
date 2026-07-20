@@ -172,7 +172,7 @@ function qaIds(viewerUserId: string) {
 async function ensureViewer(DB: D1Database, viewerUserId: string, ids: QaIds, now: number) {
   const taxonomy = await activeTaxonomy(DB);
   await DB.batch([
-    DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES(?,?,?,?,?,'[]','suggested_connections',1,'manual',0,?,?,?) ON CONFLICT(user_id) DO UPDATE SET allow_matching=1,updated_at=excluded.updated_at")
+    DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES(?,?,?,?,?,'[]','public',1,'manual',1,?,?,?) ON CONFLICT(user_id) DO UPDATE SET audience='public',indexable=1,allow_matching=1,updated_at=excluded.updated_at")
       .bind(`${ids.prefix}viewer_profile`, viewerUserId, "QA Builder", "Building privacy-aware collaboration tools.", "Testing Buildmates end to end.", now - 86_400_000, now - 86_400_000, now),
     matchIndex(DB, viewerUserId, taxonomy.id, '["ai","mcp","retrieval"]', now),
   ]);
@@ -336,7 +336,7 @@ async function activeTaxonomy(DB: D1Database) {
 async function upsertCandidate(DB: D1Database, userId: string, profileId: string, handle: string, name: string, summary: string, topics: string, taxonomyId: string, now: number) {
   await DB.batch([
     DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES(?,'active','none',?,?) ON CONFLICT(id) DO UPDATE SET status='active',updated_at=excluded.updated_at,deleted_at=NULL").bind(userId, now - 86_400_000, now),
-    DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES(?,?,?,?,?,'[]','suggested_connections',1,'manual',0,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,allow_matching=1,published_at=excluded.published_at,updated_at=excluded.updated_at")
+    DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES(?,?,?,?,?,'[]','public',1,'manual',1,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,audience='public',indexable=1,allow_matching=1,published_at=excluded.published_at,updated_at=excluded.updated_at")
       .bind(profileId, userId, name, summary, summary, now - 86_400_000, now - 86_400_000, now),
     DB.prepare("INSERT INTO handles(user_id,handle,normalized_handle,created_at) VALUES(?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET handle=excluded.handle,normalized_handle=excluded.normalized_handle").bind(userId, handle, handle.toLowerCase(), now),
     matchIndex(DB, userId, taxonomyId, topics, now),
