@@ -87,6 +87,16 @@ export async function seedPopulatedNetwork(
     upsertHandle(DB, viewerUserId, viewerHandle, publishedAt),
     upsertHandle(DB, pendingUserId, pendingHandle, publishedAt),
     upsertHandle(DB, connectedUserId, connectedHandle, publishedAt),
+    DB.prepare(
+      "INSERT INTO profile_fields(profile_id,field_key,value_json,audience,allow_matching,source_status,provenance,updated_at) VALUES(?, 'current_work', ?, 'public', 1, 'confirmed', 'self_reported', ?) ON CONFLICT(profile_id,field_key) DO UPDATE SET value_json=excluded.value_json,audience='public',updated_at=excluded.updated_at",
+    ).bind(viewerProfileId, JSON.stringify("Testing matching, introductions, shared rooms, and long-term connection flows."), now),
+    DB.prepare(
+      "INSERT INTO profile_fields(profile_id,field_key,value_json,audience,allow_matching,source_status,provenance,updated_at) VALUES(?, 'projects', ?, 'public', 1, 'confirmed', 'codex_summary', ?) ON CONFLICT(profile_id,field_key) DO UPDATE SET value_json=excluded.value_json,audience='public',updated_at=excluded.updated_at",
+    ).bind(viewerProfileId, JSON.stringify([
+      { id: "qa-matching", title: "Match quality harness", summary: "A deterministic fixture for strong, adjacent, weak, excluded, and duplicate candidates." },
+      { id: "qa-relationships", title: "Relationship journey", summary: "A complete introduction, connection, room, messaging, feedback, and Circle test path." },
+      { id: "qa-surfaces", title: "Custom surface checks", summary: "Responsive profile, room, and Circle designs tested with governed publication." },
+    ]), now),
     upsertMatchIndex(DB, viewerUserId, taxonomy.id, now),
     upsertMatchIndex(DB, pendingUserId, taxonomy.id, now),
     upsertMatchIndex(DB, connectedUserId, taxonomy.id, now),

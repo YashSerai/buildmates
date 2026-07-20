@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { getProfileByHandle, getProjectBySlug } from "../../apps/web/src/profile-projects/service";
+import { getProfileByHandle, getProjectBySlug, saveProfile } from "../../apps/web/src/profile-projects/service";
 
 it("exports a server-owned profile projection boundary", async () => {
   const service =
@@ -99,6 +99,24 @@ describe("profile field audience projection", () => {
     expect((await getProjectBySlug(db,"private-draft","owner"))?.title).toBe("Draft");
     await db.prepare("UPDATE projects SET status='active' WHERE id='draft-project'").run();
     expect((await getProjectBySlug(db,"private-draft",null))?.title).toBe("Draft");
+  });
+  it("preserves the Codex-authored project draft when structured details are edited", async () => {
+    const now = Date.now();
+    const projects = [{ id: "project-buildmates", title: "Buildmates", summary: "A builder network." }];
+    await db.prepare("INSERT INTO profile_fields(profile_id,field_key,value_json,audience,allow_matching,source_status,provenance,updated_at)VALUES('profile-owner','projects',?,'public',1,'confirmed','codex_summary',?)")
+      .bind(JSON.stringify(projects), now).run();
+    await saveProfile(db, "owner", {
+      handle: "owner",
+      displayName: "Owner",
+      summary: "An updated public summary",
+      audience: "public",
+      indexable: true,
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [{ key: "current_work", value: "Updated work", audience: "public" }],
+    });
+    const projectField = await db.prepare("SELECT value_json AS valueJson FROM profile_fields WHERE profile_id='profile-owner' AND field_key='projects'").first<{ valueJson: string }>();
+    expect(JSON.parse(projectField?.valueJson ?? "[]")).toEqual(projects);
   });
   it("shares private updates only with the owner and accepted collaborators", async () => {
     const now=Date.now();

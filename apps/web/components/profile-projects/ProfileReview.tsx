@@ -113,16 +113,16 @@ export function ProfileReview({
       setBusy(false);
       return;
     }
-    router.push(`/builders/${data.handle}`);
+    router.push("/profile/design");
   }
   return (
     <form action={submit} className={styles.form}>
       <header>
-        <p className={styles.eyebrow}>Profile review</p>
-        <h1>Choose what other builders can know.</h1>
+        <p className={styles.eyebrow}>Profile details</p>
+        <h1>Choose what Codex can use in your page.</h1>
         <p>
-          Your profile starts structured so privacy, matching, and generated
-          designs stay reliable. You can revise it with Codex later.
+          These approved details power matching and your custom profile. After
+          you save them, Codex can design a private page for you to review.
         </p>
       </header>
       {error && (
@@ -248,7 +248,7 @@ export function ProfileReview({
       </label>
       <p className={styles.hint}>On by default when you add a city. Buildmates never uses your precise or live location, and the map never identifies you.</p>
       <button disabled={busy}>
-        {busy ? "Saving..." : "Save and view profile"}
+        {busy ? "Saving..." : "Save and continue to design"}
       </button>
     </form>
   );

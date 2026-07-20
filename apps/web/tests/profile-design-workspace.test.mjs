@@ -39,7 +39,7 @@ test("profile design workspace distinguishes private previews from published ver
 test("profile design workspace keeps actions and history usable on phones", async () => {
   const styles = await readFile(stylesUrl, "utf8");
 
-  assert.match(styles, /@media \(max-width: 640px\)/);
+  assert.match(styles, /@media \(max-width: 760px\)/);
   assert.match(styles, /\.designWorkspaceHeader\s*\{\s*grid-template-columns:\s*1fr;/s);
   assert.match(styles, /\.currentDesignActions button\s*\{\s*width:\s*100%;/s);
   assert.match(styles, /\.designHistory > li\s*\{\s*padding-block:\s*\.85rem;/s);

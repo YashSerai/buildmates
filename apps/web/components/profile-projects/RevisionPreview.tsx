@@ -81,7 +81,7 @@ export function RevisionPreview() {
   }
 
   const designPrompt = data
-    ? `Redesign my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. Create a private preview for me to review. Do not publish without my explicit approval.`
+    ? `Redesign my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. Choose a coherent art direction from my approved profile and references, then create a private preview for me to review. Before showing it, render the complete page at desktop and phone widths and repair spacing, overflow, clipping, contrast, legibility, and broken responsive behavior. Do not publish without my explicit approval.`
     : "";
   async function copyDesignPrompt() {
     try {
@@ -111,6 +111,10 @@ export function RevisionPreview() {
               Ask Codex to turn your approved profile into a page with its own
               layout, typography, color, and rhythm. You review every version
               before it goes live.
+            </p>
+            <p className={styles.designQualityNote}>
+              Codex checks the complete page on desktop and phone before you
+              see it. Your feedback can stay focused on taste and direction.
             </p>
           </div>
           {data ? (

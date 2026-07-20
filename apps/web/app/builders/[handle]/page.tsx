@@ -164,7 +164,7 @@ export default async function BuilderPage({
     networking_intent: "Interested in meeting",
     cohorts: "Communities",
   };
-  const facts = profile.fields.map((field) => ({
+  const facts = profile.fields.filter((field) => field.key !== "projects").map((field) => ({
     label: factLabels[String(field.key)] ?? String(field.key).replaceAll("_", " "),
     value: Array.isArray(field.value)
       ? field.value.join(", ")
@@ -224,8 +224,26 @@ export default async function BuilderPage({
   return (
     <main className={styles.profileShell}>
       <ProductHeader signedIn={Boolean(profile.viewerId)} />
-      {trustedActions}
       <div className={styles.page}>
+        <aside className={styles.inlineProfileActions} aria-label="Profile actions">
+          <div className={styles.publicProfileActionGroup}>
+            <ShareButton
+              label="Share profile"
+              title={`${profile.displayName} on Buildmates`}
+            />
+            {profile.viewerId && !ownProfile ? (
+              <FollowButton targetKind="profile" targetId={profile.userId} label="Follow builder" />
+            ) : null}
+            {!profile.viewerId ? <Link href="/onboarding">Join Buildmates to follow</Link> : null}
+          </div>
+          {ownProfile ? (
+            <div className={styles.draftProfileReminder}>
+              <span>Your custom page is not published yet.</span>
+              <Link href="/profile/design">Design with Codex</Link>
+              <Link href="/profile/edit">Edit details</Link>
+            </div>
+          ) : null}
+        </aside>
         <header className={styles.profileHeader}>
           <p className={styles.kicker}>@{profile.handle}</p>
           <h1>{String(profile.displayName)}</h1>
@@ -266,18 +284,18 @@ export default async function BuilderPage({
         )}
         <section aria-labelledby="projects">
           <h2 id="projects">Projects</h2>
-          {profile.projects.length ? (
+          {profile.surfaceProjects.length ? (
             <div className={styles.cards}>
-              {profile.projects.map((project) => (
-                <Link
-                  className={styles.card}
-                  key={String(project.id)}
-                  href={`/projects/${project.slug}`}
-                >
-                  <p className={styles.kicker}>{String(project.stage)}</p>
-                  <h3>{String(project.title)}</h3>
-                  <p>{String(project.summary)}</p>
+              {profile.surfaceProjects.map((project) => project.href ? (
+                <Link className={styles.card} key={project.id} href={project.href}>
+                  <h3>{project.title}</h3>
+                  <p>{project.summary}</p>
                 </Link>
+              ) : (
+                <article className={styles.card} key={project.id}>
+                  <h3>{project.title}</h3>
+                  <p>{project.summary}</p>
+                </article>
               ))}
             </div>
           ) : (

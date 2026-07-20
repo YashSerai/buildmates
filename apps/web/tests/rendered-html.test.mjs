@@ -36,6 +36,7 @@ test("ships product metadata and removes the starter preview", async () => {
     readFile(new URL("../package.json", import.meta.url), "utf8"),
   ]);
   assert.match(page, /find your people/i);
+  assert.match(page, /if \(await getCurrentUser\(\)\) redirect\("\/home"\)/);
   assert.match(layout, /title: \{ default: "Buildmates"/);
   assert.match(layout, /summary_large_image/);
   assert.match(layout, /export const viewport: Viewport/);
@@ -106,8 +107,12 @@ test("public builder pages are canonical surfaces and keep design controls priva
   assert.doesNotMatch(designWorkspace, /Design \{revision\.revisionNumber\}/);
   assert.equal(designWorkspace.includes(String.fromCharCode(0xe2, 0x20ac, 0xa6)), false);
   assert.equal(designWorkspace.includes(String.fromCharCode(0xc2, 0xb7)), false);
-  assert.match(profile, /redirect\(`\/builders\/\$\{encodeURIComponent\(profile\.handle\)\}`\)/);
-  assert.match(profileReview, /router\.push\(`\/builders\/\$\{data\.handle\}`\)/);
+  assert.match(profile, /profile\?\.handle && profile\.publishedRevisionId/);
+  assert.match(profile, /if \(profile\?\.handle\) redirect\("\/profile\/design"\)/);
+  assert.match(profileReview, /router\.push\("\/profile\/design"\)/);
+  assert.match(profileReview, /Save and continue to design/);
+  assert.match(builder, /profile\.fields\.filter\(\(field\) => field\.key !== "projects"\)/);
+  assert.match(builder, /profile\.surfaceProjects\.map/);
   assert.match(nextConfig, /async redirects\(\)/);
   assert.match(nextConfig, /source: "\/@:handle", destination: "\/builders\/:handle", permanent: true/);
   assert.doesNotMatch(nextConfig, /async rewrites\(\)/);

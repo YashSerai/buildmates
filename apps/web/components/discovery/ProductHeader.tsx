@@ -25,7 +25,7 @@ export function ProductHeader({ signedIn = false }: { signedIn?: boolean }) {
       className={`${styles.header} ${signedIn ? polish.signedInHeader : ""}`}
       data-auth={signedIn ? "signed-in" : "signed-out"}
     >
-      <Link className={styles.wordmark} href="/" aria-label="Buildmates home">
+      <Link className={styles.wordmark} href={signedIn ? "/home" : "/"} aria-label="Buildmates home">
         <span aria-hidden="true">
           <i />
           <i />

@@ -61,6 +61,11 @@
   margin: 0;
   font-size: clamp(1rem, 1.6vw, 1.16rem);
 }
+.designQualityNote {
+  margin-top: .75rem !important;
+  color: #3f5145 !important;
+  font-size: .9rem !important;
+}
 .designWorkspaceActions {
   display: flex;
   flex-wrap: wrap;
@@ -283,6 +288,16 @@
   padding: 0.8rem;
   color: #191918;
   font: inherit;
+  line-height: 1.45;
+}
+.form textarea {
+  min-height: 6.75rem;
+  resize: vertical;
+}
+.form select {
+  min-height: 48px;
+  height: auto;
+  padding-right: 2.25rem;
 }
 .form input:focus,
 .form textarea:focus,
@@ -299,9 +314,15 @@
 }
 .fieldRow {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 210px;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, .55fr);
   gap: 1rem;
   margin-bottom: 1rem;
+  align-items: start;
+}
+.fieldRow > label {
+  min-width: 0;
+  align-content: start;
+  grid-template-rows: auto auto;
 }
 .check {
   display: flex !important;
@@ -357,7 +378,7 @@
   padding: 0.8rem;
   color: #7b2119 !important;
 }
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .grid,
   .fieldRow {
     grid-template-columns: 1fr;

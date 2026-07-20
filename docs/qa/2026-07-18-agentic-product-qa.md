@@ -363,3 +363,13 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Exact desktop proof: at `1440x1000`, the facts rail is 3533px and the callout is content-sized at 975px. Both begin at the same vertical position, with no horizontal overflow or clipping.
 - Exact phone proof: at `390x844`, all eight approved projects resolve, facts and callout stack cleanly, no fallback copy appears, no required content is opacity-hidden, focus is visible, reduced-motion CSS is present, and browser errors/warnings are empty.
 - Browser cleanup: the QA viewport was reset and the browser session finalized. The only remaining profile gate is the founder's subjective design decision.
+
+### 2026-07-20 - signed-in landing and profile-flow repair
+
+- Landing boundary: Pass locally. An authenticated request to `/` redirects to `/home`, the signed-in header contains no Sign in action, and the wordmark targets `/home`. Anonymous server rendering still returns the public landing.
+- Profile flow: Pass locally. Saving reviewed details opens `/profile/design`; `/profile` also opens the private design workspace until a custom revision is published. After publication, `/profile` and the shared canonical URL resolve to `/builders/{handle}`.
+- Data continuity: Pass. The website editor no longer deletes the Codex-authored `projects` field. A focused D1 regression preserves the full structured project array after an ordinary details edit.
+- Fallback profile: Pass at desktop and phone sizes. Approved project drafts render as cards, the projects object is not repeated as a Current context blob, an odd context item does not leave a blank tile, and the owner gets a compact design/edit reminder inside the page rather than a second global navigation bar.
+- Editor UI: Pass at desktop and phone sizes. Select labels are fully visible, textareas remain legible and resizable, privacy controls reflow before they become cramped, and all tested pages have no horizontal overflow. Evidence: `docs/qa/evidence/2026-07-20/profile-flow/`.
+- Verification: web typecheck passes; focused profile-visibility integration passes 6/6; rendered web checks pass 16/16; profile-flow Playwright passes 10/10 across Chromium desktop and Pixel 7.
+- Visualization boundary: production Map/Build Graph fixture remains untouched. Map styling is accepted; the Connections-formed aggregate still needs explicit fixture validation. Build Graph iteration remains pending.

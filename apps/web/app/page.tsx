@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import {
   ProductFooter,
   ProductHeader,
 } from "../components/discovery/ProductHeader";
 import { CodexHandoff } from "../components/discovery/CodexHandoff";
+import { getCurrentUser } from "../src/auth/require-user";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -12,7 +14,8 @@ export const metadata: Metadata = {
   description: "Meet builders through what you are working on now.",
 };
 
-export default function Home() {
+export default async function Home() {
+  if (await getCurrentUser()) redirect("/home");
   return (
     <main className={styles.page}>
       <ProductHeader signedIn={false} />

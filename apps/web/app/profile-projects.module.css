@@ -51,6 +51,36 @@
   background: rgb(247 248 242 / 96%);
   border-bottom: 1px solid rgb(30 32 29 / 16%);
 }
+.inlineProfileActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem 1.5rem;
+  max-width: 1050px;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid #c9c4b8;
+}
+.inlineProfileActions a,
+.inlineProfileActions button {
+  min-height: 44px;
+}
+.draftProfileReminder {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem 1rem;
+  color: #4a5148;
+  font-size: .86rem;
+}
+.draftProfileReminder span { font-weight: 750; color: #1e201d; }
+.draftProfileReminder a {
+  display: inline-flex;
+  align-items: center;
+  color: #274c39;
+  font-weight: 700;
+  text-underline-offset: 4px;
+}
 .publicProfileActionGroup {
   display: flex;
   flex-wrap: wrap;
@@ -156,6 +186,9 @@
   background: #edf2ec;
   padding: 1.25rem;
 }
+.facts > div:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
 .facts dt {
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -244,6 +277,9 @@
   }
   .facts {
     grid-template-columns: 1fr;
+  }
+  .facts > div:last-child:nth-child(odd) {
+    grid-column: auto;
   }
   .page section {
     padding: 2.5rem 0;
