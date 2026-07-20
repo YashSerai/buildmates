@@ -32,6 +32,9 @@ test("profile design workspace distinguishes private previews from published ver
   assert.match(component, /Publishing replaces the page people see at your public profile link\./);
   assert.match(component, /const label = published\s*\? "Published"/);
   assert.match(component, /You review every version\s+before it goes live\./);
+  assert.match(component, /otherwise use Hallmark/);
+  assert.match(component, /first direction/);
+  assert.match(component, /complete rethink/);
   assert.doesNotMatch(component, /cannot expose private fields/);
   assert.doesNotMatch(component, /replace Buildmates privacy/);
 });

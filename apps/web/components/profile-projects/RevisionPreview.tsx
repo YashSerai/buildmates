@@ -82,7 +82,7 @@ export function RevisionPreview() {
   }
 
   const designPrompt = data
-    ? `Redesign my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. Choose a coherent art direction from my approved profile and references, then create a private preview for me to review. Before showing it, render the complete page at desktop and phone widths and repair spacing, overflow, clipping, contrast, legibility, and broken responsive behavior. Do not publish without my explicit approval.`
+    ? `Redesign my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. Use my preferred local design skill if I have named one; otherwise use Hallmark. Privately study person-specific references, tell me the direction you are leaning toward and why, then create a private preview. Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a first direction and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
     : "";
   async function copyDesignPrompt() {
     try {
@@ -115,7 +115,8 @@ export function RevisionPreview() {
             </p>
             <p className={styles.designQualityNote}>
               Codex checks the complete page on desktop and phone before you
-              see it. Your feedback can stay focused on taste and direction.
+              see it. The first direction is yours to shape: keep what feels
+              right, change what does not, or ask for a complete rethink.
             </p>
           </div>
           {data ? (
@@ -169,7 +170,7 @@ export function RevisionPreview() {
                 </div>
               ) : (
                 <div className={styles.emptyPreview}>
-                  <p>Tell Codex how the page should feel. It will build a private version here for you to review.</p>
+                  <p>Codex will propose a direction from your approved profile, then build a private version here. You can refine it conversationally until it feels right.</p>
                 </div>
               )}
 
