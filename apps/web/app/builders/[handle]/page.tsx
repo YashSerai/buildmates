@@ -64,9 +64,9 @@ async function load(handle: string) {
   const currentWorkProjects =
     approvedDraftProjects.length || publicProjects.results.length
       ? []
-      : publicFields.results.flatMap((field) =>
+      : profile.fields.flatMap((field) =>
           field.key === "current_work"
-            ? currentWorkProjectsValue(field.valueJson)
+            ? currentWorkProjectsValue(JSON.stringify(field.value))
             : [],
         );
   const surfaceProjects = dedupeProjects([
