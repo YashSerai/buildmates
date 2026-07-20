@@ -13,7 +13,7 @@ export default async function ProfileEditPage() {
   const profile = handle ? await getProfileByHandle(DB, handle.handle, user.id) : null;
 
   return <><ProductHeader signedIn/><main className={styles.profileShell}>
-    <div className={styles.profileActions}><Link href={handle ? `/builders/${handle.handle}` : "/home"}>Back to profile</Link><Link href="/profile/design">Design with Codex</Link></div>
+    <div className={styles.profileActions}><Link href={handle ? `/builders/${handle.handle}` : "/home"}>Back to profile</Link><Link href="/profile/design">Edit design</Link></div>
     <ProfileReview
       defaultHandle={handle?.handle ?? ""}
       initial={profile ? {

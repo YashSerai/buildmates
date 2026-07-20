@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import type { SurfaceBindings } from "@buildmates/surfaces";
 import { SurfaceRenderer } from "@/components/surfaces/SurfaceRenderer";
 import { userFacingError } from "@/src/client/user-facing-error";
@@ -119,6 +120,9 @@ export function RevisionPreview() {
           </div>
           {data ? (
             <div className={styles.designWorkspaceActions} aria-label="Profile design actions">
+              <Link className={styles.quietAction} href="/profile/edit">
+                Edit profile details
+              </Link>
               <a
                 className={styles.primaryAction}
                 href={`codex://open?prompt=${encodeURIComponent(designPrompt)}`}

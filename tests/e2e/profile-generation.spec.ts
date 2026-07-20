@@ -34,6 +34,7 @@ test("profile editing continues into the private custom-design workspace", async
   expect(response.ok(), await response.text()).toBe(true);
   await expect(page).toHaveURL(/\/profile\/design$/, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Make your page feel like you." })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit profile details" })).toHaveAttribute("href", "/profile/edit");
   await expect(page.getByText("Codex checks the complete page on desktop and phone before you see it.")).toBeVisible();
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
@@ -58,6 +59,7 @@ test("the canonical builder fallback shows approved project drafts without an em
   await expect(page.getByRole("heading", { name: "Match quality harness" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Relationship journey" })).toBeVisible();
   await expect(page.getByText("No visible projects yet.")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Edit design" })).toHaveAttribute("href", "/profile/design");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   await page.screenshot({ path: path.join(evidenceRoot, `${test.info().project.name}-builder-fallback.png`), fullPage: true });

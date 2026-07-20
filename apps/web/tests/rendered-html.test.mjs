@@ -69,6 +69,7 @@ test("privacy and error copy stay aligned with the product boundaries", async ()
   assert.doesNotMatch(errors, /return value/);
   assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);
   assert.match(profileDesign, /Design with Codex/);
+  assert.match(profileDesign, /Edit profile details/);
   assert.match(onboarding, /Recommended: Tuesdays and Fridays/);
   assert.match(onboarding, /Save Work Pulse preferences/);
   assert.doesNotMatch(onboarding, /Topic to watch/);
@@ -87,6 +88,7 @@ test("public builder pages are canonical surfaces and keep design controls priva
   ]);
   assert.match(builder, /const canonical = `\/builders\/\$\{encodeURIComponent\(profile\.handle\)\}`/);
   assert.match(builder, /This is your published profile\./);
+  assert.match(builder, /Edit design/);
   assert.match(builder, /Tell Codex what to change/);
   assert.match(builder, /className=\{styles\.publishedSurface\}/);
   assert.match(builder, /const ownPublishedProfile = ownProfile && Boolean\(profile\.publishedSpec\)/);

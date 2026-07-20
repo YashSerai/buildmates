@@ -294,7 +294,7 @@ export default async function BuilderPage({
             Want a new direction? Tell Codex what to change, then review it
             before publishing.
           </span>
-          <Link href="/profile/design">Redesign with Codex</Link>
+          <Link href="/profile/design">Edit design</Link>
           <Link href="/profile/edit">Edit details</Link>
         </div>
       ) : null}
@@ -344,7 +344,7 @@ export default async function BuilderPage({
           {ownProfile ? (
             <div className={styles.draftProfileReminder}>
               <span>Your custom page is not published yet.</span>
-              <Link href="/profile/design">Design with Codex</Link>
+              <Link href="/profile/design">Edit design</Link>
               <Link href="/profile/edit">Edit details</Link>
             </div>
           ) : null}
