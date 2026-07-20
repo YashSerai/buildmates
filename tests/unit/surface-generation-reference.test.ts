@@ -28,7 +28,7 @@ describe("Surface generation reference", () => {
     }
   });
 
-  it("provides a representative customized profile that validates on the first attempt", () => {
+  it("provides neutral syntax recovery without prescribing project chapters or decorative artifacts", () => {
     const spec = customizedProfileSurfaceExample({
       starterSpec: EDITORIAL_RESEARCH_PROFILE,
       authorizedBindingTypes: {
@@ -41,20 +41,14 @@ describe("Surface generation reference", () => {
     expect(spec).not.toBeNull();
     expect(safeParseSurfaceSpec(spec, designPolicy.version, { forRevisionCreation: true }).success).toBe(true);
     const types = collectTypes(spec!.root);
-    expect(types).toEqual(expect.arrayContaining(["split", "frame", "project-list", "project-artifact", "fact-list"]));
-    expect(types.filter((type) => type === "section").length).toBeGreaterThanOrEqual(3);
-    expect(types.length).toBeGreaterThanOrEqual(16);
-    expect(collectProjectIndexes(spec!.root, "featured-project")).toEqual([0, 1, 2]);
-    expect(collectProjectIndexes(spec!.root, "project-artifact")).toEqual(expect.arrayContaining([0, 1, 2]));
-    expect(spec!.title).toBe("Customized builder profile");
+    expect(types).toEqual(expect.arrayContaining(["section", "stack", "heading", "text", "project-list"]));
+    expect(types).not.toContain("project-artifact");
+    expect(types).not.toContain("featured-project");
+    expect(types.filter((type) => type === "project-list")).toHaveLength(1);
+    expect(spec!.title).toBe("Valid profile surface example");
   });
 });
 
 function collectTypes(root: SurfaceNodeV2): string[] {
   return [root.type, ...("children" in root ? root.children.flatMap(collectTypes) : [])];
-}
-
-function collectProjectIndexes(root: SurfaceNodeV2, type: "featured-project" | "project-artifact"): number[] {
-  const own = root.type === type ? [root.index] : [];
-  return [...own, ...("children" in root ? root.children.flatMap((child) => collectProjectIndexes(child, type)) : [])].sort((a, b) => a - b);
 }

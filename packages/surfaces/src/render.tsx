@@ -55,6 +55,7 @@ export function SurfaceRendererCore({ spec: input, bindings, onAction, state = "
       className={shellClassName}
       data-collapse-below={shell.responsive.collapseGridsBelow}
       data-hero-stack-below={spec?.schemaVersion === "2" ? spec.responsive.heroStackBelow : undefined}
+      data-surface-kind={spec?.kind}
       data-surface-state={surfaceState}
       style={style}
     >
@@ -130,25 +131,25 @@ function Node(props: NodeProps): ReactNode {
     }
     case "fact-list": {
       const facts = bindings[node.binding];
-      if (!isFactList(facts) || facts.length === 0) return <p className="surface-empty">{node.emptyMessage}</p>;
+      if (!isFactList(facts) || facts.length === 0) return emptyCollection(spec, node.emptyMessage);
       const v2 = "layout" in node;
       return <dl className={`surface-facts${v2 ? ` surface-facts-${node.layout} surface-facts-${node.emphasis}` : ""}`}>{facts.map((fact, index) => <div key={`${fact.label}-${index}`} className="surface-fact"><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>;
     }
     case "tag-list": {
       const tags = bindings[node.binding];
-      if (!isStringList(tags) || tags.length === 0) return <p className="surface-empty">{node.emptyMessage}</p>;
+      if (!isStringList(tags) || tags.length === 0) return emptyCollection(spec, node.emptyMessage);
       return <ul className={`surface-tags surface-tags-${node.style}`}>{tags.slice(0, 40).map((tag, index) => <li key={`${tag}-${index}`}>{tag}</li>)}</ul>;
     }
     case "project-list": {
       const projects = bindings[node.binding];
-      if (!isProjectList(projects) || projects.length === 0) return <p className="surface-empty">{node.emptyMessage}</p>;
+      if (!isProjectList(projects) || projects.length === 0) return emptyCollection(spec, node.emptyMessage);
       const v2 = "layout" in node;
       return <div className={`surface-projects${v2 ? ` surface-projects-${node.layout} surface-project-columns-${node.columns}` : ""}`}>{projects.map((project, index) => <article className="surface-project" key={project.id}><span className="surface-project-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><p className="surface-project-title">{project.title}</p><p>{project.summary}</p>{project.href && isTrustedHref(project.href) ? <a href={project.href}>Open project <span aria-hidden="true">↗</span></a> : null}</article>)}</div>;
     }
     case "featured-project": {
       const projects = bindings[node.binding];
       const project = isProjectList(projects) ? projects[node.index] : undefined;
-      if (!project) return <p className="surface-empty">Featured project unavailable</p>;
+      if (!project) return spec.kind === "profile" ? null : <p className="surface-empty">Featured project unavailable</p>;
       return <article className={`surface-featured-project surface-featured-project-${node.layout}`}><span className="surface-project-index" aria-hidden="true">{String(node.index + 1).padStart(2, "0")}</span><div className="surface-featured-project-copy"><h3>{project.title}</h3><p>{project.summary}</p>{node.showTags && project.tags?.length ? <ul className="surface-tags surface-tags-plain">{project.tags.slice(0, 8).map((tag) => <li key={tag}>{tag}</li>)}</ul> : null}{node.showMetrics && project.metrics?.length ? <dl className="surface-facts surface-facts-inline">{project.metrics.slice(0, 6).map((fact) => <div className="surface-fact" key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl> : null}{project.href && isTrustedHref(project.href) ? <a href={project.href}>Open project <span aria-hidden="true">↗</span></a> : null}</div></article>;
     }
     case "project-artifact": {
@@ -198,6 +199,11 @@ function Node(props: NodeProps): ReactNode {
       return region ? <iframe {...credentialless} className={`surface-decoration surface-decoration-${node.height}`} title={region.label} sandbox="" referrerPolicy="no-referrer" srcDoc={region.srcDoc} /> : null;
     }
   }
+}
+
+function emptyCollection(spec: SurfaceSpec, message: string): ReactNode {
+  if (spec.kind === "profile" || !message.trim()) return null;
+  return <p className="surface-empty">{message}</p>;
 }
 
 function renderMedia(spec: SurfaceSpec, bindings: SurfaceBindings, binding: string, altBinding: string, className: string): ReactNode {

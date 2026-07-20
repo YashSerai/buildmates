@@ -70,7 +70,7 @@ export async function GET() {
   if (isAuthResponse(user)) return user;
   try {
     const { profile, surface } = await getProfileSurface(DB, user.id);
-    const [fields, projects, history, approvedMedia] = await Promise.all([
+    const [fields, projects, publicFields, publicProjects, history, approvedMedia] = await Promise.all([
       // This route is the signed-in owner's private design workspace. Mirror
       // the MCP generation brief: approved connection-scoped material may be
       // rendered in a private preview, while truly private fields never cross
@@ -87,6 +87,16 @@ export async function GET() {
         .bind(user.id)
         .all<{ id: string; title: string; summary: string; slug: string }>(),
       DB.prepare(
+        "SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' ORDER BY field_key",
+      )
+        .bind(profile.id)
+        .all<{ key: string; valueJson: string }>(),
+      DB.prepare(
+        "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' ORDER BY updated_at DESC LIMIT 20",
+      )
+        .bind(user.id)
+        .all<{ id: string; title: string; summary: string; slug: string }>(),
+      DB.prepare(
         `SELECT revision.id,revision.revision_number AS revisionNumber,revision.base_revision_number AS baseRevisionNumber,
         revision.status,revision.spec_json AS spec,revision.created_at AS createdAt
         FROM surface_revisions revision WHERE revision.surface_id=? ORDER BY revision.revision_number DESC LIMIT 30`,
@@ -95,13 +105,7 @@ export async function GET() {
         .all(),
       listApprovedProfileMedia({ DB, actorId: user.id }),
     ]);
-    const facts = fields.results
-      .filter((field) => field.key !== "projects")
-      .map((field) => ({
-        label: profileFieldLabel(field.key),
-        value: surfaceFactValue(field.valueJson),
-      }))
-      .filter((fact) => fact.value.length > 0);
+    const facts = profileFacts(fields.results);
     const approvedDraftProjects = fields.results.flatMap((field) =>
       field.key === "projects" ? surfaceProjectsValue(field.valueJson) : [],
     );
@@ -124,6 +128,30 @@ export async function GET() {
         metrics: [],
       })),
       ...currentWorkProjects,
+    ]);
+    const publicFacts = profileFacts(publicFields.results);
+    const publicDraftProjects = publicFields.results.flatMap((field) =>
+      field.key === "projects" ? surfaceProjectsValue(field.valueJson) : [],
+    );
+    const publicCurrentWorkProjects =
+      publicDraftProjects.length || publicProjects.results.length
+        ? []
+        : publicFields.results.flatMap((field) =>
+            field.key === "current_work"
+              ? currentWorkProjectsValue(field.valueJson)
+              : [],
+          );
+    const publicVisibleProjects = dedupeProjects([
+      ...publicDraftProjects,
+      ...publicProjects.results.map((project) => ({
+        id: project.id,
+        title: project.title,
+        summary: project.summary,
+        href: `/projects/${project.slug}`,
+        tags: [],
+        metrics: [],
+      })),
+      ...publicCurrentWorkProjects,
     ]);
     const mediaFields = approvedMedia.map((media) => ({
       key: profileMediaBinding(media.assetId).altKey,
@@ -174,9 +202,17 @@ export async function GET() {
         src: media.src,
       })),
     });
+    const publicPreviewContent = {
+      "profile.displayName": profile.displayName,
+      "profile.summary": profile.summary,
+      "profile.facts": publicFacts,
+      "profile.projects": publicVisibleProjects,
+      ...Object.fromEntries(mediaFields.map((field) => [field.key, field.value])),
+    };
     return Response.json(
       {
         brief,
+        publicPreviewContent,
         surface,
         history: history.results.flatMap((row) => {
           const value = row as Record<string, unknown>;
@@ -340,6 +376,16 @@ function profileFieldLabel(key: string) {
       } as Record<string, string>
     )[key] ?? key.replaceAll("_", " ")
   );
+}
+
+function profileFacts(fields: Array<{ key: string; valueJson: string }>) {
+  return fields
+    .filter((field) => field.key !== "projects")
+    .map((field) => ({
+      label: profileFieldLabel(field.key),
+      value: surfaceFactValue(field.valueJson),
+    }))
+    .filter((fact) => fact.value.length > 0);
 }
 
 type ProfileProjectBinding = {

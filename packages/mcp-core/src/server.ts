@@ -11,6 +11,7 @@ import {
 } from "./schemas";
 import type { CompleteIdentityLinkResult } from "./tools/identity";
 import { customizedProfileSurfaceExample, surfaceComponentReference } from "./surface-generation-reference";
+import { targetedSurfaceRevisionIsAllowed } from "./surface-revision-intent";
 
 const BUILD_GRAPH_TOPICS = [
   ["ai", "AI", null], ["developer-tools", "Developer tools", null], ["consumer-products", "Consumer products", null],
@@ -159,6 +160,15 @@ const profileDesignBriefSchema = z.object({
   const featured = new Set(brief.contentPlan.featuredProjectIds);
   if (brief.contentPlan.omittedProjectIds.some((id) => featured.has(id))) context.addIssue({ code: "custom", message: "A project cannot be both featured and omitted", path: ["contentPlan"] });
 });
+const surfaceRevisionIntentSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("full_redesign"), summary: z.string().trim().min(3).max(500) }).strict(),
+  z.object({
+    mode: z.literal("targeted"),
+    summary: z.string().trim().min(3).max(500),
+    targetNodeIds: z.array(idSchema).max(24),
+    targetThemeKeys: z.array(z.enum(["colors", "typography", "shape", "atmosphere", "motion"])).max(5),
+  }).strict().refine((value) => value.targetNodeIds.length > 0 || value.targetThemeKeys.length > 0, "Name at least one node or theme area"),
+]);
 
 export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   tool("get_link_url", "Get identity link URL", "Returns the HTTPS Buildmates sign-in and one-time approval-code page for this OAuth principal. It exposes no user data.", z.object(workspaceInput).strict(), readAnnotations, async (_, context, services) => ({ url: new URL("/settings/connections", services.linkBaseUrl).toString(), workspaceScope: context.workspaceScope }), true),
@@ -295,13 +305,23 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     const starterSpec = starterSurfaceSpec(String(surface.value.kind));
     const trustedComponents = surface.value.trustedComponents as string[];
     const authorizedBindingTypes = surface.value.authorizedBindingTypes as Record<string, unknown> | null ?? null;
+    const baseRevisionId = typeof surface.value.publishedRevisionId === "string" ? surface.value.publishedRevisionId : null;
+    const baseRevision = baseRevisionId
+      ? await services.repository.readForMember<Record<string, unknown>>("surface_revision", baseRevisionId, context.userId!)
+      : null;
     return {
       surfaceId: surface.id, kind: surface.value.kind,
       designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION, sourceHash: DESIGN_POLICY_SOURCE_HASH, trustedComponents },
       allowedModules: surface.value.allowedModules, authorizedBindings: surface.value.authorizedBindings, authorizedBindingTypes,
       authorizedContent: surface.value.authorizedContent ?? null, requiredBindings: surface.value.requiredBindings ?? [],
       authorizedMedia: surface.value.authorizedMedia ?? [], approvedAssets: surface.value.approvedAssets ?? [], governance: surface.value.governance,
-      baseRevision: surface.value.publishedRevisionId ?? null, starterSpec, componentReference: surfaceComponentReference(trustedComponents),
+      baseRevision: baseRevisionId,
+      currentRevision: baseRevision ? { id: baseRevision.id, version: baseRevision.version, spec: baseRevision.value.spec } : null,
+      revisionWorkflow: {
+        targeted: "For a small requested change, start from currentRevision.spec, set revisionIntent.mode to targeted, name only the node IDs or theme areas being changed, and preserve everything else byte-for-byte.",
+        fullRedesign: "Use full_redesign only when the user asks for a new direction or approves broad composition changes.",
+      },
+      starterSpec, componentReference: surfaceComponentReference(trustedComponents),
       customizedExample: customizedProfileSurfaceExample({
         starterSpec,
         authorizedBindingTypes,
@@ -359,19 +379,29 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     const issues = parsed.success ? [!kindMatches ? { path: "kind", message: `Expected ${String(surface.value.kind)}` } : null, !bindingsAllowed ? { path: "bindingManifest", message: "A binding is not authorized for this page" } : null, ...qualityIssues].filter(Boolean) : parsed.error.issues.slice(0, 30).map((issue) => ({ path: issue.path.join("."), message: issue.message }));
     return { valid: false, issues, recovery: "Restart from customizedExample, include every required binding, and replace placeholder or empty-shell content. Repair only the exact returned paths." };
   }),
-  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Pass the complete spec returned from the validated generation workflow. Profile revisions require an approved direction, the selected design system, a filler-free content plan, an auditable study of four to eight safe public references with one or two selected, extracted design DNA, and passing desktop/phone visual critique evidence. Recent Design is the default discovery source and user-supplied inspiration is allowed. The starterSpec is hidden recovery scaffolding and cannot be submitted or numbered as a user design. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown().describe("Complete SurfaceSpec previously checked with validate_surface_spec."), visibility: z.enum(["private_preview", "personal_view"]), designBrief: profileDesignBriefSchema.optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
+  tool("submit_surface_revision", "Submit SurfaceSpec revision", "Validates and stores a private SurfaceSpec revision against the current Design Policy. Pass the complete spec returned from the validated generation workflow. Use targeted revision intent for small edits so unrelated page structure and styling cannot drift. Profile revisions require an approved direction, the selected design system, a filler-free content plan, an auditable study of four to eight safe public references with one or two selected, extracted design DNA, and passing desktop/phone visual critique evidence. Recent Design is the default discovery source and user-supplied inspiration is allowed. The starterSpec is hidden recovery scaffolding and cannot be submitted or numbered as a user design. Generated code cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown().describe("Complete SurfaceSpec previously checked with validate_surface_spec."), visibility: z.enum(["private_preview", "personal_view"]), revisionIntent: surfaceRevisionIntentSchema.optional(), designBrief: profileDesignBriefSchema.optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
     const surface = await requiredRecord(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     if (!parsed.success) throw new Error("surface_spec_invalid");
     const surfaceValue = surface.value as Record<string, unknown>;
+    const revisionIntent = input.revisionIntent as z.infer<typeof surfaceRevisionIntentSchema> | undefined;
     if (parsed.data.kind !== surfaceValue.kind || (surfaceValue.authorizedBindingTypes && !surfaceBindingsAllowed(parsed.data, surfaceValue.authorizedBindings)) || !surfaceMediaAllowed(parsed.data, surfaceValue)) throw new Error("surface_spec_invalid");
+    let targetedBaseApproved = false;
+    if (revisionIntent?.mode === "targeted") {
+      if (!input.baseRevisionId) throw new Error("targeted_revision_base_required");
+      if (surfaceValue.kind === "profile" && surfaceValue.publishedRevisionId !== input.baseRevisionId) throw new Error("targeted_revision_base_not_published");
+      const base = await requiredRecord<Record<string, unknown>>(services, "surface_revision", input.baseRevisionId as string, context.userId!);
+      const baseParsed = safeParseSurfaceSpec(base.value.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
+      if (!baseParsed.success || !targetedSurfaceRevisionIsAllowed(baseParsed.data, parsed.data, revisionIntent)) throw new Error("targeted_revision_scope_violation");
+      targetedBaseApproved = true;
+    }
     if (surfaceValue.kind === "profile") {
-      if (input.designBriefApproved !== true || !input.designBrief) throw new Error("profile_design_brief_required");
+      if (input.designBriefApproved !== true || (!input.designBrief && !targetedBaseApproved)) throw new Error("profile_design_brief_required");
       if (JSON.stringify(parsed.data) === JSON.stringify(starterSurfaceSpec("profile"))) throw new Error("starter_spec_not_publishable");
     }
     const qualityIssues = surfaceQualityIssues(parsed.data, surfaceValue);
     if (qualityIssues.length > 0) throw new Error(`surface_spec_invalid:${JSON.stringify({ issues: qualityIssues })}`);
-    const saved = confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview", ...(input.designBrief ? { designBrief: input.designBrief } : {}) }, now: now(services) }));
+    const saved = confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview", revisionIntent: revisionIntent ?? { mode: "full_redesign", summary: "New design direction" }, ...(input.designBrief ? { designBrief: input.designBrief } : {}) }, now: now(services) }));
     return { ...saved, previewUrl: new URL("/profile/design", services.linkBaseUrl).toString() };
   })),
   tool("decide_surface_revision", "Approve or reject surface revision", "Records this authorized member's explicit approval or rejection; shared publication remains governed. When an approved profile revision publishes, the result includes its canonical /builders/{handle} public URL.", z.object({ revisionId: idSchema, decision: z.enum(["approved", "rejected"]), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "decide_surface_revision", input, async () => {

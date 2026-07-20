@@ -27,7 +27,7 @@ test("profile design workspace stays aligned and renders real project content", 
         slug: `profile-workspace-${suffix}`,
         title: "Field Notes for Reliable Agents",
         summary: "A practical collection of agent failure cases, evaluations, and product decisions.",
-        audience: "suggested_connections",
+        audience: "public",
         allowMatching: true,
         indexable: false,
         status: "active",
@@ -61,13 +61,13 @@ test("profile design workspace stays aligned and renders real project content", 
 
   await page.goto("/profile/design");
   await expect(page.getByRole("heading", { name: "Make your page feel like you." })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Your latest preview" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "What visitors will see" })).toBeVisible();
   await expect(page.getByText("Field Notes for Reliable Agents", { exact: true })).toBeVisible();
 
   const [inner, header, preview] = await Promise.all([
     page.locator("main > div").first().boundingBox(),
     page.locator("main header").first().boundingBox(),
-    page.getByRole("region", { name: "Your latest preview" }).boundingBox(),
+    page.getByRole("region", { name: "What visitors will see" }).boundingBox(),
   ]);
   expect(inner).not.toBeNull();
   expect(header).not.toBeNull();
@@ -75,6 +75,15 @@ test("profile design workspace stays aligned and renders real project content", 
   expect(Math.abs((inner?.x ?? 0) - (header?.x ?? 0))).toBeLessThanOrEqual(1);
   expect(Math.abs((inner?.x ?? 0) - (preview?.x ?? 0))).toBeLessThanOrEqual(1);
   expect(await page.evaluate(() => Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+
+  const publish = page.getByRole("button", { name: "Publish this design" });
+  await expect(publish).toBeEnabled();
+  await publish.click();
+  await expect(page.getByRole("heading", { name: "Your published profile" })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Your published profile" })).toBeVisible();
+  await expect(page.getByText("Field Notes for Reliable Agents", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit this design" })).toBeVisible();
 
   await page.screenshot({
     path: path.join(evidenceRoot, `${testInfo.project.name}.png`),

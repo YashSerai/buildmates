@@ -1,0 +1,37 @@
+import type { SurfaceNode, SurfaceSpec } from "@buildmates/surfaces";
+
+export type SurfaceRevisionIntent =
+  | { mode: "full_redesign"; summary: string }
+  | { mode: "targeted"; summary: string; targetNodeIds: string[]; targetThemeKeys: string[] };
+
+export function targetedSurfaceRevisionIsAllowed(
+  base: SurfaceSpec,
+  candidate: SurfaceSpec,
+  intent: Extract<SurfaceRevisionIntent, { mode: "targeted" }>,
+) {
+  const targets = new Set(intent.targetNodeIds);
+  const themeTargets = new Set(intent.targetThemeKeys);
+  if (targets.size === 0 && themeTargets.size === 0) return false;
+  for (const key of Object.keys(base) as Array<keyof SurfaceSpec>) {
+    if (key === "root" || key === "theme") continue;
+    if (JSON.stringify(base[key]) !== JSON.stringify(candidate[key])) return false;
+  }
+  if (!sameUntargetedTheme(base.theme as unknown as Record<string, unknown>, candidate.theme as unknown as Record<string, unknown>, themeTargets)) return false;
+  return sameUntargetedTree(base.root, candidate.root, targets);
+}
+
+function sameUntargetedTheme(base: Record<string, unknown>, candidate: Record<string, unknown>, targets: Set<string>) {
+  if (Object.keys(base).sort().join("|") !== Object.keys(candidate).sort().join("|")) return false;
+  return Object.keys(base).every((key) => targets.has(key) || JSON.stringify(base[key]) === JSON.stringify(candidate[key]));
+}
+
+function sameUntargetedTree(base: SurfaceNode, candidate: SurfaceNode, targets: Set<string>): boolean {
+  if (base.id !== candidate.id) return false;
+  if (targets.has(base.id)) return true;
+  const baseChildren = "children" in base ? base.children : [];
+  const candidateChildren = "children" in candidate ? candidate.children : [];
+  const baseOwn = { ...base, ...(baseChildren.length ? { children: undefined } : {}) };
+  const candidateOwn = { ...candidate, ...(candidateChildren.length ? { children: undefined } : {}) };
+  if (JSON.stringify(baseOwn) !== JSON.stringify(candidateOwn) || baseChildren.length !== candidateChildren.length) return false;
+  return baseChildren.every((child, index) => sameUntargetedTree(child, candidateChildren[index], targets));
+}

@@ -345,6 +345,16 @@ Add one dated entry per interaction with: task ID, prompt, result, evaluation, s
 - Required visual QA: every saved profile preview must be inspected at 1440 by 1000 and 390 by 844 across the complete page. Alignment, reflow, readable type, contrast, clipping, horizontal overflow, touch targets, visible-without-animation content, and reduced motion must pass before Codex calls the preview ready.
 - Verification: MCP and Surface workspaces typecheck; focused ESLint and `git diff --check` pass; both plugin packages validate; the production web build passes. The Windows Vitest contract process again failed to exit before the bounded timeout, so no new contract-pass claim is made from that run.
 
+## 2026-07-20 published-profile and targeted-revision regression
+
+- Reproduced: the design workspace selected only a non-published revision, so a successful publish left the main workspace empty even though the revision remained stored. Repaired by treating the latest private draft or current published revision as the active design and exposing a private-copy edit path.
+- Reproduced: the owner preview used broader non-private bindings than the public builder page. Repaired with a separate public preview projection; profile collection nodes now disappear when that projection is empty, so privacy-state prose cannot appear as page content.
+- Reproduced: the syntax-recovery example forced a paper-rule project list, repeated project chapters, and geometric artifacts. Replaced with neutral valid grammar that does not prescribe art direction.
+- Added a browser-rendered prepublication check for clipping, horizontal overflow, minimum text size, and resolvable contrast. Added safer trusted heading line-height and glyph padding.
+- Added current published specs to generation briefs and an enforceable targeted revision mode. The canonical D1 contract proves an allowed typography-only change succeeds and a simultaneous title change is rejected as collateral drift.
+- Share actions now truthfully switch between native sharing and **Copy profile link**; success is silently announced to assistive technology and no longer inserts visible confirmation copy.
+- Proof: unit `100/100`; MCP tool contract `24/24`; focused canonical D1 profile surface contract `1/1`; desktop and phone design workspace journeys `2/2`; web and MCP typechecks; web production build; app and beta plugin validation.
+
 ### 2026-07-19 - exact responsive profile revision QA
 
 - Active task: `019f78c7-8f92-7ff1-bb69-11426abd9bba` (`Buildmates setup - continue here`). It resumed only the already-authorized `6/10` profile-design step, researched four person-specific references, selected the supplied Yousuf profile plus Harry Atkins, and saved revision 6 as a private preview. No profile was published and setup did not advance.

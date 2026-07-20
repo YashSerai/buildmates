@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { SurfaceBindings } from "@buildmates/surfaces";
 import { SurfaceRenderer } from "@/components/surfaces/SurfaceRenderer";
 import { userFacingError } from "@/src/client/user-facing-error";
+import { auditRenderedSurface, type RenderedSurfaceIssue } from "@/src/client/surface-quality";
 import { ProfileProjectMedia } from "./ProfileProjectMedia";
 import styles from "./ProductForms.module.css";
 
@@ -18,10 +19,12 @@ type Revision = {
 };
 type Data = {
   brief: {
+    handle: string;
     authorizedContent: SurfaceBindings;
     authorizedMedia?: Array<{ key: string; altKey: string; approvedAssetIds: string[] }>;
     approvedAssets?: Array<{ id: string; src: string }>;
   } & Record<string, unknown>;
+  publicPreviewContent: SurfaceBindings;
   surface: {
     id: string;
     publishedRevisionId: string | null;
@@ -35,6 +38,8 @@ export function RevisionPreview() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [qualityIssues, setQualityIssues] = useState<RenderedSurfaceIssue[] | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const load = useCallback(async () => {
     setLoadError(false);
     try {
@@ -82,7 +87,7 @@ export function RevisionPreview() {
   }
 
   const designPrompt = data
-    ? `Redesign my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. Use my preferred local design skill if I have named one; otherwise use Hallmark. Privately study person-specific references, tell me the direction you are leaning toward and why, then create a private preview. Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a first direction and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
+    ? `${data.surface.publishedRevisionId ? "Revise" : "Design"} my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. ${data.surface.publishedRevisionId ? "Start from the current published revision. Ask what I want changed; for a small request use a targeted revision and preserve every unrelated node, binding, and theme area." : "Use my preferred local design skill if I have named one; otherwise use Hallmark. Privately study person-specific references, tell me the direction you are leaning toward and why, then create a private preview."} Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a direction I can shape and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
     : "";
   async function copyDesignPrompt() {
     try {
@@ -96,10 +101,35 @@ export function RevisionPreview() {
   const privatePreview = data?.history.find(
     (revision) => revision.id !== data.surface.publishedRevisionId,
   );
+  const publishedRevision = data?.history.find(
+    (revision) => revision.id === data.surface.publishedRevisionId,
+  );
+  const activePreview = privatePreview ?? publishedRevision;
   const previewCanPublish = Boolean(
     privatePreview &&
-      privatePreview.baseRevisionNumber === data?.surface.publishedRevisionNumber,
+      privatePreview.baseRevisionNumber === data?.surface.publishedRevisionNumber &&
+      qualityIssues?.length === 0,
   );
+
+  useEffect(() => {
+    if (!activePreview || !previewRef.current) {
+      setQualityIssues(null);
+      return;
+    }
+    setQualityIssues(null);
+    let cancelled = false;
+    const run = () => {
+      if (!cancelled && previewRef.current) setQualityIssues(auditRenderedSurface(previewRef.current));
+    };
+    const frame = requestAnimationFrame(() => requestAnimationFrame(run));
+    void document.fonts?.ready.then(run);
+    window.addEventListener("resize", run);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+      window.removeEventListener("resize", run);
+    };
+  }, [activePreview]);
 
   return (
     <main className={`${styles.form} ${styles.designWorkspace}`}>
@@ -155,17 +185,17 @@ export function RevisionPreview() {
             <section className={styles.previewWorkspace} aria-labelledby="profile-preview-title">
               <div className={styles.previewWorkspaceHeader}>
                 <div>
-                  <p className={styles.previewState}>{privatePreview ? "Private" : "No draft"}</p>
-                  <h2 id="profile-preview-title">{privatePreview ? "Your latest preview" : "Start your first design"}</h2>
+                  <p className={styles.previewState}>{privatePreview ? "Private preview" : publishedRevision ? "Live design" : "No design yet"}</p>
+                  <h2 id="profile-preview-title">{privatePreview ? "What visitors will see" : publishedRevision ? "Your published profile" : "Start your first design"}</h2>
                 </div>
-                {privatePreview ? <p>Only you can see this version.</p> : null}
+                {privatePreview ? <p>This preview uses the same public fields visitors receive.</p> : null}
               </div>
 
-              {privatePreview ? (
-                <div className={styles.previewCanvas}>
+              {activePreview ? (
+                <div className={styles.previewCanvas} ref={previewRef}>
                   <SurfaceRenderer
-                    spec={privatePreview.spec}
-                    bindings={previewSurfaceBindings(data.brief, privatePreview.spec)}
+                    spec={activePreview.spec}
+                    bindings={previewSurfaceBindings(data.brief, data.publicPreviewContent, activePreview.spec)}
                   />
                 </div>
               ) : (
@@ -174,9 +204,9 @@ export function RevisionPreview() {
                 </div>
               )}
 
-              {privatePreview ? (
+              {activePreview ? (
                 <div className={styles.currentDesignActions}>
-                  {previewCanPublish ? (
+                  {privatePreview && previewCanPublish ? (
                     <button
                       type="button"
                       disabled={busy}
@@ -194,7 +224,7 @@ export function RevisionPreview() {
                     >
                       Publish this design
                     </button>
-                  ) : (
+                  ) : privatePreview ? (
                     <button
                       type="button"
                       disabled={busy}
@@ -207,8 +237,32 @@ export function RevisionPreview() {
                     >
                       Update this preview
                     </button>
+                  ) : (
+                    <>
+                      <Link className={styles.primaryAction} href={`/builders/${data.brief.handle}`}>Open public profile</Link>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() =>
+                          mutate(
+                            { action: "restore", revisionId: activePreview.id },
+                            "A private revision was created from your live design.",
+                          )
+                        }
+                      >
+                        Edit this design
+                      </button>
+                    </>
                   )}
-                  <span>Publishing replaces the page people see at your public profile link.</span>
+                  {privatePreview && qualityIssues?.length ? (
+                    <span role="alert">Fix {qualityIssues.length} visual {qualityIssues.length === 1 ? "issue" : "issues"} before publishing: {qualityIssues[0].message}</span>
+                  ) : privatePreview && qualityIssues === null ? (
+                    <span>Checking the complete rendered page before publication.</span>
+                  ) : privatePreview ? (
+                    <span>Publishing replaces the page people see at your public profile link.</span>
+                  ) : (
+                    <span>Editing creates a private revision. Your live page stays unchanged until you publish again.</span>
+                  )}
                 </div>
               ) : null}
             </section>
@@ -222,16 +276,29 @@ export function RevisionPreview() {
                 <ol className={styles.designHistory}>
                   {data.history.map((revision) => {
                     const published = data.surface.publishedRevisionId === revision.id;
-                    const activePreview = revision.id === privatePreview?.id;
+                    const currentPrivatePreview = revision.id === privatePreview?.id;
                     const label = published
                       ? "Published"
-                      : activePreview
+                      : currentPrivatePreview
                         ? "Current private preview"
                         : `Private version ${revision.revisionNumber}`;
                     return (
                       <li key={revision.id}>
                         <p><strong>{label}</strong><span>{new Date(revision.createdAt).toLocaleDateString()}</span></p>
-                        {!published && !activePreview ? (
+                        {published ? (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() =>
+                              mutate(
+                                { action: "restore", revisionId: revision.id },
+                                "A private revision was created from your live design.",
+                              )
+                            }
+                          >
+                            Edit a copy
+                          </button>
+                        ) : !currentPrivatePreview ? (
                           <button
                             type="button"
                             disabled={busy}
@@ -260,8 +327,8 @@ export function RevisionPreview() {
   );
 }
 
-function previewSurfaceBindings(brief: Data["brief"], spec: unknown): SurfaceBindings {
-  const bindings: Record<string, SurfaceBindings[string]> = { ...brief.authorizedContent };
+function previewSurfaceBindings(brief: Data["brief"], publicContent: SurfaceBindings, spec: unknown): SurfaceBindings {
+  const bindings: Record<string, SurfaceBindings[string]> = { ...publicContent };
   if (!spec || typeof spec !== "object" || !Array.isArray(brief.authorizedMedia) || !Array.isArray(brief.approvedAssets)) return bindings;
   const candidate = spec as { approvedAssets?: unknown; bindingManifest?: { media?: unknown } };
   if (!Array.isArray(candidate.approvedAssets) || !Array.isArray(candidate.bindingManifest?.media)) return bindings;
@@ -279,7 +346,7 @@ function previewSurfaceBindings(brief: Data["brief"], spec: unknown): SurfaceBin
   for (const media of brief.authorizedMedia) {
     const declaration = declarations.find((item) => item.key === media.key && item.altKey === media.altKey);
     const assetId = declaration?.approvedAssetIds.find((id) => media.approvedAssetIds.includes(id) && specAssets.get(id) === briefAssets.get(id));
-    const alt = brief.authorizedContent[media.altKey];
+    const alt = publicContent[media.altKey];
     if (!assetId || typeof alt !== "string" || !alt.trim()) continue;
     bindings[media.key] = { assetId, alt };
   }

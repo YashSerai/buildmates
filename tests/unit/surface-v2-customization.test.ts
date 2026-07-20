@@ -129,4 +129,14 @@ describe("SurfaceSpec v2 customization ceiling", () => {
     const missing = renderToStaticMarkup(createElement(SurfaceRendererCore, { spec: atlas, bindings: { ...PORTFOLIO_QUALITY_BINDINGS, "profile.projects": [] } }));
     expect(missing).not.toContain("surface-project-artifact-empty");
   });
+
+  it("omits empty governed regions from public profile pages", () => {
+    const atlas = PROFILE_V2_FIXTURES[5];
+    const html = renderToStaticMarkup(createElement(SurfaceRendererCore, {
+      spec: atlas,
+      bindings: { ...PORTFOLIO_QUALITY_BINDINGS, "profile.projects": [], "profile.facts": [] },
+    }));
+    expect(html).not.toContain("No additional profile details are shared");
+    expect(html).not.toContain("No projects are shared");
+  });
 });

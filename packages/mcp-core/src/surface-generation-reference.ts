@@ -71,37 +71,13 @@ export function customizedProfileSurfaceExample(input: {
   const parsedStarter = safeParseSurfaceSpec(input.starterSpec, DESIGN_POLICY_VERSION);
   if (!parsedStarter.success || parsedStarter.data.schemaVersion !== "2" || parsedStarter.data.kind !== "profile") return null;
   const trusted = new Set(input.trustedComponents);
-  const requiredComponents = ["section", "stack", "split", "frame", "heading", "text", "fact-list", "project-list", "featured-project", "divider", ...(input.authorizedMedia?.length ? ["media"] : ["project-artifact"])];
+  const requiredComponents = ["section", "stack", "heading", "text", "project-list", "fact-list"];
   if (requiredComponents.some((component) => !trusted.has(component))) return null;
   const typedBindings = Object.entries(input.authorizedBindingTypes ?? {});
   const textBindings = typedBindings.filter(([, type]) => type === "text").map(([key]) => key);
   const factsBinding = typedBindings.find(([, type]) => type === "facts")?.[0];
   const projectsBinding = typedBindings.find(([, type]) => type === "projects")?.[0];
   if (textBindings.length < 2 || !factsBinding || !projectsBinding) return null;
-  const projects = input.authorizedContent?.[projectsBinding];
-  const projectItems = Array.isArray(projects) ? projects.slice(0, 12) : [];
-  const projectCount = Math.max(1, projectItems.length);
-  const mediaForProject = (index: number) => {
-    const title = projectItems[index] && typeof projectItems[index] === "object" ? String((projectItems[index] as Record<string, unknown>).title ?? "") : "";
-    return input.authorizedMedia?.find((item) => item.label === `${title} image`) ?? input.authorizedMedia?.[index];
-  };
-  const usedMedia = Array.from({ length: projectCount }, (_, index) => mediaForProject(index)).filter((item): item is NonNullable<typeof item> => Boolean(item));
-  const artifactVariants = ["orbit-map", "stacked-planes", "type-field", "signal-path"] as const;
-  const projectChapters: SurfaceNodeV2[] = Array.from({ length: projectCount }, (_, index) => {
-    const media = mediaForProject(index);
-    const visual: SurfaceNodeV2 = media ? {
-      id: `generated-project-${index + 1}-visual`, type: "frame", tone: "transparent", padding: "none", border: "none", elevation: "none", rotation: "none", span: 1,
-      children: [
-        { id: `generated-project-${index + 1}-media`, type: "media", binding: media.key, altBinding: media.altKey, aspect: "landscape", fit: "cover", focalPoint: "center", treatment: index % 2 === 0 ? "plain" : "offset" },
-      ],
-    } : { id: `generated-project-${index + 1}-artifact`, type: "project-artifact", binding: projectsBinding, index, variant: artifactVariants[index % artifactVariants.length], tone: index % 2 === 0 ? "accent" : "ink", scale: "large" };
-    const detail: SurfaceNodeV2 = { id: `generated-project-${index + 1}-detail`, type: "featured-project", binding: projectsBinding, index, layout: index % 2 === 0 ? "media-left" : "media-right", showTags: true, showMetrics: true };
-    return {
-      id: `generated-project-${index + 1}-chapter`, type: "section", tone: index % 2 === 0 ? "canvas" : "secondary", layout: "flow", padding: "lg", bleed: true,
-      minHeight: "half", background: index % 2 === 0 ? "solid" : "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-      children: [{ id: `generated-project-${index + 1}-split`, type: "split", ratio: "1-1", gap: "xl", align: "center", reverseOnMobile: index % 2 === 1, children: [detail, visual] }],
-    };
-  });
   const [nameBinding, summaryBinding] = textBindings;
   const headingId = "generated-profile-title";
   const root: SurfaceNodeV2 = {
@@ -109,58 +85,51 @@ export function customizedProfileSurfaceExample(input: {
     minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
     children: [
       {
-        id: "generated-identity-chapter", type: "section", tone: usedMedia.length ? "ink" : "canvas", layout: "hero", padding: "xl", bleed: true,
-        minHeight: "viewport", background: "spotlight", backgroundMediaBinding: usedMedia[0]?.key ?? null, backgroundMediaOpacity: usedMedia.length ? "strong" : "subtle", backgroundMediaFocalPoint: "center",
+        id: "generated-identity-chapter", type: "section", tone: "canvas", layout: "hero", padding: "xl", bleed: true,
+        minHeight: "half", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
         children: [
-          { id: "generated-identity-stack", type: "stack", gap: "lg", align: "start", justify: "end", width: "wide", children: [
-            { id: headingId, type: "heading", level: 1, binding: nameBinding, fallback: "Builder profile", size: "hero", align: "start", width: "balanced", weight: "black", lineHeight: "tight", tracking: "tight" },
-            { id: "generated-rule", type: "divider", style: "stamp" },
-            { id: "generated-summary-frame", type: "frame", tone: "transparent", padding: "none", border: "none", elevation: "none", rotation: "none", span: 1, children: [
-              { id: "generated-summary", type: "text", style: "lead", binding: summaryBinding, fallback: "Building useful systems.", align: "start", width: "prose", weight: "medium", lineHeight: "snug", tracking: "normal" },
-            ] },
+          { id: "generated-identity-stack", type: "stack", gap: "md", align: "start", justify: "center", width: "wide", children: [
+            { id: headingId, type: "heading", level: 1, binding: nameBinding, fallback: "Builder profile", size: "display", align: "start", width: "balanced", weight: "bold", lineHeight: "snug", tracking: "normal" },
+            { id: "generated-summary", type: "text", style: "lead", binding: summaryBinding, fallback: "Building useful systems.", align: "start", width: "prose", weight: "regular", lineHeight: "normal", tracking: "normal" },
           ] },
         ],
       },
       {
-        id: "generated-projects-chapter", type: "section", tone: "surface", layout: "flow", padding: "xl", bleed: true,
-        minHeight: "half", background: "paper-rule", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
+        id: "generated-projects-chapter", type: "section", tone: "surface", layout: "flow", padding: "lg", bleed: true,
+        minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
         children: [
           { id: "generated-projects-stack", type: "stack", gap: "lg", align: "start", justify: "start", width: "full", children: [
-            { id: "generated-projects", type: "project-list", binding: projectsBinding, emptyMessage: "No projects are shared on this profile.", layout: "editorial", columns: 1 },
+            { id: "generated-projects", type: "project-list", binding: projectsBinding, emptyMessage: "", layout: "editorial", columns: 1 },
           ] },
         ],
       },
-      ...projectChapters,
       {
-        id: "generated-context-chapter", type: "section", tone: "accent", layout: "band", padding: "xl", bleed: true,
-        minHeight: "half", background: "wash", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
+        id: "generated-context-chapter", type: "section", tone: "canvas", layout: "flow", padding: "lg", bleed: true,
+        minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
         children: [
-          { id: "generated-context-frame", type: "frame", tone: "transparent", padding: "lg", border: "strong", elevation: "tonal", rotation: "none", span: 1, children: [
-            { id: "generated-facts", type: "fact-list", binding: factsBinding, emptyMessage: "No additional profile details are shared.", layout: "grid", emphasis: "strong" },
-          ] },
+          { id: "generated-facts", type: "fact-list", binding: factsBinding, emptyMessage: "", layout: "grid", emphasis: "quiet" },
         ],
       },
     ],
   };
   const spec: SurfaceSpecV2 = {
     ...parsedStarter.data,
-    title: "Customized builder profile",
+    title: "Valid profile surface example",
     theme: {
       ...parsedStarter.data.theme,
       typography: { ...parsedStarter.data.theme.typography, display: "gallery-serif", scale: "generous", headingWeight: "black" },
-      atmosphere: { motif: "orbit", density: "present", tone: "highlight", continuity: "page" },
-      motion: { preset: "drift", durationMs: 8_000, iterations: 2 },
+      atmosphere: { motif: "none", density: "quiet", tone: "accent", continuity: "section" },
+      motion: { preset: "none", durationMs: 400, iterations: 1 },
     },
     root,
     bindingManifest: {
       content: [
         { key: nameBinding, type: "text" }, { key: summaryBinding, type: "text" },
         { key: factsBinding, type: "facts" }, { key: projectsBinding, type: "projects" },
-        ...Array.from(new Set(usedMedia.map((item) => item.altKey))).filter((key) => ![nameBinding, summaryBinding, factsBinding, projectsBinding].includes(key)).map((key) => ({ key, type: "text" as const })),
       ],
-      media: usedMedia.map((item) => ({ key: item.key, altKey: item.altKey, approvedAssetIds: [...item.approvedAssetIds], authorization: "surface-approved" as const })),
+      media: [],
     },
-    approvedAssets: (input.approvedAssets ?? []).filter((asset) => usedMedia.some((item) => item.approvedAssetIds.includes(asset.id))), decorativeRegions: [],
+    approvedAssets: [], decorativeRegions: [],
     responsive: { collapseGridsBelow: "md", contentWidth: "full", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true },
     accessibility: { label: "Customized builder profile", primaryHeadingNodeId: headingId, reducedMotion: "required" },
   };
