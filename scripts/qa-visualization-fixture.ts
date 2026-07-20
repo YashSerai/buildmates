@@ -20,6 +20,7 @@ async function main() {
   const fixtures = [
     "scripts/fixtures/0025_visualization_qa_fixture.sql",
     "scripts/fixtures/0026_expand_visualization_qa_fixture.sql",
+    "scripts/fixtures/0027_visualization_connection_fixture.sql",
   ];
 
   for (const migration of migrations) {
@@ -61,6 +62,9 @@ async function main() {
   assert.equal(statistics.qualifyingCityCount, 47);
   assert.equal(statistics.publicProjectCount, 253);
   assert.ok(statistics.publicTopicCount >= 55);
+  assert.equal(statistics.connectionCount, 96);
+  assert.ok(cities.filter((city) => city.connectionCount > 0).length >= 20);
+  assert.equal(cities.reduce((total, city) => total + city.connectionCount, 0), 192);
   assert.ok(graph.topics.length >= 55);
   assert.ok(graph.edges.length >= 100);
   assert.ok(graph.relationships.length >= 45);
