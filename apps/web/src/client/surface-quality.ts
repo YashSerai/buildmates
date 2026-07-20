@@ -38,7 +38,14 @@ function isVisibleText(element: HTMLElement) {
 
 function isClipped(element: HTMLElement, root: HTMLElement) {
   const rect = element.getBoundingClientRect();
-  if (element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1) return true;
+  const elementStyle = getComputedStyle(element);
+  const clipsX = elementStyle.overflowX === "hidden" || elementStyle.overflowX === "clip";
+  const clipsY = elementStyle.overflowY === "hidden" || elementStyle.overflowY === "clip";
+  // Browser font metrics commonly make scrollHeight a few pixels taller than
+  // clientHeight even when visible text is fully rendered. Treat an element's
+  // own dimensions as clipping only when that axis actually clips overflow.
+  if ((clipsX && element.scrollWidth > element.clientWidth + 1) ||
+      (clipsY && element.scrollHeight > element.clientHeight + 1)) return true;
   for (let parent = element.parentElement; parent && parent !== root.parentElement; parent = parent.parentElement) {
     const style = getComputedStyle(parent);
     if (![style.overflow, style.overflowX, style.overflowY].some((value) => value === "hidden" || value === "clip")) continue;
