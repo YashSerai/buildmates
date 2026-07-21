@@ -213,8 +213,20 @@
   gap: .75rem 1rem;
   border-top: 1px solid #c9cec5;
 }
-.currentDesignActions button { margin: 0; }
-.currentDesignActions span { color: #55524c; font-size: .84rem; }
+.form .currentDesignActions button,
+.currentDesignActions .primaryAction {
+  min-height: 48px;
+  margin: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+.currentDesignActions span {
+  margin: 0;
+  color: #55524c;
+  font-size: .84rem;
+  line-height: 1.45;
+}
 .historySection {
   max-width: none !important;
   padding: clamp(2rem, 4vw, 3rem) 0 0 !important;

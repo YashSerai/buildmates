@@ -63,6 +63,13 @@ test("profile design workspace keeps actions and history usable on phones", asyn
   assert.match(styles, /\.designHistory > li\s*\{\s*padding-block:\s*\.85rem;/s);
 });
 
+test("published design actions share one baseline and control height", async () => {
+  const styles = await readFile(stylesUrl, "utf8");
+
+  assert.match(styles, /\.form \.currentDesignActions button,\s*\.currentDesignActions \.primaryAction\s*\{[^}]*min-height:\s*48px;[^}]*margin:\s*0;[^}]*align-items:\s*center;[^}]*justify-content:\s*center;/s);
+  assert.match(styles, /\.currentDesignActions span\s*\{[^}]*margin:\s*0;[^}]*line-height:\s*1\.45;/s);
+});
+
 test("profile design quality gate rejects an empty opening composition", async () => {
   const quality = await readFile(qualityUrl, "utf8");
 
