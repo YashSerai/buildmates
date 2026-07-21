@@ -123,7 +123,6 @@ The submission should include:
 - Repository URL: `https://github.com/YashSerai/buildmates`
 - Demo video: public YouTube URL, under 3 minutes, with voiceover
 - `/feedback` Codex session ID from the main build task
-- If the repository remains private, share it with `testing@devpost.com` and `build-week-event@openai.com`
 
 ## License
 

@@ -34,13 +34,17 @@ Once the interest is mutual, Buildmates opens a persistent one-to-one room. Room
 
 The product also includes Work Pulse, a Codex automation that keeps the network current. It can refresh approved profile context, look for new matches, surface follow-ups, and ask how an introduction went. The City Map and Build Graph give a broader view of where builders are active and what topics the network is working on.
 
-## Why it matters
+## Inspiration
 
-Networking usually starts from stale surfaces: bios, follower counts, job titles, cold messages, and manually maintained profiles. Builders are already producing the useful context somewhere else. They are writing specs, fixing bugs, shaping products, testing ideas, and making decisions inside tools like Codex.
+At the center of networking is work.
+
+Work gives builders a real reason to talk. Maybe two people are both trying to make voice agents feel less robotic. Maybe one is building the thing another has been thinking about for weeks.
+
+The problem is that networking usually starts from stale surfaces: bios, follower counts, job titles, cold messages, and manually maintained profiles. Builders are already producing the useful context somewhere else. They are writing specs, fixing bugs, shaping products, testing ideas, and making decisions inside tools like Codex.
 
 Buildmates starts there.
 
-The work gives people a real reason to talk. Maybe two builders are both trying to make voice agents feel less robotic. Maybe one is building the thing another has been thinking about for weeks. Buildmates helps that context find a person worth talking to.
+The idea was to let the platform people already use to build help their work find someone worth talking to.
 
 ## How it works
 
@@ -64,6 +68,19 @@ Codex helped plan the product, build the ChatGPT Sites web app, build the MCP se
 GPT-5.6 was most useful when it had product context and real screenshots. It could reason through architecture, privacy boundaries, matching flows, generated UI constraints, and full QA scenarios. It was less reliable when asked to make polished frontend work without direct visual review. Early UI passes had issues like white text on white backgrounds, overlapping layouts, and internal planning language leaking into product copy. The fix was stronger design rules, screenshot QA, and smaller feedback loops.
 
 The product also uses GPT-5.6 as part of the matching concept. Buildmates does deterministic ranking first, then each person's Codex can review a bounded shortlist and decide whether the match is worth that person's attention.
+
+## Built with
+
+- Codex
+- GPT-5.6
+- ChatGPT Sites
+- Streamable HTTP MCP
+- Cloudflare Workers
+- D1
+- R2
+- TypeScript
+- React
+- GitHub OAuth
 
 ## Technical implementation
 
@@ -94,6 +111,14 @@ The profile is not a static form. The room is not only a chat box. A Circle is n
 
 I am also proud that the product keeps the privacy boundary clear. Buildmates does not need raw private work. It needs approved summaries, generated pages, and consented signals.
 
+## What judges should notice
+
+- The product works as a Codex-native flow, not only as a website.
+- The profile, room, and Circle surfaces are generative UI, not fixed templates.
+- Matching uses a practical hybrid: deterministic ranking first, then Codex review on a bounded shortlist.
+- Work Pulse turns networking into an automation the user controls.
+- The City Map and Build Graph make the network explorable without pretending demo fixtures are real traction.
+
 ## What is next
 
 - Submit Buildmates as an app-plus-skills plugin with MCP.
@@ -113,9 +138,6 @@ Use the setup page for Codex instructions:
 
 https://buildmates.yashns.chatgpt.site/install
 
-Before the public plugin-directory release, the README includes beta plugin and direct MCP setup commands. If the repository remains private, it must be shared with:
-
-- testing@devpost.com
-- build-week-event@openai.com
+Before the public plugin-directory release, the README includes beta plugin and direct MCP setup commands.
 
 The City Map, Build Graph, and seeded introduction examples use fictional QA data retained for Build Week judging. They are demo fixtures, not organic traction.
