@@ -50,7 +50,7 @@ async function main() {
 
     // Exercise the production migration in the state it will actually see: the
     // existing yashns account already has a handle and match index.
-    await applySql(DB, "apps/web/drizzle/0020_demo_network_yashns.sql");
+    await applySql(DB, "apps/web/drizzle/0021_demo_network_yashns.sql");
     await applySql(DB, fixture);
     await applySql(DB, fixture);
 
