@@ -24,8 +24,8 @@ test("server-renders the Buildmates public landing page", async () => {
   assert.match(html, /Codex turns the work you.*already doing into a living/);
   assert.doesNotMatch(html, /built for people/i);
   assert.match(html, /Mutual relevance over popularity/);
-  assert.match(html, /Codex can give every room its own interface/);
-  assert.match(html, /The group does not have to fit a template/);
+  assert.match(html, /Generative UI for every connection/);
+  assert.match(html, /The same idea, expanded to a group/);
   assert.match(html, /See where builders are/);
   assert.match(html, /See where ideas overlap/);
   assert.match(html, /your work changes. your network keeps up./);
@@ -94,6 +94,7 @@ test("public builder pages are canonical surfaces and keep design controls priva
   assert.match(builder, /This is your published profile\./);
   assert.match(builder, /Edit design/);
   assert.match(builder, /Tell Codex what to change/);
+  assert.match(builder, /if \(profile\.publishedSpec\)[\s\S]*<ProductHeader signedIn=\{Boolean\(profile\.viewerId\)\} \/>/);
   assert.match(builder, /className=\{styles\.publishedSurface\}/);
   assert.match(builder, /const ownPublishedProfile = ownProfile && Boolean\(profile\.publishedSpec\)/);
   assert.match(builder, /profile_fields WHERE profile_id=\? AND audience='public'/);

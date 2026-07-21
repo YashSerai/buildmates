@@ -47,7 +47,8 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.75rem 1.5rem;
   align-items: center;
-  padding: 0.5rem clamp(1rem, 3vw, 2rem);
+  min-height: 64px;
+  padding: 0.55rem clamp(1rem, 4vw, 4rem);
   background: rgb(247 248 242 / 96%);
   border-bottom: 1px solid rgb(30 32 29 / 16%);
 }
@@ -97,13 +98,10 @@
   text-underline-offset: 4px;
 }
 .ownerProfileReminder {
-  display: grid;
-  grid-template-columns: auto minmax(15rem, 28rem) auto auto;
-  gap: 0.5rem 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
   align-items: center;
-  max-width: 60rem;
-  padding-left: 1rem;
-  border-left: 2px solid #b9481f;
   color: #4a5148;
   font-size: 0.88rem;
   line-height: 1.4;
@@ -112,9 +110,14 @@
   color: #1e201d;
   font-weight: 750;
 }
+.publicProfileIdentity {
+  color: #4a5148;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
 .publishedSurface {
   width: 100%;
-  min-height: min(44rem, calc(100vh - 7rem));
+  min-height: min(44rem, calc(100vh - 9rem));
 }
 .page {
   min-height: 100vh;
@@ -259,12 +262,8 @@
     padding: 0.75rem 1.25rem;
   }
   .ownerProfileReminder {
-    grid-template-columns: 1fr;
-    gap: 0.2rem;
-    padding-block: 0.5rem;
-  }
-  .ownerProfileReminder a {
-    min-height: 36px;
+    display: grid;
+    gap: 0.15rem;
   }
 }
 @media (max-width: 620px) {

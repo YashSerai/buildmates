@@ -270,12 +270,30 @@ export default async function BuilderPage({
   const ownPublishedProfile = ownProfile && Boolean(profile.publishedSpec);
   const trustedActions = (
     <aside className={styles.publicProfileActions} aria-label="Profile actions">
+      {ownPublishedProfile ? (
+        <div className={styles.ownerProfileReminder}>
+          <span>This is your published profile.</span>
+          <span>
+            Want a new direction? Tell Codex what to change. Your live page
+            stays unchanged until you publish again.
+          </span>
+        </div>
+      ) : (
+        <span className={styles.publicProfileIdentity}>
+          @{profile.handle} on Buildmates
+        </span>
+      )}
       <div className={styles.publicProfileActionGroup}>
-        <Link href="/">Buildmates</Link>
         <ShareButton
           label="Share profile"
           title={`${profile.displayName} on Buildmates`}
         />
+        {ownPublishedProfile ? (
+          <>
+            <Link href="/profile/design">Edit design</Link>
+            <Link href="/profile/edit">Edit details</Link>
+          </>
+        ) : null}
         {profile.viewerId && !ownProfile ? (
           <FollowButton
             targetKind="profile"
@@ -287,22 +305,12 @@ export default async function BuilderPage({
           <Link href="/onboarding">Join Buildmates to follow</Link>
         ) : null}
       </div>
-      {ownPublishedProfile ? (
-        <div className={styles.ownerProfileReminder}>
-          <span>This is your published profile.</span>
-          <span>
-            Want a new direction? Tell Codex what to change, then review it
-            before publishing.
-          </span>
-          <Link href="/profile/design">Edit design</Link>
-          <Link href="/profile/edit">Edit details</Link>
-        </div>
-      ) : null}
     </aside>
   );
   if (profile.publishedSpec)
     return (
       <main className={styles.profileShell}>
+        <ProductHeader signedIn={Boolean(profile.viewerId)} />
         {trustedActions}
         <SurfaceRenderer
           className={styles.publishedSurface}
