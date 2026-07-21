@@ -31,7 +31,7 @@ export default async function GraphPage() {
 
         <section className={styles.graph} aria-labelledby="topic-field-title">
           <h2 id="topic-field-title" className={styles.srOnly}>Active project topics</h2>
-          <BuildGraph topics={graph.topics} edges={graph.edges} relationships={graph.relationships}/>
+          <BuildGraph topics={graph.topics} edges={graph.edges} relationships={graph.relationships} totalBuilders={graph.totalBuilderCount} signedIn={Boolean(viewer)}/>
         </section>
         {graph.topics.length ? (
             <section className={styles.topicTotals} aria-labelledby="topic-totals-title">

@@ -218,10 +218,9 @@
 .graph {
   background: var(--night);
   color: #eef1e8;
-  padding: clamp(1.2rem, 4vw, 4rem);
+  padding: 0;
   min-height: 440px;
-  display: grid;
-  place-items: center;
+  display: block;
   overflow: hidden;
 }
 .bubbleField {
