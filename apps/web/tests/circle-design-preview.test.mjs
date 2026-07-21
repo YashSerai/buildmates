@@ -13,7 +13,7 @@ test("Circle design links render the latest private preview only for the request
 
   assert.match(page, /design === "preview"/);
   assert.match(page, /revision\.visibility='private_preview'/);
-  assert.match(page, /revision\.status='preview'/);
+  assert.match(page, /revision\.id<>COALESCE\(surface\.published_revision_id,''\)/);
   assert.match(page, /Private design preview/);
   assert.match(page, /Only active Circle members can see this version/);
   assert.match(styles, /\.previewNotice\s*\{/);

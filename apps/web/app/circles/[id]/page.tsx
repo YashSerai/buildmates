@@ -51,7 +51,7 @@ export default async function CirclePage({
         .first<{ specJson: string }>(),
       design === "preview"
         ? DB.prepare(
-            "SELECT revision.spec_json AS specJson FROM surfaces surface JOIN surface_revisions revision ON revision.surface_id=surface.id WHERE surface.kind='circle' AND surface.subject_id=? AND revision.visibility='private_preview' AND revision.status='preview' ORDER BY revision.revision_number DESC LIMIT 1",
+            "SELECT revision.spec_json AS specJson FROM surfaces surface JOIN surface_revisions revision ON revision.surface_id=surface.id WHERE surface.kind='circle' AND surface.subject_id=? AND revision.visibility='private_preview' AND revision.id<>COALESCE(surface.published_revision_id,'') ORDER BY revision.revision_number DESC LIMIT 1",
           )
             .bind(id)
             .first<{ specJson: string }>()
