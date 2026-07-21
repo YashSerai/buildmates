@@ -1,7 +1,7 @@
 -- Expand the temporary aggregate-only visualization fixture for world-scale density QA.
 -- All added builders and projects remain private, unindexed, unpublished, and excluded from matching.
 
-INSERT INTO `topics` (`id`,`taxonomy_version_id`,`slug`,`label`) VALUES
+INSERT OR IGNORE INTO `topics` (`id`,`taxonomy_version_id`,`slug`,`label`) VALUES
 ('agent-orchestration','taxonomy-buildmates-v1','agent-orchestration','Agent orchestration'),
 ('agent-memory','taxonomy-buildmates-v1','agent-memory','Agent memory'),
 ('computer-use','taxonomy-buildmates-v1','computer-use','Computer use'),
@@ -27,7 +27,7 @@ INSERT INTO `topics` (`id`,`taxonomy_version_id`,`slug`,`label`) VALUES
 ('robotics-software','taxonomy-buildmates-v1','robotics-software','Robotics software'),
 ('edge-ai','taxonomy-buildmates-v1','edge-ai','Edge AI');
 --> statement-breakpoint
-INSERT INTO `topic_relationships` (`from_topic_id`,`to_topic_id`,`kind`,`weight_basis_points`) VALUES
+INSERT OR IGNORE INTO `topic_relationships` (`from_topic_id`,`to_topic_id`,`kind`,`weight_basis_points`) VALUES
 ('ai-agents','agent-orchestration','parent',10000),('ai-agents','agent-memory','parent',10000),
 ('ai-agents','computer-use','parent',10000),('ai-agents','multimodal-ai','parent',10000),
 ('retrieval-augmented-generation','vector-databases','parent',10000),('retrieval-augmented-generation','hybrid-search','parent',10000),

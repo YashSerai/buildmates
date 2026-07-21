@@ -1,7 +1,7 @@
 "use client";
 
 import { hierarchy, pack } from "d3-hierarchy";
-import { useEffect, useMemo, useRef, useState, type PointerEvent, type WheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import type { BuildGraphRelationship, BuildGraphTopic } from "../../src/discovery/service";
 import { CATEGORY_COLORS, createTopicGraphModel } from "./build-graph-model";
 import styles from "./BuildGraph.module.css";
@@ -16,6 +16,7 @@ export function TopicBubbleMap({ topics, relationships, totalBuilders, searchTar
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x:number;y:number;ox:number;oy:number } | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(()=>{if(searchTarget&&model.topicById.has(searchTarget)){setFocusId(model.parentById.get(searchTarget)??null);setZoom(1);setPan({x:0,y:0})}},[searchTarget,model]);
   const effectiveFocus = focusId;
@@ -39,8 +40,8 @@ export function TopicBubbleMap({ topics, relationships, totalBuilders, searchTar
       if (topic) setTip({topic,x:500,y:330});
     }
   };
-  const wheel = (event:WheelEvent<SVGSVGElement>) => { event.preventDefault(); setZoom((value)=>Math.min(2.5,Math.max(.72,value*(event.deltaY>0?.9:1.1)))); };
-  const pointerDown = (event:PointerEvent<SVGSVGElement>) => { if (event.button!==0)return; drag.current={x:event.clientX,y:event.clientY,ox:pan.x,oy:pan.y}; event.currentTarget.setPointerCapture(event.pointerId); };
+  useEffect(()=>{const svg=svgRef.current;if(!svg)return;const wheel=(event:globalThis.WheelEvent)=>{event.preventDefault();setZoom((value)=>Math.min(2.5,Math.max(.72,value*(event.deltaY>0?.9:1.1))))};svg.addEventListener("wheel",wheel,{passive:false});return()=>svg.removeEventListener("wheel",wheel)},[]);
+  const pointerDown = (event:PointerEvent<SVGSVGElement>) => { if (event.button!==0||(event.target as Element).closest?.("[data-topic-node]"))return; drag.current={x:event.clientX,y:event.clientY,ox:pan.x,oy:pan.y}; event.currentTarget.setPointerCapture(event.pointerId); };
   const pointerMove = (event:PointerEvent<SVGSVGElement>) => { if(!drag.current)return; setPan({x:drag.current.ox+(event.clientX-drag.current.x)/zoom,y:drag.current.oy+(event.clientY-drag.current.y)/zoom}); };
   const pointerUp = () => { drag.current=null; };
 
@@ -57,13 +58,13 @@ export function TopicBubbleMap({ topics, relationships, totalBuilders, searchTar
       </div>
     </div>
     <div className={styles.bubbleViewport}>
-      {hasChildren ? <svg className={styles.bubbleSvg} viewBox="0 0 1000 660" role="img" aria-label={`${currentTopic?.label ?? "All topics"}: ${visibleTopics.length} topics`} onWheel={wheel} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
+      {hasChildren ? <svg ref={svgRef} className={styles.bubbleSvg} viewBox="0 0 1000 660" role="img" aria-label={`${currentTopic?.label ?? "All topics"}: ${visibleTopics.length} topics`} onPointerDown={pointerDown} onPointerMove={pointerMove} onPointerUp={pointerUp} onPointerCancel={pointerUp}>
         <defs><radialGradient id="bubble-light" cx="35%" cy="28%"><stop offset="0" stopColor="#ffffff" stopOpacity=".16"/><stop offset="1" stopColor="#000000" stopOpacity=".08"/></radialGradient></defs>
         <g key={effectiveFocus??"root"} className={styles.packGroup} transform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}>
           <circle className={styles.outerCircle} cx="500" cy="330" r="323" />
-          {nodes.map((node,index)=>{const topic=model.topicById.get(node.data.id!)!;const highlight=searchTarget===topic.id;const canLabel=node.r>44;const hasNext=(model.childrenById.get(topic.id)??[]).length>0;const fill=CATEGORY_COLORS[index%CATEGORY_COLORS.length];const lines=wrapLabel(topic.label,node.r);const labelSize=Math.max(13,Math.min(22,node.r/4.8));const labelStart=lines.length===2?-14:-4;return <g key={topic.id} className={`${styles.packNode} ${highlight?styles.searchHit:""}`} transform={`translate(${node.x} ${node.y})`} role="button" tabIndex={0} aria-label={`${topic.label}, ${topic.builderCount} builders${hasNext?", explore subtopics":""}`} onClick={(event)=>{event.stopPropagation();openTopic(topic.id)}} onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();openTopic(topic.id)}}} onPointerEnter={(event)=>setTip({topic,x:event.clientX,y:event.clientY})} onPointerMove={(event)=>setTip({topic,x:event.clientX,y:event.clientY})} onPointerLeave={()=>setTip(null)}>
+          {nodes.map((node,index)=>{const topic=model.topicById.get(node.data.id!)!;const highlight=searchTarget===topic.id;const canLabel=node.r>44;const hasNext=(model.childrenById.get(topic.id)??[]).length>0;const fill=CATEGORY_COLORS[index%CATEGORY_COLORS.length];const lines=wrapLabel(topic.label,node.r);const labelSize=Math.max(13,Math.min(22,node.r/4.8));const labelStart=lines.length===2?-14:-4;return <g data-topic-node key={topic.id} className={`${styles.packNode} ${hasNext?styles.explorable:""} ${highlight?styles.searchHit:""}`} transform={`translate(${node.x} ${node.y})`} role="button" tabIndex={0} aria-label={`${topic.label}, ${topic.builderCount} builders${hasNext?", explore subtopics":""}`} onClick={(event)=>{event.stopPropagation();openTopic(topic.id)}} onKeyDown={(event)=>{if(event.key==="Enter"||event.key===" "){event.preventDefault();openTopic(topic.id)}}} onPointerEnter={(event)=>setTip({topic,x:event.clientX,y:event.clientY})} onPointerMove={(event)=>setTip({topic,x:event.clientX,y:event.clientY})} onPointerLeave={()=>setTip(null)}>
             <circle r={node.r} fill={fill}/><circle r={node.r} fill="url(#bubble-light)"/>
-            {canLabel?<><text className={styles.packLabel} textAnchor="middle" style={{fontSize:labelSize}}>{lines.map((line,lineIndex)=><tspan key={line} x="0" y={labelStart+lineIndex*(labelSize+2)}>{line}</tspan>)}</text><text className={styles.packCount} textAnchor="middle" y={labelStart+lines.length*(labelSize+2)+13}>{topic.builderCount} {topic.builderCount===1?"builder":"builders"}</text>{hasNext&&node.r>72?<text className={styles.packHint} textAnchor="middle" y={labelStart+lines.length*(labelSize+2)+32}>Explore</text>:null}</>:null}
+            {canLabel?<><text className={styles.packLabel} textAnchor="middle" style={{fontSize:labelSize}}>{lines.map((line,lineIndex)=><tspan key={line} x="0" y={labelStart+lineIndex*(labelSize+2)}>{line}</tspan>)}</text><text className={styles.packCount} textAnchor="middle" y={labelStart+lines.length*(labelSize+2)+13}>{topic.builderCount} {topic.builderCount===1?"builder":"builders"}</text>{hasNext&&node.r>72?<text className={styles.packHint} textAnchor="middle" y={labelStart+lines.length*(labelSize+2)+32}>Explore inside →</text>:null}</>:null}
           </g>})}
         </g>
       </svg> : <div className={styles.emptyLevel}><span aria-hidden="true">○</span><h3>No deeper topics yet.</h3><p>{currentTopic?.label ?? "This topic"} is currently the most specific level in the graph.</p><button type="button" onClick={()=>setFocusId(model.parentById.get(effectiveFocus!)??null)}>Go back one level</button></div>}

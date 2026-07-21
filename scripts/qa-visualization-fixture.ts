@@ -21,6 +21,7 @@ async function main() {
     "scripts/fixtures/0025_visualization_qa_fixture.sql",
     "scripts/fixtures/0026_expand_visualization_qa_fixture.sql",
     "scripts/fixtures/0027_visualization_connection_fixture.sql",
+    "scripts/fixtures/0028_richer_build_graph_fixture.sql",
   ];
 
   for (const migration of migrations) {
@@ -65,9 +66,9 @@ async function main() {
   assert.equal(statistics.connectionCount, 96);
   assert.ok(cities.filter((city) => city.connectionCount > 0).length >= 20);
   assert.equal(cities.reduce((total, city) => total + city.connectionCount, 0), 192);
-  assert.ok(graph.topics.length >= 55);
-  assert.ok(graph.edges.length >= 100);
-  assert.ok(graph.relationships.length >= 45);
+  assert.ok(graph.topics.length >= 85);
+  assert.ok(graph.edges.length >= 220);
+  assert.ok(graph.relationships.length >= 70);
   assert.deepEqual(privacy, { visible: 0, indexed: 0, matching: 0, published: 0 });
   assert.equal(Number(handles?.count ?? -1), 0);
 
