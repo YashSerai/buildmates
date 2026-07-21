@@ -29,3 +29,12 @@ SELECT CASE WHEN n<37 THEN printf('qa_visual_project_%02d',n) ELSE printf('qa_vi
     WHEN 4 THEN 'privacy' WHEN 5 THEN 'automation' WHEN 6 THEN 'mcp' WHEN 7 THEN 'cloud-infrastructure'
     WHEN 8 THEN 'social-products' WHEN 9 THEN 'payments' WHEN 10 THEN 'computer-vision' ELSE 'developer-tools'
   END,1784333100000 + n FROM fixture;
+--> statement-breakpoint
+-- Preserve a meaningful broader-only segment so the hierarchy can account for
+-- builders whose payments work has not been classified into a narrower child.
+WITH RECURSIVE fixture(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM fixture WHERE n < 253)
+INSERT OR IGNORE INTO profile_topic_contributions (user_id,topic_id,updated_at)
+SELECT CASE WHEN n<37 THEN printf('qa_visual_user_%02d',n) ELSE printf('qa_visual_user_%03d',n) END,'payments',1784333200000 + n
+FROM fixture
+WHERE n % 32 NOT IN (14,15,16,17) AND (n * 11) % 12 <> 9
+LIMIT 42;

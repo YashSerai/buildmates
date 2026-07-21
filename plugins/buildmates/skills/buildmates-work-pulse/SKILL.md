@@ -5,6 +5,8 @@ description: Refresh privacy-safe Buildmates Work Signals from user-approved con
 
 # Buildmates Work Pulse
 
+For Build Graph classification, submit the most specific accurate topic IDs returned by `list_topic_taxonomy`. Do not redundantly add ancestor topics merely to populate the graph. Buildmates rolls descendants into their canonical parents and accounts for work that cannot yet be classified more deeply.
+
 For a new recurring schedule, recommend one clearly named Buildmates Work Pulse every Tuesday and Friday in the user's timezone. This is the default notification and intelligence surface, not an optional extra. Use manual refresh only when the user explicitly chooses it or the host cannot create recurring automations, and state which condition applies. Never create a duplicate schedule.
 
 Read the user's Buildmates source policies first. Never use a source marked Never. For Ask each time, obtain a fresh approval before reading and use the resulting single-use approval for the next signal only. Actions only permits applicable provider actions but never context extraction. Allow approved Work Signals permits recurring extraction until the user changes the policy; report each created, changed, expired, or revoked signal in the run outcome so the user can review or remove it.

@@ -37,7 +37,7 @@ INSERT OR IGNORE INTO `topic_relationships` (`from_topic_id`,`to_topic_id`,`kind
 ('developer-tools','developer-experience','parent',10000),
 ('social-products','community-platforms','parent',10000),('social-products','social-discovery','parent',10000),
 ('creator-tools','creator-monetization','parent',10000),('creator-tools','content-automation','parent',10000),
-('payments','billing-infrastructure','parent',10000),('payments','fintech','parent',10000),
+('payments','billing-infrastructure','parent',10000),
 ('data-infrastructure','event-pipelines','parent',10000),('data-infrastructure','data-warehouses','parent',10000),
 ('robotics-hardware','robotics-software','parent',10000),('robotics-hardware','edge-ai','parent',10000);
 --> statement-breakpoint

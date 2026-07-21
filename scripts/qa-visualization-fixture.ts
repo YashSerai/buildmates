@@ -69,6 +69,12 @@ async function main() {
   assert.ok(graph.topics.length >= 85);
   assert.ok(graph.edges.length >= 220);
   assert.ok(graph.relationships.length >= 70);
+  assert.ok(graph.topics.every((topic) => topic.broaderBuilderCount <= topic.builderCount));
+  const payments = graph.topics.find((topic) => topic.id === "payments");
+  const billing = graph.topics.find((topic) => topic.id === "payment-infrastructure");
+  assert.ok(payments && billing);
+  assert.ok(payments.builderCount >= billing.builderCount);
+  assert.ok(payments.broaderBuilderCount > 0);
   assert.deepEqual(privacy, { visible: 0, indexed: 0, matching: 0, published: 0 });
   assert.equal(Number(handles?.count ?? -1), 0);
 
