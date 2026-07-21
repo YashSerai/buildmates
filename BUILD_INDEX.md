@@ -43,8 +43,8 @@ Buildmates is a Codex-native builder network that introduces people through curr
 - A new room is a themed lightweight chat, not an immediate dashboard.
 - Room upgrades are offered after useful conversations and require consent.
 - Generative UI is data-driven and versioned; it does not require a deployment per profile or room.
-- Generated surfaces use approved primitives plus sanitized, scoped HTML/CSS. Arbitrary generated JavaScript is excluded from day one.
-- Trusted component trees are the primary SurfaceSpec structure; free-form HTML/CSS is decorative/editorial only and runs in a credentialless sandbox.
+- New profile surfaces use complete Codex-authored semantic HTML and responsive CSS inside a scriptless, credential-isolated v3 iframe. Arbitrary generated JavaScript is excluded.
+- Existing v2 component profiles remain readable until replaced; new profile generation no longer recommends or accepts component-tree composition.
 - Shared redesigns use preview, approval, version history, rollback, and optimistic concurrency checks.
 - Circle roles are stored and enforced server-side. The creator begins as owner/admin and can promote, transfer, or remove admins.
 - Anti-slop, accessibility, privacy, and surface-governance rules are versioned as a runtime Design Policy and included in every generation brief.
@@ -60,7 +60,7 @@ Buildmates is a Codex-native builder network that introduces people through curr
 | Connected apps | Present identified, declared optional, or user-named sources with one Buildmates policy per source; the list is explicitly non-exhaustive | Source-specific policies and admin presets | Implemented; live connector proof pending |
 | Work Pulse | Scheduled or manual extraction of approved Work Signals | Smarter cadence and stale-signal cleanup | Implemented; unattended production proof pending |
 | Networking Pulse | Expiring intention, similar/adjacent, local/global, intro budget, quiet hours, snooze, serendipity, exclusions | Learned preference suggestions | Implemented; D1 integration and desktop/phone settings QA pass |
-| Profiles | Profile review, field-level visibility, projects, generative responsive full-page surface, optional connection/build stats, canonical share link | Broader module library and isolated custom code | SurfaceSpec v2 implemented with five structurally distinct responsive portfolio compositions, governed media, real preview/public parity, and canonical `/builders/{handle}` publication |
+| Profiles | Profile review, field-level visibility, projects, generative responsive full-page surface, optional connection/build stats, canonical share link | Optional richer asset pipelines | GeneratedSiteBundle v3 gives Codex complete semantic HTML/CSS composition inside a governed iframe; v2 remains a read-only compatibility path |
 | Projects | Create/edit/publish/archive/delete/transfer, collaborators, visibility, matching permission, update history, canonical sharing | Richer project modules and team workflows | Implemented in source; integrated review pending |
 | Cold start and growth | Shareable profiles/projects/cards, recipient-specific personal invites, follows, watches, honest no-match state | Referral analytics and organization invitations | Implemented in source; integrated review pending |
 | Aggregate network views | No people/database search; MapLibre/OpenFreeMap city bubbles and anonymous canonical-topic bubbles expose counts only, never rosters | Richer aggregate filters after network density is proven | A reversible 36-builder aggregate-only fixture is live; automated privacy/count checks and desktop/phone browser QA pass, while founder visual approval and fixture cleanup remain |
@@ -271,7 +271,7 @@ Run one clean 0/10 Codex onboarding QA against the production MCP and preserve t
 
 ## Completed-onboarding QA verdict
 
-- **Completed — generative profile:** SurfaceSpec v2 now supports governed full-page portfolio composition, a user-reviewed design brief, optional available design skills, private preview, and canonical `/builders/{handle}` publication. `/profile/design` remains owner-only.
+- **Completed — generative profile:** GeneratedSiteBundle v3 now lets Codex author a governed full-page semantic HTML/CSS profile from a user-reviewed design brief, optional available design skills, private preview, and canonical `/builders/{handle}` publication. `/profile/design` remains owner-only. Component-based v2 pages are compatibility-only.
 - **Completed — generated-page flow:** the recovery seed is invisible and non-publishable; real revisions render identically in private preview and public profile with trusted Buildmates controls outside generated authority.
 - **Required before launch — Networking Pulse explanation:** before one approval, explain intent, similar/adjacent/balanced matching, local/global geography, weekly introduction cap, quiet hours, serendipity, exclusions, and that expiry is when the temporary networking intent is reconfirmed rather than silently becoming permanent.
 - **Required before launch — Work Pulse default:** when recurring automations are available, recommend one Buildmates Work Pulse on Tuesdays and Fridays. Explain that it reviews only permitted sources, refreshes approved profile/project topics and Work Signals, checks the bounded candidate shortlist and relevance watch, and posts a concise result to the Codex task inbox. Manual-only is a platform-unavailable fallback or an explicit user override, never the recommended default.
@@ -355,3 +355,13 @@ Run one clean 0/10 Codex onboarding QA against the production MCP and preserve t
 - Profile sharing uses the native device share sheet where available and otherwise says **Copy profile link**. Successful copy/share feedback is screen-reader-only, avoiding the stray inline confirmation that distorted the action row; failures remain visible.
 - Focused proof: 100/100 unit tests pass; MCP tool contract passes 24/24; the canonical D1 profile revision, publication, targeted-edit, collateral-change rejection, and rollback contract passes; web and MCP typechecks pass; the production web build passes; the design workspace publish/reload/live-edit journey passes at desktop and phone widths with screenshots under `docs/qa/evidence/2026-07-18/profile-design-workspace/`.
 - External-account confidence gate: a genuine second GitHub/Codex account remains desirable for final reciprocal-consent verification; the application behavior already passes the isolated two-principal browser journey.
+
+## GeneratedSiteBundle v3 profile contract (2026-07-20)
+
+- New profiles are complete Codex-authored semantic HTML fragments plus responsive CSS. The contract does not prescribe Buildmates layout components, project chapters, portfolio grids, or a site-builder template.
+- Generated pages run in a scriptless iframe with no credentials or application authority. The validator rejects scripts, forms, embedded documents, event handlers, SVG, undeclared bindings, arbitrary network requests, CSS escapes/comments used for obfuscation, duplicate attributes, and unsafe external links.
+- Current public values are resolved at render time through declared bindings. Private fields cannot be requested by markup; publication never widens field visibility. Approved raster assets use exact owner-bound paths only.
+- Codex can create or prepare an approved PNG/JPEG without putting bytes in MCP context, request a ten-minute one-time upload URL, upload raw bytes through the sanitizing R2 pipeline, and explicitly attach the resulting asset to an already-reviewed project.
+- Targeted revisions preserve every unrelated source field; full redesigns remain explicit. The owner sees private and live revisions, publication history, rollback, and the canonical public URL. The iframe follows its rendered document height so published profiles behave as continuous pages rather than nested scroll regions.
+- Current source proof: workspace typechecks and build pass; web assertions pass 16/16; unit tests pass 101/101; security tests pass 21/21; the plugin and both affected skills validate. The isolated platform capability suite passes 8/8. The broad Miniflare runner is not counted as new pass evidence because Windows assigned conflicting loopback ports (`EADDRINUSE`) during the combined run; this is test-runner infrastructure, not a live-product result.
+- Deployment and live desktop/phone rendered-profile proof remain the release gate for this change.

@@ -103,7 +103,7 @@ test("public builder pages are canonical surfaces and keep design controls priva
   assert.doesNotMatch(builder, /Make this page feel like you\./);
   assert.match(designWorkspace, /Make your page feel like you\./);
   assert.match(designWorkspace, /className=\{styles\.designHistory\}/);
-  assert.match(designWorkspace, /<SurfaceRenderer\s+spec=\{privatePreview\.spec\}/);
+  assert.match(designWorkspace, /<SurfaceRenderer\s+spec=\{activePreview\.spec\}/);
   assert.doesNotMatch(designWorkspace, /isRecoveryStarter/);
   assert.doesNotMatch(designWorkspace, /Safe starter preview/);
   assert.doesNotMatch(designWorkspace, /Design \{revision\.revisionNumber\}/);

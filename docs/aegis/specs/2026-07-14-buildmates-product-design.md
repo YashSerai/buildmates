@@ -153,20 +153,19 @@ The review screen clearly separates generated suggestions from user-confirmed fa
 
 ### 4.5 Generative profiles
 
-Codex generates a responsive profile surface that reflects the person instead of placing everyone in one template. It can control layout composition, theme, typography, section order, decoration, and approved media. The trusted application component tree is the primary structure; free-form HTML/CSS is optional and limited to decorative or editorial regions. A versioned `SurfaceSpec` contains:
+Codex generates a responsive profile site that reflects the person instead of placing everyone in one template. For new profiles, SurfaceSpec v3 is a secure deployment envelope around Codex-authored semantic HTML and responsive CSS. It is not a component tree or a website-builder template. Codex controls the information architecture, theme, typography, section order, composition, CSS-only motion, and approved media. The v3 envelope contains:
 
 - surface type and owner;
 - structured content bindings;
-- approved component/module tree;
-- optional decorative/editorial HTML fragments;
-- scoped CSS and design tokens;
+- a complete semantic HTML body fragment;
+- a complete responsive stylesheet;
 - asset references;
 - accessibility metadata;
 - responsive behavior;
 - Design Policy version;
 - base revision and revision metadata.
 
-The renderer supplies stable components for projects, current work, asks/offers, cohorts, links, and privacy-aware fields. A SurfaceSpec contains binding identifiers and presentation instructions, never private field values in shared HTML or JSON. The server resolves authorized values for the current viewer and omits unauthorized bindings from the response. Decorative HTML/CSS regions render in a sandboxed iframe with scripts, forms, same-origin access, popups, and top navigation disabled. CSS rejects `@import` and arbitrary `url()` requests; images and fonts resolve only from approved R2 assets. The upload pipeline allowlists passive raster/font formats, forbids HTML, rejects or sanitizes SVG, forces trusted content types plus `X-Content-Type-Options: nosniff`, and serves assets under a non-executable origin/policy. Follow, connect, report, privacy, navigation, and all data-writing controls remain trusted components outside the iframe. Sanitization and CSS scoping remain defense in depth. Generated JavaScript is not accepted in day one.
+The generated document contains binding identifiers, not durable copies of private profile values. The server resolves only the fields the current viewer may access, so later privacy changes immediately affect the rendered page. The entire generated profile renders inside an isolated, scriptless iframe. JavaScript, forms, embedded documents, event handlers, imports, active third-party content, and arbitrary network requests are rejected. Images resolve only from exact owner-approved R2 asset paths. Follow, connect, report, privacy, navigation, authentication, and every data-writing control remain trusted Buildmates UI outside the generated document. Existing v2 profiles remain readable until their owners publish a v3 replacement; Buildmates does not automatically convert visual designs.
 
 Canonical profile URLs use `/@handle`, implemented through a verified rewrite to the non-special internal route `/builders/{handle}`. The owner can ask Codex conversationally to revise the profile, preview it privately, publish it, inspect history, and roll back. No deployment is required for a revision.
 

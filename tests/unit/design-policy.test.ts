@@ -10,7 +10,7 @@ describe("runtime design policy", () => {
     expect(createHash("sha256").update(DESIGN_POLICY_SOURCE).digest("hex")).toBe(DESIGN_POLICY_SOURCE_HASH);
     expect(createHash("sha256").update(PREVIOUS_DESIGN_POLICY_SOURCE).digest("hex")).toBe(PREVIOUS_DESIGN_POLICY_SOURCE_HASH);
     expect(createHash("sha256").update(HISTORICAL_DESIGN_POLICY_SOURCE).digest("hex")).toBe(HISTORICAL_DESIGN_POLICY_SOURCE_HASH);
-    expect(designPolicy.authority.generatedCodeMustNever).toContain("execute scripts or submit forms");
+    expect(designPolicy.authority.generatedCodeMustNever.join(" ")).toContain("execute JavaScript");
   });
   it("seeds the exact active policy idempotently and rejects a conflicting rewrite", async () => {
     const repositories = createMemoryRepositories();

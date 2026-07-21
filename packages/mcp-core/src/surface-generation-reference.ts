@@ -1,138 +1,60 @@
-import { DESIGN_POLICY_VERSION, safeParseSurfaceSpec, surfaceNodeSchema, type SurfaceNodeV2, type SurfaceSpecV2 } from "@buildmates/surfaces";
+import { DESIGN_POLICY_VERSION, safeParseSurfaceSpec, surfaceNodeSchema, type SurfaceSpecV3 } from "@buildmates/surfaces";
 import { z } from "zod";
 
 type JsonSchema = Record<string, unknown>;
 
 export type SurfaceComponentReference = {
   contract: readonly string[];
-  components: Record<string, { required: string[]; properties: Record<string, unknown> }>;
+  format: string;
+  html: Record<string, unknown>;
+  css: Record<string, unknown>;
+  bindings: Record<string, unknown>;
 };
 
 export function surfaceComponentReference(trustedComponents: readonly string[]): SurfaceComponentReference {
-  const schema = z.toJSONSchema(surfaceNodeSchema) as JsonSchema;
-  const variants = Array.isArray(schema.oneOf) ? schema.oneOf as JsonSchema[] : [];
-  const trusted = new Set(trustedComponents);
-  const components: SurfaceComponentReference["components"] = {};
-  for (const variant of variants) {
-    const properties = variant.properties as Record<string, JsonSchema> | undefined;
-    const type = properties?.type?.const;
-    if (typeof type !== "string" || !trusted.has(type)) continue;
-    components[type] = {
-      required: Array.isArray(variant.required) ? variant.required.filter((item): item is string => typeof item === "string") : [],
-      properties: Object.fromEntries(Object.entries(properties ?? {}).map(([name, property]) => [name, compactProperty(property)])),
-    };
-  }
+  void trustedComponents;
   return {
+    format: "GeneratedSiteBundle v3",
     contract: [
-      "Every node is strict: include every required property and no unlisted property.",
-      "Binding fields must use an authorized binding from this generation brief.",
-      "Children accepts only complete nodes from this reference; split requires exactly two children.",
-      "Use validate_surface_spec once before submission. On failure, repair exact paths; after two failures restart from customizedExample.",
+      "For profile pages, author one complete semantic HTML fragment and one complete responsive CSS stylesheet. Do not compose Buildmates components.",
+      "HTML is a body fragment with exactly one h1. JavaScript, forms, embedded documents, inline event handlers, SVG, and arbitrary network requests are forbidden. Links use HTTPS, target _blank, and rel noopener noreferrer.",
+      "Render current public data with {{binding.key}}. Render arrays with <template data-buildmates-repeat=\"binding.key\"> and item tokens such as {{item.title}}, {{item.summary}}, {{item.href}}, {{item.label}}, and {{item.value}}.",
+      "Every declared content binding must appear. Images may use only exact approvedAssets src paths. CSS url() values may use only those same paths.",
+      "Include real desktop and phone layout rules plus @media (prefers-reduced-motion: reduce). Content must be visible without animation.",
+      "Use validate_surface_spec once before submission. Repair exact returned paths rather than reducing the design to a preset.",
     ],
-    components,
+    html: {
+      allowedTags: ["a", "abbr", "address", "article", "aside", "b", "blockquote", "br", "cite", "code", "dd", "details", "div", "dl", "dt", "em", "figcaption", "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "i", "img", "li", "main", "mark", "nav", "ol", "p", "picture", "pre", "q", "section", "small", "span", "strong", "sub", "summary", "sup", "template", "time", "ul"],
+      forbidden: ["script", "style", "iframe", "object", "embed", "form", "input", "button", "meta", "link", "base", "svg", "canvas", "audio", "video", "on* event attributes"],
+      maximumCharacters: 180000,
+    },
+    css: { maximumCharacters: 180000, forbidden: ["@import", "@font-face", "expression()", "behavior", "-moz-binding", "unapproved url()"], arbitrarySelectorsAndLayout: true, cssOnlyMotion: true },
+    bindings: { scalar: "{{profile.displayName}}", collection: "<template data-buildmates-repeat=\"profile.projects\"><article><h2>{{item.title}}</h2><p>{{item.summary}}</p></article></template>" },
   };
-}
-
-function compactProperty(schema: JsonSchema): unknown {
-  if ("const" in schema) return [schema.const];
-  if (Array.isArray(schema.enum)) return schema.enum;
-  if (Array.isArray(schema.anyOf)) {
-    const values = (schema.anyOf as JsonSchema[]).flatMap((item) => "const" in item ? [item.const] : item.type === "null" ? [null] : []);
-    if (values.length === schema.anyOf.length) return values;
-    return { oneOf: (schema.anyOf as JsonSchema[]).map(compactProperty) };
-  }
-  if (schema.$ref === "#") return "SurfaceNode";
-  if (schema.type === "array") {
-    const items = schema.items as JsonSchema | undefined;
-    return { type: items?.$ref === "#" ? "SurfaceNode[]" : "array", ...(typeof schema.minItems === "number" ? { min: schema.minItems } : {}), ...(typeof schema.maxItems === "number" ? { max: schema.maxItems } : {}) };
-  }
-  if (schema.type === "object") {
-    const properties = schema.properties as Record<string, JsonSchema> | undefined;
-    return {
-      type: "object",
-      required: Array.isArray(schema.required) ? schema.required : [],
-      properties: properties ? Object.fromEntries(Object.entries(properties).map(([name, property]) => [name, compactProperty(property)])) : {},
-    };
-  }
-  if (typeof schema.type === "string") {
-    return { type: schema.type, ...(typeof schema.minimum === "number" ? { min: schema.minimum } : {}), ...(typeof schema.maximum === "number" ? { max: schema.maximum } : {}) };
-  }
-  return "value";
 }
 
 export function customizedProfileSurfaceExample(input: {
-  starterSpec: unknown;
   authorizedBindingTypes: Record<string, unknown> | null;
-  authorizedContent?: Record<string, unknown> | null;
-  authorizedMedia?: Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }>;
   approvedAssets?: Array<{ id: string; src: string }>;
-  trustedComponents: readonly string[];
-}): SurfaceSpecV2 | null {
-  const parsedStarter = safeParseSurfaceSpec(input.starterSpec, DESIGN_POLICY_VERSION);
-  if (!parsedStarter.success || parsedStarter.data.schemaVersion !== "2" || parsedStarter.data.kind !== "profile") return null;
-  const trusted = new Set(input.trustedComponents);
-  const requiredComponents = ["section", "stack", "heading", "text", "project-list", "fact-list"];
-  if (requiredComponents.some((component) => !trusted.has(component))) return null;
-  const typedBindings = Object.entries(input.authorizedBindingTypes ?? {});
-  const textBindings = typedBindings.filter(([, type]) => type === "text").map(([key]) => key);
-  const factsBinding = typedBindings.find(([, type]) => type === "facts")?.[0];
-  const projectsBinding = typedBindings.find(([, type]) => type === "projects")?.[0];
-  if (textBindings.length < 2 || !factsBinding || !projectsBinding) return null;
-  const [nameBinding, summaryBinding] = textBindings;
-  const headingId = "generated-profile-title";
-  const root: SurfaceNodeV2 = {
-    id: "generated-profile-root", type: "section", tone: "canvas", layout: "flow", padding: "none", bleed: true,
-    minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-    children: [
-      {
-        id: "generated-identity-chapter", type: "section", tone: "canvas", layout: "hero", padding: "xl", bleed: true,
-        minHeight: "half", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-        children: [
-          { id: "generated-identity-stack", type: "stack", gap: "md", align: "start", justify: "center", width: "wide", children: [
-            { id: headingId, type: "heading", level: 1, binding: nameBinding, fallback: "Builder profile", size: "display", align: "start", width: "balanced", weight: "bold", lineHeight: "snug", tracking: "normal" },
-            { id: "generated-summary", type: "text", style: "lead", binding: summaryBinding, fallback: "Building useful systems.", align: "start", width: "prose", weight: "regular", lineHeight: "normal", tracking: "normal" },
-          ] },
-        ],
-      },
-      {
-        id: "generated-projects-chapter", type: "section", tone: "surface", layout: "flow", padding: "lg", bleed: true,
-        minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-        children: [
-          { id: "generated-projects-stack", type: "stack", gap: "lg", align: "start", justify: "start", width: "full", children: [
-            { id: "generated-projects", type: "project-list", binding: projectsBinding, emptyMessage: "", layout: "editorial", columns: 1 },
-          ] },
-        ],
-      },
-      {
-        id: "generated-context-chapter", type: "section", tone: "canvas", layout: "flow", padding: "lg", bleed: true,
-        minHeight: "auto", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-        children: [
-          { id: "generated-facts", type: "fact-list", binding: factsBinding, emptyMessage: "", layout: "grid", emphasis: "quiet" },
-        ],
-      },
-    ],
-  };
-  const spec: SurfaceSpecV2 = {
-    ...parsedStarter.data,
-    title: "Valid profile surface example",
-    theme: {
-      ...parsedStarter.data.theme,
-      typography: { ...parsedStarter.data.theme.typography, display: "gallery-serif", scale: "generous", headingWeight: "black" },
-      atmosphere: { motif: "none", density: "quiet", tone: "accent", continuity: "section" },
-      motion: { preset: "none", durationMs: 400, iterations: 1 },
+} & Record<string, unknown>): SurfaceSpecV3 | null {
+  const entries = Object.entries(input.authorizedBindingTypes ?? {});
+  const text = entries.filter(([, type]) => type === "text").map(([key]) => key);
+  const projects = entries.find(([, type]) => type === "projects")?.[0];
+  const facts = entries.find(([, type]) => type === "facts")?.[0];
+  if (text.length < 2 || !projects || !facts) return null;
+  const [name, summary] = text;
+  const spec: SurfaceSpecV3 = {
+    schemaVersion: "3", designPolicyVersion: DESIGN_POLICY_VERSION, kind: "profile", title: "Generated profile recovery example",
+    document: {
+      html: `<main class="page"><header><h1>{{${name}}}</h1><p>{{${summary}}}</p></header><section><template data-buildmates-repeat="${projects}"><article><h2>{{item.title}}</h2><p>{{item.summary}}</p></article></template></section><dl><template data-buildmates-repeat="${facts}"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></main>`,
+      css: `:root{color-scheme:light}.page{max-width:72rem;margin:auto;padding:clamp(1.25rem,5vw,5rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.page h1{font-size:clamp(3rem,9vw,8rem);line-height:.9}.page section{display:grid;gap:1rem}.page article{border-top:1px solid #4d5148;padding:1.5rem 0}@media(max-width:600px){.page{padding:1rem}.page h1{font-size:clamp(2.6rem,16vw,5rem)}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}`,
     },
-    root,
-    bindingManifest: {
-      content: [
-        { key: nameBinding, type: "text" }, { key: summaryBinding, type: "text" },
-        { key: factsBinding, type: "facts" }, { key: projectsBinding, type: "projects" },
-      ],
-      media: [],
-    },
-    approvedAssets: [], decorativeRegions: [],
-    responsive: { collapseGridsBelow: "md", contentWidth: "full", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true },
-    accessibility: { label: "Customized builder profile", primaryHeadingNodeId: headingId, reducedMotion: "required" },
+    bindingManifest: { content: [{ key: name, type: "text" }, { key: summary, type: "text" }, { key: projects, type: "projects" }, { key: facts, type: "facts" }], media: [] },
+    approvedAssets: input.approvedAssets ?? [], responsive: { desktopMinHeight: 1100, phoneMinHeight: 1400 }, accessibility: { label: "Generated builder profile", reducedMotion: "required" },
   };
-  const validation = safeParseSurfaceSpec(spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
-  return validation.success ? spec : null;
+  const parsed = safeParseSurfaceSpec(spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
+  return parsed.success && parsed.data.schemaVersion === "3" ? parsed.data : null;
 }
+
+// Retained for room and Circle tooling that still exposes the v2 component grammar.
+export function legacySurfaceNodeJsonSchema(): JsonSchema { return z.toJSONSchema(surfaceNodeSchema) as JsonSchema; }

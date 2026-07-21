@@ -1,4 +1,4 @@
-import { DESIGN_POLICY_VERSION } from "./design-policy";
+import { COMPONENT_V2_DESIGN_POLICY_VERSION } from "./design-policy";
 import type { SurfaceBindings, SurfaceProject } from "./render";
 import type { Placement, SurfaceNodeV2, SurfaceSpecV2 } from "./schema";
 
@@ -117,7 +117,7 @@ function layer(id: string, children: SurfaceNodeV2[], desktop: Placement, tablet
 }
 function base(title: string, display: Parameters<typeof theme>[0], motif: Parameters<typeof theme>[1], root: SurfaceNodeV2): SurfaceSpecV2 {
   return {
-    schemaVersion: "2", designPolicyVersion: DESIGN_POLICY_VERSION, kind: "profile", title, theme: theme(display, motif), root,
+    schemaVersion: "2", designPolicyVersion: COMPONENT_V2_DESIGN_POLICY_VERSION, kind: "profile", title, theme: theme(display, motif), root,
     bindingManifest: { content: [...contentManifest], media: mediaManifest.map((item) => ({ ...item, approvedAssetIds: [...item.approvedAssetIds] })) }, approvedAssets: [...assets], decorativeRegions: [],
     responsive: { collapseGridsBelow: "md", contentWidth: "full", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true },
     accessibility: { label: title, primaryHeadingNodeId: `${title.toLowerCase().replace(/[^a-z]+/g, "-")}-title`, reducedMotion: "required" },

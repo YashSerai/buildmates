@@ -842,6 +842,18 @@ export const surfaceAssets = sqliteTable(
   },
   (t) => [uniqueIndex("surface_asset_object_key_unique").on(t.objectKey)],
 );
+export const surfaceAssetUploadGrants = sqliteTable(
+  "surface_asset_upload_grants",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    userId: userRef("user_id"),
+    contentType: text("content_type", { enum: ["image/jpeg", "image/png"] }).notNull(),
+    expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+    createdAt: created(),
+    consumedAt: integer("consumed_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [index("surface_asset_upload_grants_user_idx").on(t.userId, t.expiresAt)],
+);
 
 export const matchPairs = sqliteTable(
   "match_pairs",

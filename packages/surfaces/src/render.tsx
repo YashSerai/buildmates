@@ -2,6 +2,7 @@ import React, { type CSSProperties, type ReactNode } from "react";
 import { sanitizeDecorativeRegion, type SanitizedDecorativeRegion } from "./sanitize";
 import { SURFACE_V2_STYLES } from "./render-styles";
 import { safeParseSurfaceSpec, SURFACE_FONT_REGISTRY, type Placement, type SurfaceNode, type SurfaceSpec } from "./schema";
+import { renderGeneratedSite } from "./generated-site";
 
 export type SurfaceFact = { label: string; value: string };
 export type SurfaceProject = { id: string; title: string; summary: string; href?: string; tags?: readonly string[]; metrics?: readonly SurfaceFact[] };
@@ -21,6 +22,21 @@ export type SurfaceRendererProps = {
 export function SurfaceRendererCore({ spec: input, bindings, onAction, state = "ready", className = "" }: SurfaceRendererProps) {
   const parsed = safeParseSurfaceSpec(input);
   const spec = parsed.success ? parsed.data : null;
+  if (spec?.schemaVersion === "3") {
+    if (state !== "ready") return <article className={className} data-surface-state={state}><SurfaceState state={state} /></article>;
+    const srcDoc = safeGeneratedSiteDocument({ html: spec.document.html, css: spec.document.css, bindings, approvedAssetSources: spec.approvedAssets.map((asset) => asset.src) });
+    if (!srcDoc) return <article className={className} data-surface-state="blocked"><SurfaceFallback title="This design was blocked" detail="Buildmates kept unsafe generated code out of your profile." /></article>;
+    return <iframe
+        aria-label={spec.accessibility.label}
+        className={`surface-generated-site ${className}`}
+        data-surface-kind={spec.kind}
+        data-surface-state="ready"
+        sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+        referrerPolicy="no-referrer"
+        srcDoc={srcDoc}
+        style={{ "--surface-generated-desktop-height": `${spec.responsive.desktopMinHeight}px`, "--surface-generated-phone-height": `${spec.responsive.phoneMinHeight}px` } as CSSProperties}
+    />;
+  }
   const shell = spec ?? SAFE_SHELL;
   const colors = shell.theme.colors;
   const style = {
@@ -72,6 +88,10 @@ export function SurfaceRendererCore({ spec: input, bindings, onAction, state = "
     return wrap(<SurfaceFallback title="This surface was blocked" detail="Unsafe decorative code was removed before it reached your browser." />, "blocked");
   }
   return wrap(<Node node={spec.root} spec={spec} bindings={bindings} regions={sanitizedRegions} onAction={onAction} />, "ready");
+}
+
+function safeGeneratedSiteDocument(input: Parameters<typeof renderGeneratedSite>[0]) {
+  try { return renderGeneratedSite(input); } catch { return null; }
 }
 
 const SAFE_SHELL = {

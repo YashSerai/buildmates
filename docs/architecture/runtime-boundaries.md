@@ -8,7 +8,7 @@ Buildmates is one monorepo with independently deployable web and MCP units.
 - `packages/domain` owns entities, policies, state machines, authorization contracts, and validation.
 - `packages/database` owns schemas and repositories.
 - `packages/matching` owns taxonomy, indexing, deterministic scores, and reciprocal state.
-- `packages/surfaces` owns SurfaceSpec, trusted primitives, sanitization, and design policy.
+- `packages/surfaces` owns the GeneratedSiteBundle v3 HTML/CSS envelope for profiles, legacy shared-surface primitives, sanitization, and design policy.
 
 ChatGPT Sites is the preferred web host. A measured incompatibility activates the prepared Cloudflare/Vercel adapter under `GOAL.md`; it does not fork domain behavior. External MCP requests carry a short-lived signed OAuth subject and never an internal user ID chosen by the caller.
 

@@ -9,18 +9,20 @@ export function auditRenderedSurface(root: HTMLElement): RenderedSurfaceIssue[] 
     issues.push({ code: "horizontal_overflow", message: "The page extends beyond its preview width." });
   }
   const seen = new Set<string>();
-  for (const element of root.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6,p,li,dt,dd,a,button,strong,span")) {
+  const iframe = root.querySelector<HTMLIFrameElement>("iframe.surface-generated-site");
+  const generatedRoot = iframe?.contentDocument?.body ?? null;
+  if (generatedRoot && generatedRoot.scrollWidth > generatedRoot.clientWidth + 1) add({ code: "horizontal_overflow", message: "The generated page extends beyond its preview width." });
+  const auditRoot = generatedRoot ?? root;
+  for (const element of auditRoot.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6,p,li,dt,dd,a,button,strong,span")) {
     if (!isVisibleText(element)) continue;
     const style = getComputedStyle(element);
     const size = Number.parseFloat(style.fontSize);
     if (size < 12) add({ code: "small_text", message: `Text is too small near "${sample(element)}".` });
-    if (isClipped(element, root)) add({ code: "clipped_text", message: `Text is clipped near "${sample(element)}".` });
+    if (isClipped(element, auditRoot)) add({ code: "clipped_text", message: `Text is clipped near "${sample(element)}".` });
     const ratio = contrastAgainstResolvedBackground(element);
     const threshold = size >= 24 || (size >= 18.66 && Number.parseInt(style.fontWeight, 10) >= 700) ? 3 : 4.5;
     if (ratio !== null && ratio < threshold) add({ code: "low_contrast", message: `Text contrast is too low near "${sample(element)}".` });
   }
-  return issues;
-
   function add(issue: RenderedSurfaceIssue) {
     const key = `${issue.code}:${issue.message}`;
     if (!seen.has(key) && issues.length < 12) {
@@ -28,6 +30,7 @@ export function auditRenderedSurface(root: HTMLElement): RenderedSurfaceIssue[] 
       issues.push(issue);
     }
   }
+  return issues;
 }
 
 function isVisibleText(element: HTMLElement) {

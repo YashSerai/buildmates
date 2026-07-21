@@ -5,6 +5,8 @@ import { BUILD_MATES_MCP_TOOLS, canonicalToolInputHash, createD1McpProductReposi
 import { recordTrustedAutomationCapability } from "@/src/platform/onboarding-data";
 import { AUTOMATION_CAPABILITY_TTL_MS } from "@buildmates/domain";
 import { getMcpCandidateShortlist, recordMcpCandidateEvaluation, recordMcpManualMatchResponse } from "@/src/matching/mcp-adapter";
+import { createSurfaceAssetUploadGrant } from "@/src/platform/surface-upload-grants";
+import { associateProfileProjectMedia } from "@/src/platform/surface-assets";
 
 const ALLOWED_ACTIONS = {
   "identity.link-status.read": "identity:link-status:read",
@@ -76,6 +78,8 @@ export async function POST(request: Request) {
           getCandidateShortlist: (input) => getMcpCandidateShortlist(DB, input),
           recordCandidateEvaluation: (input) => recordMcpCandidateEvaluation(DB, input),
           recordManualMatchResponse: (input) => recordMcpManualMatchResponse(DB, input),
+          createSurfaceAssetUploadGrant: (input) => createSurfaceAssetUploadGrant(DB, new URL(request.url).origin, input),
+          attachProfileProjectMedia: (input) => associateProfileProjectMedia({ DB, actorId: input.userId, assetId: input.assetId, projectKey: input.projectKey, projectTitle: input.projectTitle, altText: input.altText, at: new Date(input.now) }),
         });
         return Response.json({ value }, { headers: { "cache-control": "no-store" } });
       } catch (error) {

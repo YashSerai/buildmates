@@ -1,6 +1,10 @@
-export const DESIGN_POLICY_VERSION = "2026-07-18.2" as const;
-export const DESIGN_POLICY_ID = "design_policy_2026_07_18_2" as const;
+export const DESIGN_POLICY_VERSION = "2026-07-20.1" as const;
+export const DESIGN_POLICY_ID = "design_policy_2026_07_20_1" as const;
 export const DESIGN_POLICY_ACTIVATED_AT = "2026-07-18T12:00:00.000Z" as const;
+
+export const COMPONENT_V2_DESIGN_POLICY_VERSION = "2026-07-18.2" as const;
+export const COMPONENT_V2_DESIGN_POLICY_ID = "design_policy_2026_07_18_2" as const;
+export const COMPONENT_V2_DESIGN_POLICY_SOURCE_HASH = "65f3b84e0ffff1cf63022afbf2bcce8d4fff44e5ad654b5e89338e34971af284" as const;
 
 export const PRIOR_ACTIVE_DESIGN_POLICY_VERSION = "2026-07-18.1" as const;
 export const PRIOR_ACTIVE_DESIGN_POLICY_ID = "design_policy_2026_07_18_1" as const;
@@ -137,11 +141,47 @@ const priorActiveDesignPolicy = {
   trustedComponents: [...legacyV2DesignPolicy.trustedComponents, "project-artifact"],
 } as const;
 
-export const designPolicy = {
+const componentV2DesignPolicy = {
   ...priorActiveDesignPolicy,
+  id: COMPONENT_V2_DESIGN_POLICY_ID,
+  version: COMPONENT_V2_DESIGN_POLICY_VERSION,
+  trustedComponents: [...priorActiveDesignPolicy.trustedComponents, "featured-project"],
+} as const;
+
+export const designPolicy = {
+  ...componentV2DesignPolicy,
   id: DESIGN_POLICY_ID,
   version: DESIGN_POLICY_VERSION,
-  trustedComponents: [...priorActiveDesignPolicy.trustedComponents, "featured-project"],
+  purpose: "Publish complete Codex-authored HTML and CSS profiles without giving generated documents authority over identity, private data, application controls, or execution.",
+  authority: {
+    generatedCodeMay: [
+      "author a complete semantic HTML document fragment and responsive CSS",
+      "choose the full information architecture, visual language, typography, layout, and CSS-only motion",
+      "bind only server-resolved public fields listed in the generation brief",
+      "use only identity-bound raster assets explicitly approved for the Surface",
+    ],
+    generatedCodeMustNever: [
+      "execute JavaScript, submit forms, read cookies, storage, credentials, or raw connector context",
+      "change permissions, privacy, identity, governance, or trusted Buildmates controls",
+      "make arbitrary network requests or embed active third-party content",
+      "place private fields in markup and hide them with CSS",
+    ],
+  },
+  profileFormat: "generated-site-bundle-v3",
+  // Retained only for room and Circle compatibility. Profile generation uses
+  // generated-site-bundle-v3 and is never instructed to compose these.
+  trustedComponents: [...componentV2DesignPolicy.trustedComponents],
+  generatedDocument: {
+    sandboxedIframe: true,
+    scripts: false,
+    forms: false,
+    arbitraryNetworkRequests: false,
+    cssOnlyMotion: true,
+    currentPublicBindingsOnly: true,
+    targetedRevisionPreservesUnrelatedSource: true,
+    externalLinksOpenSafely: true,
+    frameHeightTracksRenderedDocument: true,
+  },
 } as const;
 
 export type DesignPolicy = typeof designPolicy;
@@ -161,7 +201,9 @@ export function canonicalJson(value: unknown): string {
 
 export const DESIGN_POLICY_SOURCE = canonicalJson(designPolicy);
 // SHA-256 of DESIGN_POLICY_SOURCE. The seed test recomputes this value.
-export const DESIGN_POLICY_SOURCE_HASH = "65f3b84e0ffff1cf63022afbf2bcce8d4fff44e5ad654b5e89338e34971af284";
+export const DESIGN_POLICY_SOURCE_HASH = "7e508c4d83c24ab47d4ade3736874697e95a5338bda09201b8f5d545968ad81f";
+
+export const COMPONENT_V2_DESIGN_POLICY_SOURCE = canonicalJson(componentV2DesignPolicy);
 
 export const PRIOR_ACTIVE_DESIGN_POLICY_SOURCE = canonicalJson(priorActiveDesignPolicy);
 

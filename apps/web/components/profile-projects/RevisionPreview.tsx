@@ -87,7 +87,7 @@ export function RevisionPreview() {
   }
 
   const designPrompt = data
-    ? `${data.surface.publishedRevisionId ? "Revise" : "Design"} my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. ${data.surface.publishedRevisionId ? "Start from the current published revision. Ask what I want changed; for a small request use a targeted revision and preserve every unrelated node, binding, and theme area." : "Use my preferred local design skill if I have named one; otherwise use Hallmark. Privately study person-specific references, tell me the direction you are leaning toward and why, then create a private preview."} Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a direction I can shape and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
+    ? `${data.surface.publishedRevisionId ? "Revise" : "Design"} my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. ${data.surface.publishedRevisionId ? "Start from the complete current published HTML and CSS. Ask what I want changed; for a small request edit only the targeted source and preserve everything else." : "Use my preferred local design skill if I have named one; otherwise use Hallmark. Privately study person-specific references, tell me the direction you are leaning toward and why, then author a complete custom HTML/CSS profile."} Do not compose a Buildmates component template. Use only approved public content and approved R2 media returned by Buildmates. Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a direction I can shape and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
     : "";
   async function copyDesignPrompt() {
     try {
@@ -122,11 +122,14 @@ export function RevisionPreview() {
       if (!cancelled && previewRef.current) setQualityIssues(auditRenderedSurface(previewRef.current));
     };
     const frame = requestAnimationFrame(() => requestAnimationFrame(run));
+    const generatedFrame = previewRef.current.querySelector<HTMLIFrameElement>("iframe.surface-generated-site");
+    generatedFrame?.addEventListener("load", run);
     void document.fonts?.ready.then(run);
     window.addEventListener("resize", run);
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
+      generatedFrame?.removeEventListener("load", run);
       window.removeEventListener("resize", run);
     };
   }, [activePreview]);
@@ -188,7 +191,7 @@ export function RevisionPreview() {
                   <p className={styles.previewState}>{privatePreview ? "Private preview" : publishedRevision ? "Live design" : "No design yet"}</p>
                   <h2 id="profile-preview-title">{privatePreview ? "What visitors will see" : publishedRevision ? "Your published profile" : "Start your first design"}</h2>
                 </div>
-                {privatePreview ? <p>This preview uses the same public fields visitors receive.</p> : null}
+                {privatePreview ? <p>Only you can see this version. It uses the same public fields visitors receive.</p> : null}
               </div>
 
               {activePreview ? (

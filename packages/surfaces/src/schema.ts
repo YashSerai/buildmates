@@ -20,7 +20,12 @@ import {
   PRIOR_ACTIVE_DESIGN_POLICY_SOURCE,
   PRIOR_ACTIVE_DESIGN_POLICY_SOURCE_HASH,
   PRIOR_ACTIVE_DESIGN_POLICY_VERSION,
+  COMPONENT_V2_DESIGN_POLICY_ID,
+  COMPONENT_V2_DESIGN_POLICY_SOURCE,
+  COMPONENT_V2_DESIGN_POLICY_SOURCE_HASH,
+  COMPONENT_V2_DESIGN_POLICY_VERSION,
 } from "./design-policy";
+import { validateGeneratedSiteSource } from "./generated-site";
 
 const idSchema = z.string().regex(/^[a-z][a-z0-9_-]{0,63}$/i);
 const bindingSchema = z.string().regex(/^[a-z][a-z0-9_.-]{0,95}$/i);
@@ -215,6 +220,11 @@ const bindingManifestV2 = z.object({
   media: z.array(z.object({ key: bindingSchema, altKey: bindingSchema, approvedAssetIds: z.array(assetIdSchema).min(1).max(12), authorization: z.literal("surface-approved") }).strict()).max(40),
 }).strict();
 
+const generatedDocumentSchema = z.object({
+  html: z.string().min(1).max(180_000),
+  css: z.string().max(180_000),
+}).strict();
+
 function createV1SurfaceSpecSchema<const Version extends string>(policyVersion: Version) {
   return z.object({
     schemaVersion: z.literal("1"), designPolicyVersion: z.literal(policyVersion), kind: z.enum(["profile", "room", "circle"]), title: z.string().min(1).max(120),
@@ -240,7 +250,38 @@ function createV2SurfaceSpecSchema<const Version extends string>(policyVersion: 
 
 const legacyV2SurfaceSpecSchema = createV2SurfaceSpecSchema(LEGACY_V2_DESIGN_POLICY_VERSION);
 const priorActiveSurfaceSpecSchema = createV2SurfaceSpecSchema(PRIOR_ACTIVE_DESIGN_POLICY_VERSION);
-export const activeSurfaceSpecSchema = createV2SurfaceSpecSchema(DESIGN_POLICY_VERSION);
+const componentV2SurfaceSpecSchema = createV2SurfaceSpecSchema(COMPONENT_V2_DESIGN_POLICY_VERSION);
+export const generatedSiteSpecSchema = z.object({
+  schemaVersion: z.literal("3"), designPolicyVersion: z.literal(DESIGN_POLICY_VERSION), kind: z.literal("profile"), title: z.string().min(1).max(120),
+  document: generatedDocumentSchema,
+  bindingManifest: bindingManifestV2,
+  approvedAssets: approvedAssetsSchema(),
+  responsive: z.object({ desktopMinHeight: z.number().int().min(600).max(24_000), phoneMinHeight: z.number().int().min(600).max(32_000) }).strict(),
+  accessibility: z.object({ label: z.string().min(1).max(160), reducedMotion: z.literal("required") }).strict(),
+}).strict().superRefine((spec, context) => {
+  const issues = validateGeneratedSiteSource({ html: spec.document.html, css: spec.document.css, approvedAssetSources: spec.approvedAssets.map((asset) => asset.src) });
+  for (const message of issues) context.addIssue({ code: "custom", message, path: message.startsWith("document.css") ? ["document", "css"] : ["document", "html"] });
+  const content = new Set(spec.bindingManifest.content.map((binding) => binding.key));
+  const media = new Set(spec.bindingManifest.media.map((binding) => binding.key));
+  const assets = new Set(spec.approvedAssets.map((asset) => asset.id));
+  if (content.size !== spec.bindingManifest.content.length || media.size !== spec.bindingManifest.media.length || assets.size !== spec.approvedAssets.length) context.addIssue({ code: "custom", message: "Binding and asset identifiers must be unique", path: ["bindingManifest"] });
+  for (const binding of spec.bindingManifest.content) {
+    const used = new RegExp(`\\{\\{\\s*${binding.key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\s*\\}\\}|data-buildmates-repeat=[\"']${binding.key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}[\"']`, "i").test(spec.document.html);
+    if (!used) context.addIssue({ code: "custom", message: `Declared binding is not rendered: ${binding.key}`, path: ["bindingManifest", "content"] });
+  }
+  const declaredContent = new Map(spec.bindingManifest.content.map((binding) => [binding.key, binding.type]));
+  for (const token of spec.document.html.matchAll(/\{\{\s*([a-z][a-z0-9_.-]{0,95}|item\.(?:label|value|id|title|summary|href|tags|metrics))\s*\}\}/gi)) {
+    const key = token[1];
+    if (!key.startsWith("item.") && !declaredContent.has(key)) context.addIssue({ code: "custom", message: `Undeclared content binding: ${key}`, path: ["document", "html"] });
+  }
+  for (const repeat of spec.document.html.matchAll(/data-buildmates-repeat=["']([a-z][a-z0-9_.-]{0,95})["']/gi)) {
+    const type = declaredContent.get(repeat[1]);
+    if (!type || type === "text") context.addIssue({ code: "custom", message: `Repeat binding must declare an array-shaped content type: ${repeat[1]}`, path: ["document", "html"] });
+  }
+  for (const binding of spec.bindingManifest.media) if (binding.approvedAssetIds.some((id) => !assets.has(id))) context.addIssue({ code: "custom", message: `Media binding ${binding.key} references an unapproved asset`, path: ["bindingManifest", "media"] });
+});
+const activeComponentSurfaceSpecSchema = createV2SurfaceSpecSchema(DESIGN_POLICY_VERSION);
+export const activeSurfaceSpecSchema = z.union([generatedSiteSpecSchema, activeComponentSurfaceSpecSchema]);
 
 function approvedAssetsSchema() {
   return z.array(z.object({ id: assetIdSchema, src: z.string().regex(/^\/api\/surface-assets\/[a-z0-9_-]+\/[a-f0-9]{64}\.(?:avif|gif|jpe?g|png|webp)$/i) }).strict()).max(60);
@@ -358,20 +399,22 @@ function surfaceValuePassesPreflight(input: unknown): boolean {
   } catch { return false; }
 }
 
-export const surfaceSpecSchema = z.preprocess((input) => surfaceValuePassesPreflight(input) ? input : PREFLIGHT_REJECTED, activeSurfaceSpecSchema);
+export const surfaceSpecSchema = z.preprocess((input) => surfaceValuePassesPreflight(input) ? input : PREFLIGHT_REJECTED, z.union([activeSurfaceSpecSchema, componentV2SurfaceSpecSchema]));
 
 export const SURFACE_POLICY_REGISTRY = Object.freeze({
   [HISTORICAL_DESIGN_POLICY_VERSION]: Object.freeze({ version: HISTORICAL_DESIGN_POLICY_VERSION, designPolicyId: HISTORICAL_DESIGN_POLICY_ID, sourceHash: HISTORICAL_DESIGN_POLICY_SOURCE_HASH, policyJson: HISTORICAL_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-1", reading: "allowed", revisionCreation: "allowed" }),
   [PREVIOUS_DESIGN_POLICY_VERSION]: Object.freeze({ version: PREVIOUS_DESIGN_POLICY_VERSION, designPolicyId: PREVIOUS_DESIGN_POLICY_ID, sourceHash: PREVIOUS_DESIGN_POLICY_SOURCE_HASH, policyJson: PREVIOUS_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-1", reading: "allowed", revisionCreation: "allowed" }),
   [LEGACY_V2_DESIGN_POLICY_VERSION]: Object.freeze({ version: LEGACY_V2_DESIGN_POLICY_VERSION, designPolicyId: LEGACY_V2_DESIGN_POLICY_ID, sourceHash: LEGACY_V2_DESIGN_POLICY_SOURCE_HASH, policyJson: LEGACY_V2_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
   [PRIOR_ACTIVE_DESIGN_POLICY_VERSION]: Object.freeze({ version: PRIOR_ACTIVE_DESIGN_POLICY_VERSION, designPolicyId: PRIOR_ACTIVE_DESIGN_POLICY_ID, sourceHash: PRIOR_ACTIVE_DESIGN_POLICY_SOURCE_HASH, policyJson: PRIOR_ACTIVE_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
-  [DESIGN_POLICY_VERSION]: Object.freeze({ version: DESIGN_POLICY_VERSION, designPolicyId: DESIGN_POLICY_ID, sourceHash: DESIGN_POLICY_SOURCE_HASH, policyJson: DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
+  [COMPONENT_V2_DESIGN_POLICY_VERSION]: Object.freeze({ version: COMPONENT_V2_DESIGN_POLICY_VERSION, designPolicyId: COMPONENT_V2_DESIGN_POLICY_ID, sourceHash: COMPONENT_V2_DESIGN_POLICY_SOURCE_HASH, policyJson: COMPONENT_V2_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
+  [DESIGN_POLICY_VERSION]: Object.freeze({ version: DESIGN_POLICY_VERSION, designPolicyId: DESIGN_POLICY_ID, sourceHash: DESIGN_POLICY_SOURCE_HASH, policyJson: DESIGN_POLICY_SOURCE, parserVersion: "generated-site-bundle-3", reading: "allowed", revisionCreation: "allowed" }),
 } as const);
 
 type SurfacePolicyVersion = keyof typeof SURFACE_POLICY_REGISTRY;
 export type SurfaceSpecV1 = z.infer<typeof historicalSurfaceSpecSchema> | z.infer<typeof previousSurfaceSpecSchema>;
-export type SurfaceSpecV2 = z.infer<typeof activeSurfaceSpecSchema> | z.infer<typeof priorActiveSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
-export type SurfaceSpec = SurfaceSpecV1 | SurfaceSpecV2;
+export type SurfaceSpecV2 = z.infer<typeof activeComponentSurfaceSpecSchema> | z.infer<typeof componentV2SurfaceSpecSchema> | z.infer<typeof priorActiveSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
+export type SurfaceSpecV3 = z.infer<typeof generatedSiteSpecSchema>;
+export type SurfaceSpec = SurfaceSpecV1 | SurfaceSpecV2 | SurfaceSpecV3;
 export type SurfaceSpecParseResult = { success: true; data: SurfaceSpec } | { success: false; error: z.ZodError };
 
 const policySchemas: Record<SurfacePolicyVersion, z.ZodType<SurfaceSpec>> = {
@@ -379,6 +422,7 @@ const policySchemas: Record<SurfacePolicyVersion, z.ZodType<SurfaceSpec>> = {
   [PREVIOUS_DESIGN_POLICY_VERSION]: previousSurfaceSpecSchema,
   [LEGACY_V2_DESIGN_POLICY_VERSION]: legacyV2SurfaceSpecSchema,
   [PRIOR_ACTIVE_DESIGN_POLICY_VERSION]: priorActiveSurfaceSpecSchema,
+  [COMPONENT_V2_DESIGN_POLICY_VERSION]: componentV2SurfaceSpecSchema,
   [DESIGN_POLICY_VERSION]: activeSurfaceSpecSchema,
 };
 
@@ -422,7 +466,7 @@ export function contrastRatio(foreground: string, background: string): number {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-export function evaluateSurfaceContrast(spec: Pick<SurfaceSpec, "theme">): { passed: boolean; minimumRatio: number; minimumPair: string } {
+export function evaluateSurfaceContrast(spec: Pick<SurfaceSpecV1 | SurfaceSpecV2, "theme">): { passed: boolean; minimumRatio: number; minimumPair: string } {
   const results = renderedContrastPairs(spec.theme.colors).map((pair) => ({ ...pair, ratio: contrastRatio(pair.foreground, pair.background) }));
   const minimum = results.reduce((left, right) => left.ratio <= right.ratio ? left : right);
   return { passed: results.every((result) => result.ratio >= 4.5), minimumRatio: minimum.ratio, minimumPair: minimum.label };

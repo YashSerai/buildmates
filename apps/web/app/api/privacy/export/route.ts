@@ -39,6 +39,7 @@ export async function GET() {
       DB.prepare("SELECT surface.id,surface.kind,surface.subject_id AS subjectId,surface.published_revision_id AS publishedRevisionId,surface.created_at AS createdAt,surface.updated_at AS updatedAt FROM surfaces surface WHERE surface.owner_user_id=? ORDER BY surface.created_at").bind(user.id).all(),
       DB.prepare("SELECT revision.id,revision.surface_id AS surfaceId,revision.revision_number AS revisionNumber,revision.base_revision_number AS baseRevisionNumber,revision.design_policy_version AS designPolicyVersion,revision.visibility,revision.spec_json AS spec,revision.status,revision.created_at AS createdAt FROM surface_revisions revision WHERE revision.author_user_id=? ORDER BY revision.created_at").bind(user.id).all(),
       DB.prepare("SELECT id,object_key AS objectKey,content_type AS contentType,byte_size AS byteSize,sha256,created_at AS createdAt,deleted_at AS deletedAt FROM surface_assets WHERE owner_user_id=? ORDER BY created_at").bind(user.id).all(),
+      DB.prepare("SELECT content_type AS contentType,expires_at AS expiresAt,created_at AS createdAt,consumed_at AS consumedAt FROM surface_asset_upload_grants WHERE user_id=? ORDER BY created_at").bind(user.id).all(),
       DB.prepare("SELECT project_key AS projectKey,asset_id AS assetId,alt_text AS altText,created_at AS createdAt,updated_at AS updatedAt FROM profile_project_media WHERE profile_id=? ORDER BY project_key").bind(profileId).all(),
       DB.prepare("SELECT proposal_id AS proposalId,decision,index_version AS indexVersion,reason_summary AS reasonSummary,evidence_ids_json AS evidenceIds,created_at AS createdAt FROM codex_evaluations WHERE user_id=? ORDER BY created_at").bind(user.id).all(),
       DB.prepare("SELECT proposal_id AS proposalId,response,created_at AS createdAt FROM human_responses WHERE user_id=? ORDER BY created_at").bind(user.id).all(),
@@ -64,7 +65,7 @@ export async function GET() {
       DB.prepare("SELECT id,room_id AS roomId,meeting_proposal_id AS meetingProposalId,provider,provider_event_id AS providerEventId,starts_at AS startsAt,ends_at AS endsAt,participant_labels_json AS participantLabels,status,created_at AS createdAt FROM calendar_event_receipts WHERE attached_by_user_id=? ORDER BY created_at").bind(user.id).all(),
     ]);
     const [handle, fields, statistics, sources, signals, projects, pulses, connections, privateNotes, roomMessages, circleMessages, reports, audit] = rows;
-    const [identityLinks,webSessions,introductionBudgets,quietHours,matchingSnoozes,matchingExclusions,follows,watches,inviteLinks,cohortMemberships,surfaces,surfaceRevisions,surfaceAssets,profileProjectMedia,codexEvaluations,humanResponses,connectionReminders,roomMemberships,introductionFeedback,roomUpgradeProposals,meetingProposals,availabilityWindows,circleMemberships,circleProposals,circleVotes,circleModuleEntries,circleMetricEntries,notifications,automation,blocks,moderationAppeals,exportJobs,deletionJobs,setupStates,calendarReceipts] = extendedRows;
+    const [identityLinks,webSessions,introductionBudgets,quietHours,matchingSnoozes,matchingExclusions,follows,watches,inviteLinks,cohortMemberships,surfaces,surfaceRevisions,surfaceAssets,surfaceAssetUploadGrants,profileProjectMedia,codexEvaluations,humanResponses,connectionReminders,roomMemberships,introductionFeedback,roomUpgradeProposals,meetingProposals,availabilityWindows,circleMemberships,circleProposals,circleVotes,circleModuleEntries,circleMetricEntries,notifications,automation,blocks,moderationAppeals,exportJobs,deletionJobs,setupStates,calendarReceipts] = extendedRows;
     const payload = {
       schema: "buildmates-account-export/v1",
       generatedAt: new Date().toISOString(),
@@ -91,6 +92,7 @@ export async function GET() {
       generatedSurfaces: surfaces.results,
       authoredSurfaceRevisions: surfaceRevisions.results,
       surfaceAssets: surfaceAssets.results,
+      surfaceAssetUploadGrants: surfaceAssetUploadGrants.results,
       profileProjectMedia: profileProjectMedia.results,
       candidateEvaluations: codexEvaluations.results,
       matchResponses: humanResponses.results,

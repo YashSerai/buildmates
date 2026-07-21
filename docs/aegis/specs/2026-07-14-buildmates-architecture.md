@@ -166,25 +166,28 @@ The atomic match transition verifies that both authenticated actors evaluated th
 
 ## 11. SurfaceSpec security model
 
-The trusted component tree is the primary profile/room/Circle format:
+New profile pages use a GeneratedSiteBundle v3 envelope:
 
 ```text
-SurfaceSpec
-  theme tokens
-  trusted component tree
+SurfaceSpec v3
+  semantic HTML body fragment
+  responsive CSS
   content bindings
   media bindings
-  responsive rules
-  optional decorative HTML/CSS regions
+  approved R2 assets
+  responsive height metadata
+  accessibility and revision metadata
 ```
 
-Interactive behavior, privacy, navigation, follow/connect/report actions, projects, chat, scheduling, trackers, and votes are trusted application components.
+Codex has full HTML/CSS composition authority inside this envelope but no application authority. Existing v2 component revisions remain readable for compatibility; new profile revisions must use v3. Room and Circle surfaces may continue using trusted declarative components until their separate shared-governance renderer is upgraded.
 
-Decorative/editorial iframe regions:
+Interactive behavior, privacy, navigation, follow/connect/report actions, chat, scheduling, trackers, and votes are trusted application components outside the generated profile iframe.
 
-- disable scripts, forms, same-origin access, popups, and top navigation;
+Generated profile iframes:
+
+- disable scripts, forms, top navigation, storage access, and authenticated application access;
 - reject event handlers, `@import`, arbitrary `url()`, remote beacons, overlays, and unsafe protocols;
-- load images/fonts only through approved R2 assets whose upload pipeline allowlists passive raster/font types, forbids HTML, rejects or sanitizes SVG, assigns a trusted `Content-Type`, sends `X-Content-Type-Options: nosniff`, and serves from a non-executable asset origin/policy;
+- load images only through approved R2 assets whose upload pipeline allowlists passive raster types, forbids HTML and SVG, assigns a trusted `Content-Type`, sends `X-Content-Type-Options: nosniff`, and serves under a non-executable response policy;
 - receive only server-resolved bindings the current viewer may access;
 - cannot call authenticated APIs or write product data.
 

@@ -1,3 +1,7 @@
+.frameHost {
+  display: contents;
+}
+
 .renderer {
   container-type: inline-size;
   color: var(--surface-ink);
@@ -8,6 +12,21 @@
   margin-inline: auto;
   padding-inline: var(--surface-edge);
   overflow-wrap: anywhere;
+}
+
+.renderer:global(.surface-generated-site) {
+  border: 0;
+  display: block;
+  width: 100%;
+  min-height: var(--surface-generated-desktop-height);
+  overflow: hidden;
+  background: transparent;
+}
+
+@media (max-width: 600px) {
+  .renderer:global(.surface-generated-site) {
+    min-height: var(--surface-generated-phone-height);
+  }
 }
 .renderer:global(.surface-width-narrow) {
   --surface-content-width: 46rem;
