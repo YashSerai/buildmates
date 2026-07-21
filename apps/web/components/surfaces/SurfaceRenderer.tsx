@@ -13,7 +13,7 @@ export function SurfaceRenderer(props: SurfaceRendererProps) {
     let imageCleanups: Array<() => void> = [];
     const resize = () => {
       const document = frame.contentDocument;
-      if (!document) return;
+      if (!document?.documentElement) return;
       // Measure against the trusted minimum viewport, not the frame's previous
       // content height. Generated pages may legitimately use vh/min-height:
       // 100%; measuring those against an already-expanded iframe creates an
