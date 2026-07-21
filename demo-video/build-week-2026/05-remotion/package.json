@@ -1,0 +1,31 @@
+{
+  "name": "buildmates-build-week-film",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "preview": "remotion studio src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "still": "remotion still src/index.ts BuildmatesBuildWeek out/still.png --frame=285",
+    "still:lab": "remotion still src/index.ts BuildmatesSceneLab out/scene-lab.png --frame=90",
+    "render": "remotion render src/index.ts BuildmatesBuildWeek out/buildmates-build-week.mp4 --codec=h264 --pixel-format=yuv420p",
+    "render:fast": "remotion render src/index.ts BuildmatesBuildWeek out/buildmates-build-week-draft.mp4 --codec=h264 --pixel-format=yuv420p --scale=0.5 --crf=23",
+    "prepare-captures": "tsx scripts/prepare-captures.ts",
+    "qa": "tsx scripts/qa.ts",
+    "contact-sheet": "tsx scripts/contact-sheet.ts"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.356",
+    "@remotion/renderer": "^4.0.356",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.356",
+    "sharp": "^0.34.5",
+    "tsx": "^4.23.1",
+    "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3"
+  }
+}

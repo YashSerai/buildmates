@@ -1,0 +1,26 @@
+{
+  "schemaVersion": "3",
+  "designPolicyVersion": "2026-07-21.2",
+  "kind": "circle",
+  "title": "Reliable Agents Lab Circle",
+  "document": {
+    "html": "<main class=\"lab\"><header class=\"mast\"><div class=\"lab-mark\" aria-hidden=\"true\"><span></span><span></span><span></span></div><p class=\"kicker\">Buildmates Circle / Field notes 01</p><h1>{{circle.name}}</h1><p class=\"purpose\">{{circle.purpose}}</p></header><section class=\"bench\" aria-labelledby=\"bench-title\"><div class=\"bench-copy\"><p class=\"kicker\">Active bench</p><h2 id=\"bench-title\">People comparing what breaks before it ships.</h2></div><dl class=\"member-list\"><template data-buildmates-repeat=\"circle.members\"><div class=\"member\"><dt>{{item.label}}</dt><dd>{{item.value}}</dd><span aria-hidden=\"true\">-&gt;</span></div></template></dl></section><section class=\"lab-data\"><div><p class=\"kicker\">Shared tools</p><dl><template data-buildmates-repeat=\"circle.modules\"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></div><div><p class=\"kicker\">Lab readings</p><dl><template data-buildmates-repeat=\"circle.metrics\"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></div></section><footer><strong>Reliable systems are built in the open.</strong><span>Private Circle / member governed</span></footer></main>",
+    "css": ":root{color-scheme:light}.lab{--paper:#f0ede2;--ink:#17251c;--muted:#6f786e;--line:#aab2a5;--acid:#b4d85b;--orange:#ea6a27;box-sizing:border-box;min-width:0;overflow:hidden;background:linear-gradient(90deg,rgba(23,37,28,.045) 1px,transparent 1px),var(--paper);background-size:clamp(2.5rem,7vw,7rem) 100%;color:var(--ink);font-family:Arial,Helvetica,sans-serif;padding:clamp(1.25rem,5vw,5rem)}.lab *{box-sizing:border-box}.mast,.bench,.lab-data,footer{max-width:80rem;margin:0 auto}.mast{position:relative;padding:clamp(1rem,4vw,3rem) 0 clamp(4rem,10vw,9rem)}.lab-mark{display:flex;align-items:flex-end;gap:.35rem;height:3.5rem}.lab-mark span{display:block;width:1.1rem;background:var(--ink)}.lab-mark span:nth-child(1){height:42%}.lab-mark span:nth-child(2){height:100%;background:var(--acid)}.lab-mark span:nth-child(3){height:68%;background:var(--orange)}.kicker{margin:1.2rem 0;color:#526151;font:700 .7rem/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.15em;text-transform:uppercase}h1{max-width:10ch;margin:clamp(2rem,7vw,6rem) 0 1.5rem;font:400 clamp(4rem,12vw,10.5rem)/.79 Georgia,\"Times New Roman\",serif;letter-spacing:-.08em}.purpose{max-width:47rem;margin:0 0 0 auto;font-size:clamp(1.15rem,2.2vw,1.8rem);line-height:1.4}.bench{border-top:2px solid var(--ink);padding:clamp(2rem,5vw,4.5rem) 0;display:grid;grid-template-columns:minmax(14rem,.75fr) minmax(0,1.35fr);gap:clamp(2rem,7vw,8rem)}.bench-copy h2{max-width:13ch;margin:0;font:400 clamp(2.2rem,4.5vw,4.4rem)/.95 Georgia,\"Times New Roman\",serif;letter-spacing:-.05em}.member-list{margin:0}.member{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:1rem;border-top:1px solid var(--line);padding:1.25rem 0}.member:last-child{border-bottom:1px solid var(--line)}.member dt{font:400 clamp(1.25rem,2.2vw,1.9rem)/1.1 Georgia,\"Times New Roman\",serif}.member dd{margin:0;color:var(--muted);font:700 .72rem/1 ui-monospace,SFMono-Regular,Consolas,monospace;text-transform:uppercase}.member span{color:var(--orange);font-size:1.2rem}.lab-data{display:grid;grid-template-columns:1fr 1fr;gap:clamp(1.5rem,4vw,4rem);padding:clamp(2rem,5vw,4rem) 0;border-top:1px solid var(--line)}.lab-data div{min-height:8rem;border-left:.65rem solid var(--acid);padding:0 1.25rem}.lab-data div:last-child{border-left-color:var(--orange)}.lab-data dl{margin:0;min-height:2.5rem;border-top:1px solid var(--line)}footer{border-top:2px solid var(--ink);padding:1.5rem 0 2rem;display:flex;justify-content:space-between;gap:1rem;font-size:.78rem}footer strong{font-family:Georgia,\"Times New Roman\",serif;font-size:1rem}footer span{color:var(--muted);font:700 .68rem/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-transform:uppercase}@media(max-width:780px){.bench{grid-template-columns:1fr}.purpose{margin-left:0}.lab-data{grid-template-columns:1fr}.lab-data div{min-height:6rem}}@media(max-width:520px){.lab{padding:1rem;background-size:3.5rem 100%}.mast{padding-bottom:4rem}h1{font-size:clamp(4rem,23vw,6.6rem);line-height:.8}.purpose{font-size:1.05rem}.bench-copy h2{font-size:2.35rem}.member{grid-template-columns:1fr auto}.member span{display:none}footer{flex-direction:column}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}"
+  },
+  "bindingManifest": {
+    "content": [
+      { "key": "circle.name", "type": "text" },
+      { "key": "circle.purpose", "type": "text" },
+      { "key": "circle.members", "type": "facts" },
+      { "key": "circle.modules", "type": "facts" },
+      { "key": "circle.metrics", "type": "facts" }
+    ],
+    "media": []
+  },
+  "approvedAssets": [],
+  "responsive": { "desktopMinHeight": 980, "phoneMinHeight": 1180 },
+  "accessibility": {
+    "label": "Reliable Agents Lab Circle",
+    "reducedMotion": "required"
+  }
+}

@@ -45,3 +45,7 @@ next-env.d.ts
 /outputs/
 /work/
 /.worktrees/
+
+# Local Build Week delivery exports. Keep editable source and QA stills in git.
+/demo-video/**/out/*.mp4
+/demo-video/**/09-delivery/*.tgz

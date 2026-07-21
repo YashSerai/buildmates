@@ -33,7 +33,7 @@ Source selection can combine context already surfaced in the current Codex task,
 - Buildmates is the only required plugin. Other connected apps remain under their existing host permissions.
 - Buildmates receives approved structured summaries, not connector credentials, raw prompts, complete chats, private repositories, full documents, email bodies, or calendars.
 - Launch matching is deterministic and uses no backend model inference or embeddings.
-- Profiles, rooms, and Circles use versioned SurfaceSpecs with trusted components. Decorative HTML/CSS is sandboxed; generated JavaScript is not accepted.
+- New profiles, rooms, and Circles use versioned GeneratedSiteBundle v3 pages: Codex writes complete semantic HTML and responsive CSS inside a scriptless, credential-isolated iframe. Buildmates keeps identity, privacy, navigation, actions, approved content and media bindings, revision history, and publication governance outside the generated page. Generated JavaScript is not accepted.
 - Manual and Full Autopilot both require two independent Codex evaluations. Manual mode also requires that person's Interested action.
 
 ## Repository
@@ -44,7 +44,7 @@ apps/mcp        independently deployable Streamable HTTP MCP adapter
 packages/domain entities, policies, state machines, authorization, validation
 packages/database schema, migrations, repositories, D1 and service adapters
 packages/matching taxonomy, builder index, deterministic scoring
-packages/surfaces SurfaceSpec, trusted renderer, sanitization, Design Policy
+packages/surfaces generated-site contracts, compatibility renderer, sanitization, Design Policy
 packages/mcp-core one transport-independent MCP tool registry
 plugin          public-submission plugin package bound to the development app
 plugins/buildmates repository beta package bound directly to production MCP

@@ -1,0 +1,3 @@
+# Implementation difficulties
+
+ChatGPT Sites was new to me, and authentication was the hardest boundary to verify. The built-in sign-in flow did not expose a trustworthy application identity for this deployment, so I moved website sessions to app-owned GitHub OAuth and linked Codex separately through a short-lived, single-use code. Generative UI also needed more than schema validation. Early pages passed data checks while still having poor contrast, overlaps, and awkward spacing. Adding concrete references, design skills, and screenshot QA at desktop and phone sizes turned visual review into part of the build rather than a final polish pass.
