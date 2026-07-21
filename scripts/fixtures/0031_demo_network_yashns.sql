@@ -10,7 +10,7 @@ WITH viewer AS (
   SELECT h.user_id, b.version AS index_version, b.taxonomy_version_id, t.version AS taxonomy_version
   FROM handles h
   JOIN builder_match_index b ON b.user_id=h.user_id
-  JOIN taxonomy_versions t ON t.id=b.taxonomy_version_id AND t.status='active'
+  JOIN taxonomy_versions t ON t.status='active'
   WHERE h.normalized_handle='yashns'
   LIMIT 1
 ), candidates(user_id) AS (
@@ -24,8 +24,8 @@ WHERE id IN ('demo_network_user_amina','demo_network_user_marcus','demo_network_
   AND EXISTS (SELECT 1 FROM handles WHERE normalized_handle='yashns');
 --> statement-breakpoint
 WITH viewer AS (
-  SELECT b.taxonomy_version_id FROM handles h JOIN builder_match_index b ON b.user_id=h.user_id
-  JOIN taxonomy_versions t ON t.id=b.taxonomy_version_id AND t.status='active'
+  SELECT t.id AS taxonomy_version_id FROM handles h
+  JOIN taxonomy_versions t ON t.status='active'
   WHERE h.normalized_handle='yashns' LIMIT 1
 ), candidates(user_id,topics_json) AS (VALUES
   ('demo_network_user_amina','["ai-agents","retrieval-augmented-generation","mcp"]'),
@@ -62,7 +62,7 @@ ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=ex
 WITH viewer AS (
   SELECT h.user_id,b.version AS index_version,t.version AS taxonomy_version
   FROM handles h JOIN builder_match_index b ON b.user_id=h.user_id
-  JOIN taxonomy_versions t ON t.id=b.taxonomy_version_id AND t.status='active'
+  JOIN taxonomy_versions t ON t.status='active'
   WHERE h.normalized_handle='yashns' LIMIT 1
 ), candidates(user_id,score_id,total,components) AS (VALUES
   ('demo_network_user_amina','demo_network_score_amina',9400,'{"topicOverlap":4300,"toolDomainFit":2600,"intentFit":2500}'),
@@ -98,7 +98,7 @@ ON CONFLICT(user_a_id,user_b_id) DO NOTHING;
 --> statement-breakpoint
 WITH viewer AS (
   SELECT h.user_id,b.version AS index_version,t.version AS taxonomy_version
-  FROM handles h JOIN builder_match_index b ON b.user_id=h.user_id JOIN taxonomy_versions t ON t.id=b.taxonomy_version_id AND t.status='active'
+  FROM handles h JOIN builder_match_index b ON b.user_id=h.user_id JOIN taxonomy_versions t ON t.status='active'
   WHERE h.normalized_handle='yashns' LIMIT 1
 ), pair AS (SELECT id,user_a_id,user_b_id FROM match_pairs WHERE id='demo_network_pair_amina')
 INSERT INTO match_proposals(id,match_pair_id,attempt_number,evidence_version_a,evidence_version_b,taxonomy_version,weight_version,acceptance_mode_a,acceptance_mode_b,explanation_a_json,explanation_b_json,shared_explanation_json,state,expires_at,terminal_at,created_at)
@@ -125,7 +125,7 @@ ON CONFLICT(proposal_id,user_id) DO UPDATE SET response='interested',created_at=
 --> statement-breakpoint
 WITH viewer AS (
   SELECT h.user_id,b.version AS index_version,t.version AS taxonomy_version
-  FROM handles h JOIN builder_match_index b ON b.user_id=h.user_id JOIN taxonomy_versions t ON t.id=b.taxonomy_version_id AND t.status='active'
+  FROM handles h JOIN builder_match_index b ON b.user_id=h.user_id JOIN taxonomy_versions t ON t.status='active'
   WHERE h.normalized_handle='yashns' LIMIT 1
 ), pair AS (SELECT id,user_a_id,user_b_id FROM match_pairs WHERE id='demo_network_pair_rowan')
 INSERT INTO match_proposals(id,match_pair_id,attempt_number,evidence_version_a,evidence_version_b,taxonomy_version,weight_version,acceptance_mode_a,acceptance_mode_b,explanation_a_json,explanation_b_json,shared_explanation_json,state,expires_at,terminal_at,created_at)
