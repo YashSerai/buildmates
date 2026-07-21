@@ -495,7 +495,13 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     const approvedDraftProjects = displayableFields.flatMap((field) => String(field.fieldKey) === "projects" ? profileProjectsValue(field.valueJson) : []);
     const projectRows = await all(DB, "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience<>'private' ORDER BY updated_at DESC LIMIT 20", actor);
     const projects = dedupeProfileProjects([...approvedDraftProjects, ...projectRows.map((project) => ({ id: String(project.id), title: String(project.title), summary: String(project.summary), href: `/projects/${String(project.slug)}`, tags: [], metrics: [] }))]);
-    const authorizedContent = { "profile.displayName": String(profile.displayName), "profile.summary": String(profile.summary), "profile.facts": facts, "profile.projects": projects };
+    const authorizedContent = {
+      "profile.displayName": String(profile.displayName),
+      "profile.summary": String(profile.summary),
+      "profile.facts": facts,
+      "profile.projects": projects,
+      ...Object.fromEntries(media.map((item) => [item.altKey, item.altText])),
+    };
     const requiredBindings = ["profile.displayName", "profile.summary", ...(facts.length ? ["profile.facts"] : []), ...(projects.length ? ["profile.projects"] : [])];
     return record("surface", id, String(base.owner_user_id), [], {
       kind: "profile", subjectId: base.subject_id, publishedRevisionId: base.published_revision_id, governanceVersion: base.governance_version,

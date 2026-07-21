@@ -52,7 +52,7 @@ export function customizedProfileSurfaceExample(input: {
       css: `:root{color-scheme:light}.page{max-width:72rem;margin:auto;padding:clamp(1.25rem,5vw,5rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.page h1{font-size:clamp(3rem,9vw,8rem);line-height:.9}.page section{display:grid;gap:1rem}.page article{border-top:1px solid #4d5148;padding:1.5rem 0}@media(max-width:600px){.page{padding:1rem}.page h1{font-size:clamp(2.6rem,16vw,5rem)}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}`,
     },
     bindingManifest: { content: [{ key: name, type: "text" }, { key: summary, type: "text" }, { key: projects, type: "projects" }, { key: facts, type: "facts" }], media: [] },
-    approvedAssets: input.approvedAssets ?? [], responsive: { desktopMinHeight: 1100, phoneMinHeight: 1400 }, accessibility: { label: "Generated builder profile", reducedMotion: "required" },
+    approvedAssets: [], responsive: { desktopMinHeight: 1100, phoneMinHeight: 1400 }, accessibility: { label: "Generated builder profile", reducedMotion: "required" },
   };
   const parsed = safeParseSurfaceSpec(spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
   return parsed.success && parsed.data.schemaVersion === "3" ? parsed.data : null;

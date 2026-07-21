@@ -250,6 +250,43 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT key FROM mcp_rate_limits").all()).resolves.toMatchObject({ results: [{ key: "live" }] });
   }, 60_000);
 
+  it("exposes an approved profile image description in the MCP generation brief", async () => {
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: {
+      profileId: "profile-media-brief",
+      handle: "media_alice",
+      displayName: "Alice",
+      builderSummary: "Builds governed profile pages",
+      projectOrInterest: "Generative profiles",
+      portfolioLinks: [],
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [{
+        key: "projects",
+        value: [{ id: "project-media-brief", title: "Media Brief", summary: "A profile project with approved visual context." }],
+        audience: "suggested_connections",
+        allowMatching: true,
+        provenance: "codex_summary",
+        sourceStatus: "confirmed",
+      }],
+      idempotencyKey: "profile-media-brief-01",
+    } }) as MutationResult;
+    await seedDesignPolicy(createD1Repositories(DB as never));
+    const mediaHash = "b".repeat(64);
+    await DB.prepare("INSERT INTO surface_assets(id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) VALUES (?,?,?,?,?,?,?)").bind("asset_media_brief", "user_alice", `surface-assets/user_alice/${mediaHash}.jpg`, "image/jpeg", 128, mediaHash, at).run();
+    await DB.prepare("INSERT INTO profile_project_media(profile_id,project_key,asset_id,alt_text,created_at,updated_at) VALUES (?,?,?,?,?,?)").bind(profile.result.id, "project-media-brief", "asset_media_brief", "A warm studio workspace with a prototype on screen", at, at).run();
+
+    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId: String((profile.result as Record<string, unknown>).surfaceId) }) as {
+      authorizedContent: Record<string, unknown>;
+      authorizedMedia: Array<{ altKey: string; approvedAssetIds: string[] }>;
+      approvedAssets: Array<{ id: string; src: string }>;
+      customizedExample: { approvedAssets: Array<unknown> };
+    };
+    expect(brief.authorizedMedia).toEqual([{ key: "profile.media.asset_media_brief", altKey: "profile.media.asset_media_brief.alt", label: "Media Brief image", approvedAssetIds: ["asset_media_brief"] }]);
+    expect(brief.authorizedContent[brief.authorizedMedia[0]!.altKey]).toBe("A warm studio workspace with a prototype on screen");
+    expect(brief.approvedAssets).toEqual([{ id: "asset_media_brief", src: `/api/surface-assets/user_alice/${mediaHash}.jpg` }]);
+    expect(brief.customizedExample.approvedAssets).toEqual([]);
+  }, 60_000);
+
   it("routes profile revisions, personal views, approval publication, and rollback through Task 4 governance", async () => {
     await saveSource(ALICE_SUB, "allow_approved_work_signals", "surface-source");
     const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "profile-surface", handle: "surface_alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety", portfolioLinks: [], allowMatching: true, acceptanceMode: "manual", fields: [
@@ -267,8 +304,9 @@ describe("canonical MCP D1 execution", () => {
     const mediaHash = "a".repeat(64);
     await DB.prepare("INSERT INTO surface_assets(id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) VALUES (?,?,?,?,?,?,?)").bind("asset_surface_studio", "user_alice", `surface-assets/user_alice/${mediaHash}.jpg`, "image/jpeg", 128, mediaHash, at).run();
     await DB.prepare("INSERT INTO profile_project_media(profile_id,project_key,asset_id,alt_text,created_at,updated_at) VALUES (?,?,?,?,?,?)").bind(profile.result.id, "project-surface-studio", "asset_surface_studio", "A warm studio workspace", at, at).run();
-    const mediaBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { authorizedMedia: Array<{ approvedAssetIds: string[] }>; approvedAssets: Array<{ id: string; src: string }>; mediaWorkflow: { approvedMediaAvailable: boolean }; customizedExample: { bindingManifest: { media: Array<{ approvedAssetIds: string[]; authorization: string }> }; approvedAssets: Array<{ id: string }> } };
+    const mediaBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { authorizedContent: Record<string, unknown>; authorizedMedia: Array<{ altKey: string; approvedAssetIds: string[] }>; approvedAssets: Array<{ id: string; src: string }>; mediaWorkflow: { approvedMediaAvailable: boolean }; customizedExample: { bindingManifest: { media: Array<{ approvedAssetIds: string[]; authorization: string }> }; approvedAssets: Array<{ id: string }> } };
     expect(mediaBrief).toMatchObject({ authorizedMedia: [{ approvedAssetIds: ["asset_surface_studio"] }], approvedAssets: [{ id: "asset_surface_studio", src: `/api/surface-assets/user_alice/${mediaHash}.jpg` }], mediaWorkflow: { approvedMediaAvailable: true } });
+    expect(mediaBrief.authorizedContent[mediaBrief.authorizedMedia[0]!.altKey]).toBe("A warm studio workspace");
     expect(mediaBrief.customizedExample).toMatchObject({ bindingManifest: { media: [] }, approvedAssets: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: mediaBrief.customizedExample })).resolves.toEqual({ valid: true, issues: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.starterSpec })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining("approved profile content binding") })]) });
