@@ -1,6 +1,10 @@
-export const DESIGN_POLICY_VERSION = "2026-07-20.1" as const;
-export const DESIGN_POLICY_ID = "design_policy_2026_07_20_1" as const;
-export const DESIGN_POLICY_ACTIVATED_AT = "2026-07-18T12:00:00.000Z" as const;
+export const DESIGN_POLICY_VERSION = "2026-07-21.2" as const;
+export const DESIGN_POLICY_ID = "design_policy_2026_07_21_2" as const;
+export const DESIGN_POLICY_ACTIVATED_AT = "2026-07-21T00:00:00.000Z" as const;
+
+export const PROFILE_V3_DESIGN_POLICY_VERSION = "2026-07-20.1" as const;
+export const PROFILE_V3_DESIGN_POLICY_ID = "design_policy_2026_07_20_1" as const;
+export const PROFILE_V3_DESIGN_POLICY_SOURCE_HASH = "7e508c4d83c24ab47d4ade3736874697e95a5338bda09201b8f5d545968ad81f" as const;
 
 export const COMPONENT_V2_DESIGN_POLICY_VERSION = "2026-07-18.2" as const;
 export const COMPONENT_V2_DESIGN_POLICY_ID = "design_policy_2026_07_18_2" as const;
@@ -148,10 +152,10 @@ const componentV2DesignPolicy = {
   trustedComponents: [...priorActiveDesignPolicy.trustedComponents, "featured-project"],
 } as const;
 
-export const designPolicy = {
+const profileV3DesignPolicy = {
   ...componentV2DesignPolicy,
-  id: DESIGN_POLICY_ID,
-  version: DESIGN_POLICY_VERSION,
+  id: PROFILE_V3_DESIGN_POLICY_ID,
+  version: PROFILE_V3_DESIGN_POLICY_VERSION,
   purpose: "Publish complete Codex-authored HTML and CSS profiles without giving generated documents authority over identity, private data, application controls, or execution.",
   authority: {
     generatedCodeMay: [
@@ -184,6 +188,14 @@ export const designPolicy = {
   },
 } as const;
 
+export const designPolicy = {
+  ...profileV3DesignPolicy,
+  id: DESIGN_POLICY_ID,
+  version: DESIGN_POLICY_VERSION,
+  purpose: "Publish complete Codex-authored HTML and CSS for profiles, shared rooms, and Circles without giving generated documents authority over identity, private data, application controls, or execution.",
+  generatedSiteFormats: ["profile", "room", "circle"],
+} as const;
+
 export type DesignPolicy = typeof designPolicy;
 
 export function canonicalJson(value: unknown): string {
@@ -201,7 +213,9 @@ export function canonicalJson(value: unknown): string {
 
 export const DESIGN_POLICY_SOURCE = canonicalJson(designPolicy);
 // SHA-256 of DESIGN_POLICY_SOURCE. The seed test recomputes this value.
-export const DESIGN_POLICY_SOURCE_HASH = "7e508c4d83c24ab47d4ade3736874697e95a5338bda09201b8f5d545968ad81f";
+export const DESIGN_POLICY_SOURCE_HASH = "bd2980329a50fed9eb790c59e76eff825e2a4ee03a115b91c99134f5df45978b";
+
+export const PROFILE_V3_DESIGN_POLICY_SOURCE = canonicalJson(profileV3DesignPolicy);
 
 export const COMPONENT_V2_DESIGN_POLICY_SOURCE = canonicalJson(componentV2DesignPolicy);
 

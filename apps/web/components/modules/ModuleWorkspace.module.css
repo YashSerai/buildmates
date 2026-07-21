@@ -1,19 +1,47 @@
 .workspace { display: grid; gap: 1rem; }
-.module { border: 1px solid var(--line, #c8c7bc); background: var(--paper, #fffdf8); padding: 1rem; display: grid; gap: .9rem; }
+.module { border: 1px solid var(--module-border, var(--line, #c8c7bc)); background: var(--module-canvas, var(--paper, #fffdf8)); color: var(--module-text, #20211e); padding: 1rem; display: grid; gap: .9rem; overflow: clip; }
 .moduleHeader { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; }
 .moduleHeader h3, .moduleHeader p { margin: 0; }
-.moduleHeader p { color: #62645d; font-size: .85rem; }
+.moduleHeader p { color: var(--module-muted, #62645d); font-size: .85rem; }
 .entries { display: grid; gap: .65rem; }
-.entry { border-left: 3px solid #566b42; padding: .65rem .75rem; background: #f5f1e8; }
+.entry { border-left: 3px solid var(--module-accent, #566b42); padding: .65rem .75rem; background: var(--module-surface-strong, #f5f1e8); color: var(--module-text, #20211e); min-width: 0; }
 .entry h4, .entry p { margin: 0; }
 .entry dl { display: grid; grid-template-columns: minmax(6rem, auto) 1fr; gap: .25rem .75rem; margin: .6rem 0; }
-.entry dt { color: #66685f; }
+.entry dt { color: var(--module-muted, #66685f); }
 .entry dd { margin: 0; overflow-wrap: anywhere; }
 .entryActions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
 .form { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .65rem; align-items: end; }
 .form label { display: grid; gap: .3rem; font-size: .88rem; }
-.form input, .form select, .form textarea { width: 100%; padding: .65rem; border: 1px solid #aaa99f; background: #fff; color: #20211e; font: inherit; }
+.form input, .form select, .form textarea { width: 100%; padding: .65rem; border: 1px solid var(--module-border, #aaa99f); background: var(--module-surface, #fff); color: var(--module-text, #20211e); font: inherit; }
+.form input:focus-visible, .form select:focus-visible, .form textarea:focus-visible, .module button:focus-visible, .module a:focus-visible { outline: 3px solid var(--module-focus, #8b3d16); outline-offset: 2px; }
 .form textarea { min-height: 5rem; resize: vertical; }
 .form button, .entryActions button { width: fit-content; }
-.empty { margin: 0; color: #66685f; }
+.empty { margin: 0; color: var(--module-muted, #66685f); }
+
+.compact { padding: .75rem; gap: .65rem; }
+.compact .entry { padding: .5rem .6rem; }
+.spacious { padding: clamp(1.25rem, 3vw, 2rem); gap: 1.4rem; }
+.spacious .entries { gap: 1rem; }
+
+.cards .entries { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+.cards .entry { border: 1px solid var(--module-border); border-top: 4px solid var(--module-accent); min-height: 9rem; }
+.timeline .entries { position: relative; padding-left: 1.25rem; }
+.timeline .entries::before { content: ""; position: absolute; inset: .4rem auto .4rem .25rem; width: 1px; background: var(--module-border); }
+.timeline .entry { position: relative; border: 1px solid var(--module-border); }
+.timeline .entry::before { content: ""; position: absolute; width: .7rem; height: .7rem; border-radius: 50%; left: -1.4rem; top: 1rem; background: var(--module-accent); box-shadow: 0 0 0 4px var(--module-canvas); }
+.showcase .entries { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.showcase .entry { border: 1px solid var(--module-border); }
+.showcase .entry:first-child { grid-column: 1 / -1; padding: clamp(1rem, 3vw, 2rem); background: var(--module-accent); color: var(--module-accent-text); }
+.showcase .entry:first-child dt, .showcase .entry:first-child small { color: var(--module-accent-text); opacity: .82; }
+
+.display_editorial .moduleHeader h3, .display_editorial .entry h4 { font-family: Georgia, "Times New Roman", serif; }
+.display_grotesk .moduleHeader h3, .display_grotesk .entry h4 { font-family: Arial, Helvetica, sans-serif; }
+.display_humanist .moduleHeader h3, .display_humanist .entry h4 { font-family: "Segoe UI", Candara, sans-serif; }
+.display_monospace .moduleHeader h3, .display_monospace .entry h4 { font-family: Consolas, "Courier New", monospace; }
+.body_grotesk { font-family: Arial, Helvetica, sans-serif; }
+.body_humanist { font-family: "Segoe UI", Candara, sans-serif; }
+.body_monospace { font-family: Consolas, "Courier New", monospace; }
+.noMotion, .noMotion * { transition: none !important; animation: none !important; }
 @media (max-width: 620px) { .moduleHeader { align-items: flex-start; flex-direction: column; } .entry dl { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .showcase .entries { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .module, .module * { transition: none !important; animation: none !important; } }

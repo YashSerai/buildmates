@@ -7,6 +7,8 @@ import { AUTOMATION_CAPABILITY_TTL_MS } from "@buildmates/domain";
 import { getMcpCandidateShortlist, recordMcpCandidateEvaluation, recordMcpManualMatchResponse } from "@/src/matching/mcp-adapter";
 import { createSurfaceAssetUploadGrant } from "@/src/platform/surface-upload-grants";
 import { associateProfileProjectMedia } from "@/src/platform/surface-assets";
+import { proposeRoomUpgrade, respondRoomUpgrade } from "@/src/rooms/lifecycle";
+import { createCircleProposal } from "@/src/circles/service";
 
 const ALLOWED_ACTIONS = {
   "identity.link-status.read": "identity:link-status:read",
@@ -80,6 +82,18 @@ export async function POST(request: Request) {
           recordManualMatchResponse: (input) => recordMcpManualMatchResponse(DB, input),
           createSurfaceAssetUploadGrant: (input) => createSurfaceAssetUploadGrant(DB, new URL(request.url).origin, input),
           attachProfileProjectMedia: (input) => associateProfileProjectMedia({ DB, actorId: input.userId, assetId: input.assetId, projectKey: input.projectKey, projectTitle: input.projectTitle, altText: input.altText, at: new Date(input.now) }),
+          proposeRoomUpgrade: async (input) => {
+            const result = await proposeRoomUpgrade(DB, { roomId: input.roomId, userId: input.userId, proposalId: input.proposalId, modules: input.modules, explanation: input.explanation, title: input.title, appearance: input.appearance, now: Date.parse(input.now) });
+            return { proposalId: result.id, status: result.status };
+          },
+          respondRoomUpgrade: async (input) => {
+            const result = await respondRoomUpgrade(DB, { roomId: input.roomId, proposalId: input.proposalId, userId: input.userId, response: input.response, now: Date.parse(input.now) });
+            return { proposalId: result.id, status: result.status };
+          },
+          proposeCircleModule: async (input) => {
+            const result = await createCircleProposal(DB, { actorId: input.userId, circleId: input.circleId, kind: "module", payload: { kind: input.kind, config: { title: input.title, appearance: input.appearance } }, now: Date.parse(input.now) });
+            return { proposalId: result.id, status: result.status };
+          },
         });
         return Response.json({ value }, { headers: { "cache-control": "no-store" } });
       } catch (error) {

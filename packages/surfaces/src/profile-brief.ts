@@ -15,7 +15,7 @@ export function profileMediaBinding(assetId: string) {
   return { key: `profile.media.${suffix}`, altKey: `profile.media.${suffix}.alt` } as const;
 }
 
-export function profileSurfaceMediaIsAuthorized(
+export function surfaceMediaIsAuthorized(
   spec: ProfileMediaSpec,
   authorizedMedia: readonly ProfileBriefMedia[],
   approvedAssets: readonly ProfileBriefAsset[],
@@ -32,6 +32,8 @@ export function profileSurfaceMediaIsAuthorized(
   if (spec.approvedAssets.length !== referenced.size) return false;
   return spec.approvedAssets.every((asset) => referenced.has(asset.id) && allowedAssets.get(asset.id) === asset.src);
 }
+
+export const profileSurfaceMediaIsAuthorized = surfaceMediaIsAuthorized;
 
 export function createProfileGenerationBrief(input: { handle: string; fields: ProfileBriefField[]; media?: ProfileBriefMedia[]; approvedAssets?: ProfileBriefAsset[]; references?: ProfileDesignReference[] }) {
   const seen = new Set<string>();

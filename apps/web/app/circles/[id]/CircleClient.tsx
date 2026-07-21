@@ -27,7 +27,6 @@ export function CircleClient({
   const [entries, setEntries] = useState(initialEntries);
   const [message, setMessage] = useState("");
   const [chatBody, setChatBody] = useState("");
-  const [proposalKind, setProposalKind] = useState("module");
   const [busy, setBusy] = useState(false);
   const { confirm, confirmationDialog } = useConfirmDialog();
 
@@ -95,26 +94,14 @@ export function CircleClient({
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    const kind = String(data.get("kind"));
-    let payload: Record<string, unknown>;
-    if (kind === "module")
-      payload = {
-        kind: data.get("moduleKind"),
-        config: { title: data.get("title") },
-      };
-    else if (kind === "rules")
-      payload = {
-        moduleId: data.get("moduleId"),
-        rules: {
-          title: data.get("title"),
-          description: data.get("description"),
-        },
-      };
-    else return;
     if (
       await command(
-        { action: "propose", kind, payload },
-        "Proposal submitted for member review.",
+        {
+          action: "request_change",
+          change: data.get("change"),
+          outcome: data.get("outcome"),
+        },
+        "Request saved. Continue in Codex when you are ready to turn it into a preview.",
       )
     )
       form.reset();
@@ -210,13 +197,6 @@ export function CircleClient({
     );
 
   const admin = circle.role === "owner" || circle.role === "admin";
-  const ruleModules = circle.modules.filter(
-    (module) =>
-      module.active &&
-      ["experiment_tracker", "milestone_tracker", "scoreboard"].includes(
-        module.kind,
-      ),
-  );
   const circleDesignPrompt = `Redesign my Buildmates Circle ${circle.id}. Keep the design grounded in the Circle's purpose. Create a private preview under its existing approval rules, but do not publish it.`;
   const surfaceBindings = {
     "circle.name": circle.name,
@@ -288,13 +268,6 @@ export function CircleClient({
           </small>
         </summary>
         <section className={styles.disclosureBody}>
-          <div className={styles.heading}>
-            <h2>Members</h2>
-            <span>
-              {activeMemberCount} joined
-              {invitedMemberCount ? ` / ${invitedMemberCount} invited` : ""}
-            </span>
-          </div>
           <div className={styles.members}>
             {circle.members.map((member) => (
               <article key={member.userId}>
@@ -414,18 +387,10 @@ export function CircleClient({
       </details>
       <details className={styles.disclosure}>
         <summary>
-          <span>Design and shared-tool proposals</span>
-          <small>{openProposalCount(circle.proposals)} awaiting a decision</small>
+          <span>Proposals</span>
+          <small>{openProposalCount(circle.proposals)} open</small>
         </summary>
         <section className={styles.disclosureBody}>
-          <div className={styles.heading}>
-            <h2>Proposed changes</h2>
-            <span>
-              {circle.governanceMode === "vote"
-                ? "Members decide by majority vote"
-                : "Admins publish approved changes"}
-            </span>
-          </div>
           <div className={styles.designLead}>
             <div>
               <a
@@ -456,64 +421,29 @@ export function CircleClient({
           </div>
           <form className={styles.proposalForm} onSubmit={propose}>
             <label>
-              Change type
-              <select
-                name="kind"
-                value={proposalKind}
-                onChange={(event) => setProposalKind(event.target.value)}
-              >
-                <option value="module">Add a shared tool</option>
-                {ruleModules.length ? (
-                  <option value="rules">
-                    Change tracker or scoreboard rules
-                  </option>
-                ) : null}
-              </select>
+              What would you like to change?
+              <textarea
+                name="change"
+                minLength={3}
+                maxLength={1200}
+                rows={4}
+                required
+              />
             </label>
-            {proposalKind === "module" && (
-              <label>
-                Shared tool
-                <select name="moduleKind">
-                  <option value="resource_shelf">Resource shelf</option>
-                  <option value="experiment_tracker">Experiment tracker</option>
-                  <option value="decision_log">Decision log</option>
-                  <option value="feedback_queue">Feedback queue</option>
-                  <option value="milestone_tracker">Milestone tracker</option>
-                  <option value="scoreboard">Scoreboard</option>
-                </select>
-              </label>
-            )}
-            {proposalKind === "rules" && (
-              <>
-                <label>
-                  Tracker or scoreboard
-                  <select name="moduleId" required>
-                    {ruleModules.map((module) => (
-                      <option value={module.id} key={module.id}>
-                        {String(
-                          module.config.title ?? sharedToolLabel(module.kind),
-                        )}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  Describe the new rules
-                  <textarea name="description" maxLength={1000} required />
-                </label>
-              </>
-            )}
             <label>
-              Proposal title
-              <input name="title" maxLength={120} required />
+              What should this help the Circle do?
+              <textarea
+                name="outcome"
+                minLength={3}
+                maxLength={1200}
+                rows={4}
+                required
+              />
             </label>
             <button disabled={busy}>
-              {busy ? "Submitting..." : "Submit proposal"}
+              {busy ? "Saving..." : "Save request"}
             </button>
           </form>
-          {!ruleModules.length ? (
-            <p>Add a tracker or scoreboard before changing its rules.</p>
-          ) : null}
           {circle.proposals.length ? (
             <div className={styles.proposals}>
               {circle.proposals.map((proposal) => (
@@ -522,6 +452,11 @@ export function CircleClient({
                     <p>{proposalKindLabel(proposal.kind)}</p>
                     <h3>{proposalTitle(proposal.payload)}</h3>
                     <span>{proposalStatusLabel(proposal.status)}</span>
+                    {proposal.kind === "request" && proposalOutcome(proposal.payload) ? (
+                      <p className={styles.proposalOutcome}>
+                        {proposalOutcome(proposal.payload)}
+                      </p>
+                    ) : null}
                     {proposal.previewSpec && (
                       <SurfaceRenderer
                         spec={proposal.previewSpec}
@@ -530,7 +465,16 @@ export function CircleClient({
                     )}
                   </div>
                   <div>
+                    {proposal.kind === "request" ? (
+                      <a
+                        className={styles.proposalCodexLink}
+                        href={`codex://open?prompt=${encodeURIComponent(circleChangePrompt(circle.id, proposal.payload))}`}
+                      >
+                        Continue in Codex
+                      </a>
+                    ) : null}
                     {circle.governanceMode === "vote" &&
+                      proposal.kind !== "request" &&
                       proposal.status === "voting" && (
                         <>
                           <button
@@ -602,10 +546,6 @@ export function CircleClient({
           </small>
         </summary>
         <section className={styles.disclosureBody}>
-          <div className={styles.heading}>
-            <h2>Active shared tools</h2>
-            <span>Available to active members</span>
-          </div>
           {circle.modules.some((module) => module.active) ? (
             <ModuleWorkspace
               modules={circle.modules.filter((module) => module.active)}
@@ -689,6 +629,7 @@ function proposalKindLabel(value: string) {
         module: "Shared tool",
         design: "Circle design",
         rules: "Tool rules",
+        request: "Change request",
       } as Record<string, string>
     )[value] ?? "Member proposal"
   );
@@ -697,12 +638,19 @@ function proposalTitle(payload: Record<string, unknown>) {
   const config = payload.config && typeof payload.config === "object"
     ? payload.config as Record<string, unknown>
     : null;
-  return String(payload.title ?? config?.title ?? payload.summary ?? "Member proposal");
+  return String(payload.change ?? payload.title ?? config?.title ?? payload.summary ?? "Member proposal");
+}
+function proposalOutcome(payload: Record<string, unknown>) {
+  return typeof payload.outcome === "string" ? payload.outcome : "";
+}
+function circleChangePrompt(circleId: string, payload: Record<string, unknown>) {
+  return `Help me turn this saved request into a governed Buildmates Circle proposal for ${circleId}. Requested change: ${String(payload.change ?? "")}. Intended outcome: ${String(payload.outcome ?? "")}. Create a private preview or concrete shared-tool proposal as appropriate. Do not publish or activate anything without the Circle's existing approval flow.`;
 }
 function proposalStatusLabel(value: string) {
   return (
     (
       {
+        draft: "Ready for Codex",
         proposed: "Awaiting review",
         voting: "Voting open",
         approved: "Approved",
@@ -714,7 +662,7 @@ function proposalStatusLabel(value: string) {
 }
 function openProposalCount(proposals: CircleDetail["proposals"]) {
   return proposals.filter((proposal) =>
-    ["proposed", "voting", "approved"].includes(proposal.status),
+    ["draft", "proposed", "voting", "approved"].includes(proposal.status),
   ).length;
 }
 function sharedToolLabel(value: string) {

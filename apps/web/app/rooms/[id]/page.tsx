@@ -71,7 +71,10 @@ export default async function RoomPage({
     "room.whyBody":
       presentation?.reason ??
       "Buildmates found mutual relevance in your current work.",
-    "room.sharedFacts": sharedFacts,
+    "room.sharedFacts": sharedFacts.map((value, index) => ({
+      label: `Shared context ${index + 1}`,
+      value,
+    })),
     "room.privacyNote":
       "Only context authorized for both people appears here. Messages never feed back into matching.",
   };

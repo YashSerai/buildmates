@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { designPolicy, safeParseSurfaceSpec } from "@buildmates/surfaces";
-import { customizedProfileSurfaceExample, surfaceComponentReference } from "../../packages/mcp-core/src/surface-generation-reference";
+import { customizedProfileSurfaceExample, customizedSurfaceExample, surfaceComponentReference } from "../../packages/mcp-core/src/surface-generation-reference";
 
 describe("Generated profile reference", () => {
   it("describes full HTML and CSS instead of a component catalogue", () => {
@@ -25,6 +25,17 @@ describe("Generated profile reference", () => {
     expect(spec!.schemaVersion).toBe("3");
     expect(spec!.document.html).toContain("data-buildmates-repeat=\"profile.projects\"");
     expect(spec!.document.css).toContain("prefers-reduced-motion");
+    expect(spec).not.toHaveProperty("root");
+  });
+
+  it.each([
+    ["room", { "room.title": "text", "room.whyBody": "text", "room.sharedFacts": "facts" }],
+    ["circle", { "circle.name": "text", "circle.purpose": "text", "circle.members": "facts", "circle.modules": "facts" }],
+  ] as const)("provides a valid %s HTML/CSS recovery bundle", (kind, authorizedBindingTypes) => {
+    const spec = customizedSurfaceExample({ kind, authorizedBindingTypes });
+    expect(spec).not.toBeNull();
+    expect(spec).toMatchObject({ schemaVersion: "3", kind });
+    expect(safeParseSurfaceSpec(spec, designPolicy.version, { forRevisionCreation: true }).success).toBe(true);
     expect(spec).not.toHaveProperty("root");
   });
 });

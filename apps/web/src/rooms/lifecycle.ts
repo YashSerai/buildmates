@@ -1,3 +1,5 @@
+import { safeParseModuleAppearance, type ModuleAppearance } from "@buildmates/surfaces";
+
 const MODULE_KINDS = ["resource_shelf", "experiment_tracker", "decision_log", "feedback_queue", "milestone_tracker"] as const;
 export type RoomModuleKind = (typeof MODULE_KINDS)[number];
 export type RoomModuleEntry = {id:string;moduleId:string;authorUserId:string;authorName:string;payload:Record<string,string>;createdAt:number;updatedAt:number};
@@ -173,7 +175,7 @@ async function roomContext(DB:D1Database,roomId:string,userId:string){
 
 export async function listRoomEnhancements(DB:D1Database,roomId:string,userId:string){
   const context=await roomContext(DB,roomId,userId);
-  const [upgrades,modules,entries,meetings,receipts,myAvailability,intersections,positiveFeedback]=await Promise.all([
+  const [upgrades,modules,entries,meetings,receipts,myAvailability,intersections,feedback]=await Promise.all([
     DB.prepare(`SELECT p.id,p.proposer_user_id AS proposerUserId,p.modules_json AS modulesJson,p.explanation,p.status,p.created_at AS createdAt,
       SUM(CASE WHEN r.response='accepted' THEN 1 ELSE 0 END) AS acceptCount
       FROM room_upgrade_proposals p LEFT JOIN room_upgrade_responses r ON r.proposal_id=p.id WHERE p.room_id=? GROUP BY p.id ORDER BY p.created_at DESC LIMIT 20`).bind(roomId).all(),
@@ -189,9 +191,9 @@ export async function listRoomEnhancements(DB:D1Database,roomId:string,userId:st
       FROM availability_windows mine JOIN availability_windows theirs ON theirs.room_id=mine.room_id AND theirs.user_id=? AND theirs.status='approved'
       WHERE mine.room_id=? AND mine.user_id=? AND mine.status='approved' AND MAX(mine.starts_at,theirs.starts_at)<MIN(mine.ends_at,theirs.ends_at)
       ORDER BY startsAt LIMIT 20`).bind(context.otherUserId,roomId,userId).all(),
-    DB.prepare("SELECT 1 AS positive FROM introduction_feedback WHERE connection_id=? AND user_id=? AND useful=1 LIMIT 1").bind(context.connectionId,userId).first(),
+    DB.prepare("SELECT useful,created_at AS createdAt FROM introduction_feedback WHERE connection_id=? AND user_id=? LIMIT 1").bind(context.connectionId,userId).first<{useful:number;createdAt:number}>(),
   ]);
-  return {viewerUserId:userId,upgradeEligible:Boolean(positiveFeedback),upgrades:upgrades.results.map((r)=>({...r,modules:parseJson<string[]>(r.modulesJson,[]),acceptCount:Number(r.acceptCount),mine:String(r.proposerUserId)===userId})),modules:modules.results.map((r)=>({...r,active:Boolean(r.active),config:parseJson<Record<string,unknown>>(r.configJson,{})})),entries:entries.results.map((r)=>({...r,payload:parseJson<Record<string,string>>(r.payloadJson,{})})),meetings:meetings.results.map((r)=>({...r,mine:String(r.proposerUserId)===userId})),receipts:receipts.results,myAvailability:myAvailability.results,availabilityIntersections:intersections.results};
+  return {viewerUserId:userId,feedback:{submitted:Boolean(feedback),useful:feedback?Boolean(feedback.useful):null,createdAt:feedback?.createdAt??null},upgradeEligible:Boolean(feedback?.useful),upgrades:upgrades.results.map((r)=>({...r,modules:parseProposedRoomModules(r.modulesJson).map((module)=>module.kind),acceptCount:Number(r.acceptCount),mine:String(r.proposerUserId)===userId})),modules:modules.results.map((r)=>({...r,active:Boolean(r.active),config:parseJson<Record<string,unknown>>(r.configJson,{})})),entries:entries.results.map((r)=>({...r,payload:parseJson<Record<string,string>>(r.payloadJson,{})})),meetings:meetings.results.map((r)=>({...r,mine:String(r.proposerUserId)===userId})),receipts:receipts.results,myAvailability:myAvailability.results,availabilityIntersections:intersections.results};
 }
 
 export async function addRoomModuleEntry(DB:D1Database,input:{roomId:string;userId:string;moduleId:string;payload:Record<string,unknown>;now:number}){
@@ -236,26 +238,30 @@ export async function withdrawAvailabilityWindow(DB:D1Database,input:{roomId:str
   if(Number(result.meta?.changes??0)!==1)throw new Error("availability_window_not_found");
 }
 
-export async function proposeRoomUpgrade(DB:D1Database,input:{roomId:string;userId:string;modules:RoomModuleKind[];explanation:string;now:number}) {
+export async function proposeRoomUpgrade(DB:D1Database,input:{roomId:string;userId:string;proposalId?:string;modules:RoomModuleKind[];explanation:string;title?:string;appearance?:ModuleAppearance;now:number}) {
   await roomContext(DB,input.roomId,input.userId);
   const positive=await DB.prepare("SELECT 1 AS positive FROM introduction_feedback f JOIN rooms r ON r.connection_id=f.connection_id WHERE r.id=? AND f.user_id=? AND f.useful=1 LIMIT 1").bind(input.roomId,input.userId).first();
   if(!positive)throw new Error("positive_feedback_required");
   const modules=[...new Set(input.modules)].filter((kind):kind is RoomModuleKind=>MODULE_KINDS.includes(kind as RoomModuleKind));
   if(!modules.length)throw new Error("modules_required");
-  const id=crypto.randomUUID();
+  if(input.appearance&&!safeParseModuleAppearance(input.appearance).success)throw new Error("module_appearance_invalid");
+  const title=input.title?.trim();
+  if(title&&title.length>120)throw new Error("module_title_invalid");
+  const proposedModules=modules.map((kind)=>({kind,config:{...(title?{title}:{}),...(input.appearance?{appearance:input.appearance}:{})}}));
+  const id=input.proposalId??crypto.randomUUID();
   await DB.batch([
-    DB.prepare("INSERT INTO room_upgrade_proposals (id,room_id,proposer_user_id,modules_json,explanation,status,created_at) VALUES (?,?,?,?,?,'proposed',?)").bind(id,input.roomId,input.userId,JSON.stringify(modules),input.explanation,input.now),
+    DB.prepare("INSERT INTO room_upgrade_proposals (id,room_id,proposer_user_id,modules_json,explanation,status,created_at) VALUES (?,?,?,?,?,'proposed',?)").bind(id,input.roomId,input.userId,JSON.stringify(proposedModules),input.explanation,input.now),
     DB.prepare("INSERT INTO room_upgrade_responses (proposal_id,user_id,response,created_at) VALUES (?,?,'accepted',?)").bind(id,input.userId,input.now),
   ]);
-  return {id};
+  return {id,status:"proposed" as const};
 }
 
 export async function respondRoomUpgrade(DB:D1Database,input:{roomId:string;proposalId:string;userId:string;response:"accepted"|"declined";now:number}) {
   const context=await roomContext(DB,input.roomId,input.userId);
   const proposal=await DB.prepare("SELECT modules_json AS modulesJson,status FROM room_upgrade_proposals WHERE id=? AND room_id=? LIMIT 1").bind(input.proposalId,input.roomId).first<{modulesJson:string;status:string}>();
-  if(proposal?.status==="activated"&&input.response==="accepted")return;
+  if(proposal?.status==="activated"&&input.response==="accepted")return {id:input.proposalId,status:"activated" as const};
   if(!proposal||!['proposed','accepted'].includes(proposal.status))throw new Error("upgrade_not_found");
-  const modules=parseJson<RoomModuleKind[]>(proposal.modulesJson,[]).filter((kind)=>MODULE_KINDS.includes(kind));
+  const modules=parseProposedRoomModules(proposal.modulesJson);
   const statements: D1PreparedStatement[]=[DB.prepare(`INSERT INTO room_upgrade_responses (proposal_id,user_id,response,created_at)
     SELECT ?,?,?,? WHERE EXISTS (SELECT 1 FROM room_upgrade_proposals WHERE id=? AND room_id=? AND status='proposed')
     ON CONFLICT(proposal_id,user_id) DO UPDATE SET response=excluded.response,created_at=excluded.created_at`).bind(input.proposalId,input.userId,input.response,input.now,input.proposalId,input.roomId)];
@@ -264,14 +270,30 @@ export async function respondRoomUpgrade(DB:D1Database,input:{roomId:string;prop
     statements.push(DB.prepare(`UPDATE room_upgrade_proposals SET status='activated' WHERE id=? AND room_id=? AND status='proposed'
       AND NOT EXISTS (SELECT 1 FROM room_upgrade_responses WHERE proposal_id=? AND response='declined')
       AND 2=(SELECT COUNT(*) FROM room_upgrade_responses response JOIN room_memberships member ON member.room_id=? AND member.user_id=response.user_id AND member.left_at IS NULL WHERE response.proposal_id=? AND response.response='accepted')`).bind(input.proposalId,input.roomId,input.proposalId,input.roomId,input.proposalId));
-    for(const kind of modules) statements.push(DB.prepare(`INSERT INTO room_modules (id,room_id,proposal_id,kind,config_json,active,created_at)
+    for(const roomModule of modules) statements.push(DB.prepare(`INSERT INTO room_modules (id,room_id,proposal_id,kind,config_json,active,created_at)
       SELECT ?,?,?,?,?,1,? FROM room_upgrade_proposals WHERE id=? AND room_id=? AND status='activated'
-      ON CONFLICT(room_id,kind) DO UPDATE SET active=1`).bind(`module:${input.roomId}:${kind}`,input.roomId,input.proposalId,kind,"{}",input.now,input.proposalId,input.roomId));
+      ON CONFLICT(room_id,kind) DO UPDATE SET proposal_id=excluded.proposal_id,config_json=excluded.config_json,active=1,created_at=excluded.created_at`).bind(`module:${input.roomId}:${roomModule.kind}`,input.roomId,input.proposalId,roomModule.kind,JSON.stringify(roomModule.config),input.now,input.proposalId,input.roomId));
     statements.push(DB.prepare("INSERT OR IGNORE INTO notifications (id,user_id,kind,delivery,payload_json,created_at) SELECT ?,?,'room_upgraded','immediate',?,? WHERE EXISTS (SELECT 1 FROM room_upgrade_proposals WHERE id=? AND room_id=? AND status='activated') AND EXISTS (SELECT 1 FROM connection_sides WHERE connection_id=? AND user_id=? AND muted=0)").bind(`room-upgraded:${input.proposalId}:${context.otherUserId}`,context.otherUserId,JSON.stringify({roomId:input.roomId,proposalId:input.proposalId}),input.now,input.proposalId,input.roomId,context.connectionId,context.otherUserId));
   }
   await DB.batch(statements);
   const current=await DB.prepare("SELECT status FROM room_upgrade_proposals WHERE id=? AND room_id=?").bind(input.proposalId,input.roomId).first<{status:string}>();
   if(!current||(!['activated','declined','proposed'].includes(current.status)))throw new Error("upgrade_not_found");
+  return {id:input.proposalId,status:current.status};
+}
+
+function parseProposedRoomModules(value:unknown):Array<{kind:RoomModuleKind;config:Record<string,unknown>}>{
+  const parsed=parseJson<unknown[]>(value,[]);
+  const result:Array<{kind:RoomModuleKind;config:Record<string,unknown>}>=[];
+  for(const item of parsed){
+    if(typeof item==="string"&&MODULE_KINDS.includes(item as RoomModuleKind)){result.push({kind:item as RoomModuleKind,config:{}});continue}
+    if(!item||typeof item!=="object"||Array.isArray(item))continue;
+    const candidate=item as Record<string,unknown>;
+    if(!MODULE_KINDS.includes(candidate.kind as RoomModuleKind))continue;
+    const config=candidate.config&&typeof candidate.config==="object"&&!Array.isArray(candidate.config)?candidate.config as Record<string,unknown>:{};
+    if(config.appearance&&!safeParseModuleAppearance(config.appearance).success)continue;
+    result.push({kind:candidate.kind as RoomModuleKind,config});
+  }
+  return result;
 }
 
 function validateRoomModuleEntry(kind:string,payload:Record<string,unknown>):Record<string,string>{

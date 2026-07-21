@@ -39,9 +39,11 @@ export function TopicBubbleMap({
 
   useEffect(() => {
     if (searchTarget && model.topicById.has(searchTarget)) {
-      setFocusId(model.parentById.get(searchTarget) ?? null);
-      setZoom(1);
-      setPan({ x: 0, y: 0 });
+      queueMicrotask(() => {
+        setFocusId(model.parentById.get(searchTarget) ?? null);
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      });
     }
   }, [searchTarget, model]);
   const effectiveFocus = focusId;

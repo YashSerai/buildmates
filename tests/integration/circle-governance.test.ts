@@ -1,7 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { DESIGN_POLICY_VERSION, type SurfaceSpecV2 } from "@buildmates/surfaces";
+import { DEFAULT_MODULE_APPEARANCE, DESIGN_POLICY_VERSION, type SurfaceSpecV2 } from "@buildmates/surfaces";
 import {
   addCircleModuleEntry,
   createCircle,
@@ -100,6 +100,41 @@ describe("Circle governance and privacy", () => {
     expect((await DB.prepare("SELECT COUNT(*) AS count FROM circle_modules WHERE id=?").bind(moduleId).first<{count:number}>())?.count).toBe(1);
     const entry = await addCircleModuleEntry(DB,{actorId:"member",circleId:circle.id,moduleId,payload:{decision:"Use hybrid retrieval"},now:now+7});
     expect(entry.id).toBeTruthy();
+  });
+
+  it("retains an approved functional appearance when Circle governance activates a tool", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Shipping studio",purpose:"Keep experiments legible",governanceMode:"admin",now});
+    const appearance={...DEFAULT_MODULE_APPEARANCE,concept:{source:"user_reference" as const,direction:"Approved functional experiment board with visible status and evidence hierarchy.",referenceLabel:"Shared experiment board",approvedByUser:true as const},layout:"cards" as const};
+    const proposal=await createCircleProposal(DB,{actorId:"owner",circleId:circle.id,kind:"module",payload:{kind:"experiment_tracker",config:{title:"Experiment board",appearance}},now:now+1});
+    await publishCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:proposal.id,now:now+2});
+    const detail=await getCircle(DB,circle.id,"owner");
+    expect(detail?.modules[0]?.config).toMatchObject({title:"Experiment board",appearance:{layout:"cards",concept:{source:"user_reference",approvedByUser:true}}});
+  });
+
+  it("rejects inaccessible or unapproved Circle tool appearances", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Safe studio",purpose:"Reject unsafe design configuration",governanceMode:"admin",now});
+    await expect(createCircleProposal(DB,{actorId:"owner",circleId:circle.id,kind:"module",payload:{kind:"scoreboard",config:{title:"Unsafe",appearance:{...DEFAULT_MODULE_APPEARANCE,concept:{...DEFAULT_MODULE_APPEARANCE.concept,approvedByUser:false}}}},now:now+1})).rejects.toThrow("module_appearance_invalid");
+  });
+
+  it("stores open-ended change requests without treating them as publishable changes", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Agent builders",purpose:"Compare practical agent workflows",governanceMode:"admin",now});
+    const request = await createCircleProposal(DB,{
+      actorId:"owner",
+      circleId:circle.id,
+      kind:"request",
+      payload:{change:"Add a place to compare reliability experiments",outcome:"Help members retain the evidence behind shared decisions"},
+      now:now+1,
+    });
+    const detail=await getCircle(DB,circle.id,"owner");
+    expect(detail?.proposals[0]).toMatchObject({
+      id:request.id,
+      kind:"request",
+      status:"draft",
+      canPublish:false,
+      payload:{change:"Add a place to compare reliability experiments",outcome:"Help members retain the evidence behind shared decisions"},
+    });
+    await expect(publishCircleProposal(DB,{actorId:"owner",circleId:circle.id,proposalId:request.id,now:now+2})).rejects.toThrow("request_requires_codex_proposal");
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM circle_modules WHERE circle_id=?").bind(circle.id).first()).toEqual({count:0});
   });
 
   it("does not invalidate governance when a stale membership change has no effect", async () => {

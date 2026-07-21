@@ -133,9 +133,12 @@ export function CirclesClient({
           <p>Your groups</p>
           <h2>Active and invited Circles</h2>
         </div>
-        <button onClick={() => setOpen((value) => !value)}>
-          {open ? "Cancel" : "Create a Circle"}
-        </button>
+        <div className={styles.headingActions}>
+          <span>{active.length} joined</span>
+          <button onClick={() => setOpen((value) => !value)}>
+            {open ? "Cancel" : "Create a Circle"}
+          </button>
+        </div>
       </div>
       {open && (
         <form className={styles.create} aria-busy={busy} onSubmit={submit}>
@@ -184,11 +187,7 @@ export function CirclesClient({
             <CircleCards circles={invitations} />
           </section>
         )}
-        <section aria-labelledby="active-circles">
-          <div className={styles.groupHeading}>
-            <h3 id="active-circles">Active Circles</h3>
-            <span>{active.length} joined</span>
-          </div>
+        <section aria-label="Joined Circles">
           {active.length ? (
             <CircleCards circles={active} />
           ) : (
@@ -231,10 +230,6 @@ function CircleCards({ circles }: { circles: CircleListItem[] }) {
           <dl>
             <dt>Members</dt>
             <dd>{circle.memberCount}</dd>
-            <dt>Changes approved by</dt>
-            <dd>
-              {circle.governanceMode === "vote" ? "Member vote" : "Admins"}
-            </dd>
           </dl>
           <a href={`/circles/${circle.id}`}>
             {circle.membershipStatus === "invited"

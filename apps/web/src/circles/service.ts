@@ -1,5 +1,5 @@
 import { createD1Repositories } from "@buildmates/database";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, safeParseSurfaceSpec, seedDesignPolicy, type SurfaceSpec } from "@buildmates/surfaces";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, safeParseModuleAppearance, safeParseSurfaceSpec, seedDesignPolicy, type SurfaceSpec } from "@buildmates/surfaces";
 import {consumeWebRateLimit} from "../security/rate-limit";
 
 export type CircleListItem={id:string;name:string;purpose:string;status:string;governanceMode:"admin"|"vote";role:string;membershipStatus:string;memberCount:number};
@@ -31,7 +31,7 @@ export async function getCircle(DB:D1Database,circleId:string,userId:string):Pro
     DB.prepare("SELECT id,kind,config_json AS configJson,rules_version AS rulesVersion,active,created_at AS createdAt FROM circle_modules WHERE circle_id=? ORDER BY created_at LIMIT 50").bind(circleId).all<Omit<CircleModuleView,"config"|"configJson"|"active">&{configJson:string;active:number}>(),
   ]);
   const viewerIsAdmin=circle.role==="owner"||circle.role==="admin";
-  return {...circle,viewerUserId:userId,members:members.results,proposals:proposals.results.map(({previewSpecJson,...row})=>({...row,payload:safeObject(row.payloadJson),previewSpec:parseSurfacePreview(previewSpecJson),canPublish:viewerIsAdmin&&row.status!=="published"&&row.governanceVersion===circle.governanceVersion&&(circle.governanceMode==="admin"||row.status==="approved"),payloadJson:undefined})),modules:modules.results.map((row)=>({...row,config:safeObject(row.configJson),configJson:undefined,active:Boolean(row.active)}))};
+  return {...circle,viewerUserId:userId,members:members.results,proposals:proposals.results.map(({previewSpecJson,...row})=>({...row,payload:safeObject(row.payloadJson),previewSpec:parseSurfacePreview(previewSpecJson),canPublish:row.kind!=="request"&&viewerIsAdmin&&row.status!=="published"&&row.governanceVersion===circle.governanceVersion&&(circle.governanceMode==="admin"||row.status==="approved"),payloadJson:undefined})),modules:modules.results.map((row)=>({...row,config:safeObject(row.configJson),configJson:undefined,active:Boolean(row.active)}))};
 }
 export async function createCircle(DB:D1Database,input:{actorId:string;name:string;purpose:string;governanceMode:"admin"|"vote";inviteeUserIds?:string[];now:number}){
   const user=await DB.prepare("SELECT 1 AS ok FROM users WHERE id=? AND status='active'").bind(input.actorId).first();
@@ -54,7 +54,7 @@ export async function createCircle(DB:D1Database,input:{actorId:string;name:stri
 export async function listCircleSuggestions(DB:D1Database,userId:string):Promise<CircleSuggestion[]>{const rows=(await DB.prepare(`WITH mine AS (SELECT CASE WHEN pair.user_a_id=? THEN pair.user_b_id ELSE pair.user_a_id END AS otherUserId FROM connections connection JOIN match_pairs pair ON pair.id=connection.match_pair_id WHERE connection.state='active' AND (pair.user_a_id=? OR pair.user_b_id=?)) SELECT first.otherUserId AS userA,profile_a.display_name AS nameA,second.otherUserId AS userB,profile_b.display_name AS nameB FROM mine first JOIN mine second ON first.otherUserId<second.otherUserId JOIN profiles profile_a ON profile_a.user_id=first.otherUserId JOIN profiles profile_b ON profile_b.user_id=second.otherUserId WHERE EXISTS (SELECT 1 FROM connections between_connection JOIN match_pairs between_pair ON between_pair.id=between_connection.match_pair_id WHERE between_connection.state='active' AND ((between_pair.user_a_id=first.otherUserId AND between_pair.user_b_id=second.otherUserId) OR (between_pair.user_b_id=first.otherUserId AND between_pair.user_a_id=second.otherUserId))) AND NOT EXISTS (SELECT 1 FROM circles circle JOIN circle_memberships me ON me.circle_id=circle.id AND me.user_id=? AND me.status='active' JOIN circle_memberships a ON a.circle_id=circle.id AND a.user_id=first.otherUserId AND a.status IN ('active','invited') JOIN circle_memberships b ON b.circle_id=circle.id AND b.user_id=second.otherUserId AND b.status IN ('active','invited') WHERE circle.status='active') LIMIT 6`).bind(userId,userId,userId,userId).all<{userA:string;nameA:string;userB:string;nameB:string}>()).results;return rows.map((row)=>({id:`${row.userA}:${row.userB}`,memberUserIds:[row.userA,row.userB],memberNames:[row.nameA,row.nameB],reason:`You already have active one-to-one connections with ${row.nameA} and ${row.nameB}, and they are connected to each other.`}))}
 export async function inviteCircleMember(DB:D1Database,input:{actorId:string;circleId:string;userId:string;now:number}){if(input.actorId===input.userId)throw new Error("invite_invalid");const role=await activeRole(DB,input.circleId,input.actorId);if(role!=="owner"&&role!=="admin")throw new Error("forbidden");const target=await DB.prepare("SELECT 1 AS ok FROM users WHERE id=? AND status='active'").bind(input.userId).first();if(!target)throw new Error("user_not_found");const current=await DB.prepare("SELECT status FROM circle_memberships WHERE circle_id=? AND user_id=?").bind(input.circleId,input.userId).first<{status:string}>();if(current?.status==="active"||current?.status==="invited")return;if(await hasCircleBlock(DB,input.circleId,input.userId,true))throw new Error("invite_blocked");const circle=await DB.prepare("SELECT name FROM circles WHERE id=? LIMIT 1").bind(input.circleId).first<{name:string}>();await DB.batch([DB.prepare("INSERT INTO circle_memberships (circle_id,user_id,role,status,joined_at) VALUES (?,?,'member','invited',NULL) ON CONFLICT(circle_id,user_id) DO UPDATE SET status='invited',joined_at=NULL WHERE circle_memberships.status IN ('left','declined','removed')").bind(input.circleId,input.userId),DB.prepare("INSERT INTO notifications (id,user_id,kind,delivery,payload_json,read_at,created_at) SELECT ?,?,'circle_invitation','immediate',?,NULL,? WHERE EXISTS (SELECT 1 FROM circle_memberships WHERE circle_id=? AND user_id=? AND status='invited') ON CONFLICT(id) DO UPDATE SET payload_json=excluded.payload_json,read_at=NULL,created_at=excluded.created_at").bind(`circle-invite:${input.circleId}:${input.userId}`,input.userId,JSON.stringify({circleId:input.circleId,circleName:circle?.name??"Circle"}),input.now,input.circleId,input.userId)])}
 export async function respondCircleInvite(DB:D1Database,input:{actorId:string;circleId:string;accept:boolean;now:number}){if(input.accept&&await hasCircleBlock(DB,input.circleId,input.actorId,false))throw new Error("invitation_blocked");const status=input.accept?"active":"declined";const results=await DB.batch([DB.prepare("UPDATE circle_memberships SET status=?,joined_at=CASE WHEN ?='active' THEN ? ELSE joined_at END WHERE circle_id=? AND user_id=? AND status='invited'").bind(status,status,input.now,input.circleId,input.actorId),DB.prepare(`UPDATE circles SET status=CASE WHEN ?='declined' THEN 'archived' WHEN status='proposed' AND NOT EXISTS (SELECT 1 FROM circle_memberships WHERE circle_id=? AND status='invited') AND NOT EXISTS (SELECT 1 FROM circle_memberships WHERE circle_id=? AND status='declined') THEN 'active' ELSE status END,governance_version=governance_version+1,updated_at=? WHERE id=? AND EXISTS (SELECT 1 FROM circle_memberships WHERE circle_id=? AND user_id=? AND status=?)`).bind(status,input.circleId,input.circleId,input.now,input.circleId,input.circleId,input.actorId,status)]);if(Number(results[0]?.meta.changes??0)!==1)throw new Error("invitation_unavailable");await syncCircleSurfaceGovernance(DB,input.circleId)}
-export async function createCircleProposal(DB:D1Database,input:{actorId:string;circleId:string;kind:"design"|"module"|"rules";payload:Record<string,unknown>;now:number}){
+export async function createCircleProposal(DB:D1Database,input:{actorId:string;circleId:string;kind:"design"|"module"|"rules"|"request";payload:Record<string,unknown>;now:number}){
   if(!await activeUnblockedRole(DB,input.circleId,input.actorId))throw new Error("forbidden");
   const circle=await DB.prepare(`SELECT circle.governance_mode AS governanceMode,circle.governance_version AS governanceVersion,
     surface.id AS surfaceId,published.revision_number AS publishedRevisionNumber
@@ -64,6 +64,7 @@ export async function createCircleProposal(DB:D1Database,input:{actorId:string;c
   if(!circle)throw new Error("circle_unavailable");
   const id=crypto.randomUUID();
   let storedPayload=input.payload;
+  if(input.kind==="request")storedPayload=validateChangeRequest(input.payload);
   if(input.kind==="module")validateModulePayload(input.payload);
   if(input.kind==="rules"){
     const rules=validateRulesPayload(input.payload);
@@ -80,7 +81,7 @@ export async function createCircleProposal(DB:D1Database,input:{actorId:string;c
     await repositories.surfaces.createRevision({actorId:input.actorId as never,id:revisionId,surfaceId:circle.surfaceId,authorUserId:input.actorId as never,revisionNumber:Number(maximum?.value??0)+1,baseRevisionNumber:circle.publishedRevisionNumber,designPolicyId:DESIGN_POLICY_ID,designPolicyVersion:DESIGN_POLICY_VERSION,visibility:"private_preview",specJson:JSON.stringify(spec.data),createdAt:new Date(input.now)});
     storedPayload={title:typeof input.payload.title==="string"?input.payload.title:"Circle design",revisionId};
   }
-  const status=circle.governanceMode==="vote"?"voting":"draft";
+  const status=input.kind==="request"?"draft":circle.governanceMode==="vote"?"voting":"draft";
   await DB.prepare("INSERT INTO circle_proposals (id,circle_id,proposer_user_id,kind,payload_json,governance_version,status,created_at) VALUES (?,?,?,?,?,?,?,?)").bind(id,input.circleId,input.actorId,input.kind,boundedJson(storedPayload),circle.governanceVersion,status,input.now).run();
   return{id,status,revisionId:typeof storedPayload.revisionId==="string"?storedPayload.revisionId:null};
 }
@@ -105,6 +106,7 @@ export async function publishCircleProposal(DB:D1Database,input:{actorId:string;
     WHERE p.id=? AND p.circle_id=? AND p.governance_version=c.governance_version AND c.status='active'`).bind(input.proposalId,input.circleId).first<{kind:string;payloadJson:string;status:string;governanceMode:"admin"|"vote";governanceVersion:number;surfaceId:string;publishedRevisionNumber:number|null}>();
   if(!proposal)throw new Error("proposal_unavailable");
   if(proposal.status==="published")return;
+  if(proposal.kind==="request")throw new Error("request_requires_codex_proposal");
   const admin=role==="owner"||role==="admin";
   if(!admin)throw new Error("forbidden");
   if(proposal.governanceMode==="vote"&&proposal.status!=="approved")throw new Error("proposal_not_approved");
@@ -170,12 +172,25 @@ async function activeUnblockedRole(DB:D1Database,circleId:string,userId:string){
 async function hasCircleBlock(DB:D1Database,circleId:string,userId:string,includeInvited:boolean){const statuses=includeInvited?"('active','invited')":"('active')";return Boolean(await DB.prepare(`SELECT 1 AS blocked FROM circle_memberships member JOIN blocks block ON block.revoked_at IS NULL AND ((block.blocker_user_id=? AND block.blocked_user_id=member.user_id) OR (block.blocked_user_id=? AND block.blocker_user_id=member.user_id)) WHERE member.circle_id=? AND member.status IN ${statuses} AND member.user_id<>? LIMIT 1`).bind(userId,userId,circleId,userId).first())}
 async function blockedPair(DB:D1Database,left:string,right:string){return Boolean(await DB.prepare("SELECT 1 AS blocked FROM blocks WHERE revoked_at IS NULL AND ((blocker_user_id=? AND blocked_user_id=?) OR (blocker_user_id=? AND blocked_user_id=?)) LIMIT 1").bind(left,right,right,left).first())}
 const moduleKinds=["resource_shelf","experiment_tracker","decision_log","feedback_queue","milestone_tracker","scoreboard"] as const;
-function validateModulePayload(payload:Record<string,unknown>){if(!moduleKinds.includes(payload.kind as typeof moduleKinds[number])||!payload.config||typeof payload.config!=="object"||Array.isArray(payload.config))throw new Error("module_payload_invalid");return{kind:payload.kind as typeof moduleKinds[number],config:payload.config as Record<string,unknown>}}
+function validateModulePayload(payload:Record<string,unknown>){
+  if(!moduleKinds.includes(payload.kind as typeof moduleKinds[number])||!payload.config||typeof payload.config!=="object"||Array.isArray(payload.config))throw new Error("module_payload_invalid");
+  const config=payload.config as Record<string,unknown>;
+  if(typeof config.title!=="string"||config.title.trim().length<1||config.title.length>120)throw new Error("module_payload_invalid");
+  if(config.appearance&&!safeParseModuleAppearance(config.appearance).success)throw new Error("module_appearance_invalid");
+  return{kind:payload.kind as typeof moduleKinds[number],config:{...config,title:config.title.trim()}}
+}
 function validateRulesPayload(payload:Record<string,unknown>){
   if(typeof payload.moduleId!=="string"||!payload.moduleId||!payload.rules||typeof payload.rules!=="object"||Array.isArray(payload.rules))throw new Error("rules_payload_invalid");
   const rules=payload.rules as Record<string,unknown>;
   if(typeof rules.title!=="string"||rules.title.trim().length<1||rules.title.length>120||typeof rules.description!=="string"||rules.description.trim().length<1||rules.description.length>1000)throw new Error("rules_payload_invalid");
   return{moduleId:payload.moduleId,rules:{title:rules.title.trim(),description:rules.description.trim()}};
+}
+function validateChangeRequest(payload:Record<string,unknown>){
+  if(typeof payload.change!=="string"||typeof payload.outcome!=="string")throw new Error("change_request_invalid");
+  const change=payload.change.trim();
+  const outcome=payload.outcome.trim();
+  if(change.length<3||change.length>1200||outcome.length<3||outcome.length>1200)throw new Error("change_request_invalid");
+  return{change,outcome};
 }
 export function validateEntryPayload(kind:string,payload:Record<string,unknown>):Record<string,string>{
   const fields:Record<string,readonly string[]>={

@@ -329,6 +329,101 @@
   min-width: 0;
 }
 
+.eligibleTools,
+.reviewArea {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+.codexActions,
+.reviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.codexActions small,
+.reviewArea > small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.codexActions a,
+.reviewActions a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ink);
+  border-radius: 3px;
+  background: var(--ink);
+  color: #fffdf7;
+  padding: 9px 13px;
+  font-size: 0.82rem;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.feedbackForm {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1fr) minmax(220px, 1fr) !important;
+  gap: 12px !important;
+  align-items: end;
+  margin-top: 4px;
+  padding: 16px;
+  border-radius: 0 8px 8px 8px;
+  background: var(--panel);
+}
+
+.feedbackForm fieldset {
+  display: flex;
+  min-width: 0;
+  gap: 14px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.feedbackForm legend {
+  width: 100%;
+  margin-bottom: 8px;
+  font-size: 0.76rem;
+  font-weight: 720;
+}
+
+.feedbackForm fieldset label {
+  display: flex;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 7px;
+}
+
+.feedbackForm input[type="radio"] {
+  width: 18px;
+  min-height: 18px;
+  margin: 0;
+}
+
+.feedbackForm select {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #aaa99f;
+  border-radius: 2px;
+  background: #fffdf7;
+  color: inherit;
+  padding: 9px;
+  font: inherit;
+}
+
+.feedbackForm > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
 .upgrade label,
 .schedule label {
   display: grid;
@@ -574,6 +669,8 @@
 .composer button:hover,
 .schedule a:hover,
 .upgrade > a:hover,
+.codexActions a:hover,
+.reviewActions a:hover,
 .designActions a:hover {
   background: var(--moss) !important;
   border-color: var(--moss);
@@ -615,6 +712,7 @@
 
   .upgrade,
   .upgrade form,
+  .feedbackForm,
   .schedule,
   .schedule form,
   .availability {
@@ -669,6 +767,8 @@
   }
 
   .proposal,
+  .reviewActions,
+  .codexActions,
   .designActions {
     display: grid;
   }

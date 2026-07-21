@@ -2,11 +2,14 @@ import {z} from "zod";
 import {requireApiUser} from "@/src/auth/require-user";
 import {getPlatformBindings} from "@/src/platform/bindings";
 import {requireSameOriginMutation} from "@/src/platform/same-origin";
-import {addRoomModuleEntry,deleteRoomModuleEntry,listRoomEnhancements,markRoomRead,proposeMeeting,proposeRoomUpgrade,respondMeeting,respondRoomUpgrade,saveAvailabilityWindow,updateRoomModuleEntry,withdrawAvailabilityWindow} from "@/src/rooms/lifecycle";
+import {addRoomModuleEntry,deleteRoomModuleEntry,listRoomEnhancements,markRoomRead,proposeMeeting,proposeRoomUpgrade,respondMeeting,respondRoomUpgrade,saveAvailabilityWindow,saveIntroductionFeedback,updateRoomModuleEntry,withdrawAvailabilityWindow} from "@/src/rooms/lifecycle";
+import {getRoomSummary} from "@/src/rooms/service";
+import {moduleAppearanceSchema} from "@buildmates/surfaces";
 const moduleKind=z.enum(["resource_shelf","experiment_tracker","decision_log","feedback_queue","milestone_tracker"]);
 const actionSchema=z.discriminatedUnion("action",[
   z.object({action:z.literal("read"),messageId:z.string().min(1).max(160).nullable()}).strict(),
-  z.object({action:z.literal("propose_upgrade"),modules:z.array(moduleKind).min(1).max(5),explanation:z.string().trim().min(1).max(1000)}).strict(),
+  z.object({action:z.literal("feedback"),useful:z.boolean(),reasons:z.array(z.enum(["shared_context","good_conversation","future_relevance","collaboration_started","timing_off","not_relevant"])).min(1).max(6),similarMatchPreference:z.enum(["more","same","less"]).nullable(),followUpIntent:z.enum(["keep_connected","collaborate","not_now"]).nullable(),privateNote:z.string().max(2000).nullable()}).strict(),
+  z.object({action:z.literal("propose_upgrade"),modules:z.array(moduleKind).min(1).max(5),explanation:z.string().trim().min(1).max(1000),title:z.string().trim().min(1).max(120).optional(),appearance:moduleAppearanceSchema.optional()}).strict(),
   z.object({action:z.literal("respond_upgrade"),proposalId:z.string().min(1).max(160),response:z.enum(["accepted","declined"])}).strict(),
   z.object({action:z.literal("add_module_entry"),moduleId:z.string().min(1).max(160),payload:z.record(z.string(),z.unknown())}).strict(),
   z.object({action:z.literal("update_module_entry"),moduleId:z.string().min(1).max(160),entryId:z.string().min(1).max(160),payload:z.record(z.string(),z.unknown())}).strict(),
@@ -19,7 +22,12 @@ const actionSchema=z.discriminatedUnion("action",[
 export async function GET(_request:Request,{params}:{params:Promise<{id:string}>}){const user=await requireApiUser();if(user instanceof Response)return user;try{const {id}=await params;const {DB}=await getPlatformBindings();return Response.json(await listRoomEnhancements(DB,id,user.id),{headers:{"cache-control":"private, no-store"}})}catch{return Response.json({error:"room_not_found"},{status:404})}}
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){const origin=requireSameOriginMutation(request);if(origin)return origin;const user=await requireApiUser();if(user instanceof Response)return user;const parsed=actionSchema.safeParse(await request.json().catch(()=>null));if(!parsed.success)return Response.json({error:"invalid_request"},{status:400});const {id}=await params;const {DB}=await getPlatformBindings();const now=Date.now();try{let result:unknown={updated:true};const data=parsed.data;
   if(data.action==="read")await markRoomRead(DB,{roomId:id,userId:user.id,messageId:data.messageId,now});
-  else if(data.action==="propose_upgrade")result=await proposeRoomUpgrade(DB,{roomId:id,userId:user.id,modules:data.modules,explanation:data.explanation,now});
+  else if(data.action==="feedback"){
+    const room=await getRoomSummary(DB,id,user.id);
+    if(!room)throw new Error("room_not_found");
+    await saveIntroductionFeedback(DB,{connectionId:room.connectionId,userId:user.id,...data,now});
+  }
+  else if(data.action==="propose_upgrade")result=await proposeRoomUpgrade(DB,{roomId:id,userId:user.id,modules:data.modules,explanation:data.explanation,title:data.title,appearance:data.appearance,now});
   else if(data.action==="respond_upgrade")await respondRoomUpgrade(DB,{roomId:id,userId:user.id,proposalId:data.proposalId,response:data.response,now});
   else if(data.action==="add_module_entry")result=await addRoomModuleEntry(DB,{roomId:id,userId:user.id,moduleId:data.moduleId,payload:data.payload,now});
   else if(data.action==="update_module_entry")await updateRoomModuleEntry(DB,{roomId:id,userId:user.id,moduleId:data.moduleId,entryId:data.entryId,payload:data.payload,now});

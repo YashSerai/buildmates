@@ -842,6 +842,23 @@ export const surfaceAssets = sqliteTable(
   },
   (t) => [uniqueIndex("surface_asset_object_key_unique").on(t.objectKey)],
 );
+export const surfaceAssetAttachments = sqliteTable(
+  "surface_asset_attachments",
+  {
+    id: text("id").primaryKey(),
+    surfaceId: text("surface_id").notNull().references(() => surfaces.id),
+    assetId: text("asset_id").notNull().references(() => surfaceAssets.id),
+    attachedByUserId: userRef("attached_by_user_id"),
+    bindingKey: text("binding_key").notNull(),
+    altText: text("alt_text").notNull(),
+    createdAt: created(),
+    revokedAt: integer("revoked_at", { mode: "timestamp_ms" }),
+  },
+  (t) => [
+    uniqueIndex("surface_asset_attachment_asset_unique").on(t.surfaceId, t.assetId),
+    uniqueIndex("surface_asset_attachment_binding_unique").on(t.surfaceId, t.bindingKey),
+  ],
+);
 export const surfaceAssetUploadGrants = sqliteTable(
   "surface_asset_upload_grants",
   {
@@ -1374,7 +1391,7 @@ export const circleProposals = sqliteTable("circle_proposals", {
     .references(() => circles.id),
   proposerUserId: userRef("proposer_user_id"),
   kind: text("kind", {
-    enum: ["design", "module", "rules", "membership"],
+    enum: ["design", "module", "rules", "request", "membership"],
   }).notNull(),
   payloadJson: text("payload_json").notNull(),
   governanceVersion: integer("governance_version").notNull(),

@@ -7,6 +7,11 @@ import { addCircleModuleEntry, createCircleProposal, deleteCircleModuleEntry, ge
 const command = z.discriminatedUnion("action", [
   z.object({ action: z.literal("invite"), handle: z.string().trim().min(1).max(64) }).strict(),
   z.object({ action: z.literal("respond_invite"), accept: z.boolean() }).strict(),
+  z.object({
+    action: z.literal("request_change"),
+    change: z.string().trim().min(3).max(1200),
+    outcome: z.string().trim().min(3).max(1200),
+  }).strict(),
   z.object({ action: z.literal("propose"), kind: z.enum(["design", "module", "rules"]), payload: z.record(z.string(), z.unknown()) }).strict(),
   z.object({ action: z.literal("vote"), proposalId: z.string().min(1).max(160), vote: z.enum(["approve", "reject", "abstain"]) }).strict(),
   z.object({ action: z.literal("publish"), proposalId: z.string().min(1).max(160) }).strict(),
@@ -44,6 +49,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const input = parsed.data;
     if (input.action === "invite") await inviteCircleMemberByHandle(DB, { actorId: user.id, circleId: id, handle: input.handle, now: Date.now() });
     else if (input.action === "respond_invite") await respondCircleInvite(DB, { actorId: user.id, circleId: id, accept: input.accept, now: Date.now() });
+    else if (input.action === "request_change") result = await createCircleProposal(DB, { actorId: user.id, circleId: id, kind: "request", payload: { change: input.change, outcome: input.outcome }, now: Date.now() });
     else if (input.action === "propose") result = await createCircleProposal(DB, { actorId: user.id, circleId: id, kind: input.kind, payload: input.payload, now: Date.now() });
     else if (input.action === "vote") await voteCircleProposal(DB, { actorId: user.id, circleId: id, proposalId: input.proposalId, vote: input.vote, now: Date.now() });
     else if (input.action === "publish") await publishCircleProposal(DB, { actorId: user.id, circleId: id, proposalId: input.proposalId, now: Date.now() });

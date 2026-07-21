@@ -52,7 +52,9 @@ export function TopicRelationshipWeb({
   const mountRef = useRef<HTMLDivElement>(null),
     selectedRef = useRef<string | null>(null),
     focusRef = useRef<(id: string) => void>(() => {});
-  selectedRef.current = selectedId;
+  useEffect(() => {
+    selectedRef.current = selectedId;
+  }, [selectedId]);
   const categories = model.roots;
   const filteredTopics = useMemo(
     () =>
@@ -93,8 +95,10 @@ export function TopicRelationshipWeb({
 
   useEffect(() => {
     if (searchTarget && topicIds.has(searchTarget)) {
-      setSelectedId(searchTarget);
-      queueMicrotask(() => focusRef.current(searchTarget));
+      queueMicrotask(() => {
+        setSelectedId(searchTarget);
+        focusRef.current(searchTarget);
+      });
     }
   }, [searchTarget, topicIds]);
   useEffect(() => {
@@ -602,7 +606,7 @@ function layoutGraph(topics: BuildGraphTopic[], edges: BuildGraphEdge[]) {
       for (let j = i + 1; j < sorted.length; j++) {
         const a = positions.get(sorted[i].id)!,
           b = positions.get(sorted[j].id)!;
-        let dx = a.x - b.x,
+        const dx = a.x - b.x,
           dy = a.y - b.y,
           dz = a.z - b.z;
         const d2 = Math.max(0.35, dx * dx + dy * dy + dz * dz),

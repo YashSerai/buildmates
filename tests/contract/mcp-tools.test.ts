@@ -14,6 +14,7 @@ import {
   type BuildmatesToolServices,
 } from "@buildmates/mcp-core";
 import { fieldNotesRoomSpec } from "../../apps/web/app/surface-lab/fixtures";
+import { DEFAULT_MODULE_APPEARANCE } from "@buildmates/surfaces";
 
 const SUBJECT_A = "mcp_subject_alice_0001";
 const SUBJECT_B = "mcp_subject_bob___0002";
@@ -115,10 +116,60 @@ describe("Buildmates MCP contract", () => {
     expect(pulseSkill).toContain("conversation.meaningful");
     expect(pulseSkill).toContain("Do not call `submit_intro_feedback` until the user actually answers");
     expect(pulseSkill).toContain("Choose at most one module");
-    expect(pulseSkill).toContain("both active room members to approve");
+    expect(pulseSkill).toContain("every active room member must accept");
     expect(pulseSkill).toContain("If sources, signals, candidates, matches, room activity, feedback state, and watches are unchanged");
     expect(onboardingSkill).toContain("when privacy-safe metadata shows a meaningful two-way room conversation");
     expect(publicInstructions).toContain("An unchanged run says nothing changed and never invents updates");
+  });
+
+  it("governs room upgrades through explicit Codex proposals and unanimous acceptance", async () => {
+    const proposal = buildmatesToolRegistry.find((tool) => tool.name === "propose_room_upgrade");
+    const response = buildmatesToolRegistry.find((tool) => tool.name === "respond_room_upgrade");
+    expect(proposal?.description).toContain("positive introduction feedback");
+    expect(proposal?.description).toContain("every active room member accepts");
+    expect(response?.description).toContain("explicit confirmation");
+
+    const { services, links } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    const calls: Array<Record<string, unknown>> = [];
+    services.proposeRoomUpgrade = async (input) => {
+      calls.push(input);
+      return { proposalId: input.proposalId, status: "proposed" };
+    };
+    services.respondRoomUpgrade = async (input) => {
+      calls.push(input);
+      return { proposalId: input.proposalId, status: "activated" };
+    };
+    await expect(invoke(services, "propose_room_upgrade", {
+      proposalId: "upgrade-proposal-1", roomId: "room-1", modules: ["decision_log"],
+      title: "Shared decisions",
+      appearance: { ...DEFAULT_MODULE_APPEARANCE, concept: { source: "imagegen", direction: "Approved functional decision workspace with a compact evidence ledger.", referenceLabel: "Decision log concept", approvedByUser: true } },
+      explanation: "Keep decisions from this collaboration visible to both people.", idempotencyKey: "upgrade-proposal-key-1",
+    })).resolves.toMatchObject({ result: { proposalId: "upgrade-proposal-1", status: "proposed", activated: false, approvalRequiredFromEveryActiveMember: true } });
+    await expect(invoke(services, "respond_room_upgrade", {
+      roomId: "room-1", proposalId: "upgrade-proposal-1", response: "accepted", idempotencyKey: "upgrade-response-key-1",
+    })).resolves.toMatchObject({ result: { proposalId: "upgrade-proposal-1", status: "activated" } });
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toMatchObject({ userId: "user_alice", roomId: "room-1", modules: ["decision_log"], title: "Shared decisions", appearance: { layout: "ledger", concept: { source: "imagegen", approvedByUser: true } } });
+  });
+
+  it("creates only a governed Circle module proposal from an approved tool concept", async () => {
+    const { services, links } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    const calls: Array<Record<string, unknown>> = [];
+    services.proposeCircleModule = async (input) => {
+      calls.push(input);
+      return { proposalId: "circle-module-proposal-1", status: "voting" };
+    };
+    await expect(invoke(services, "propose_circle_module", {
+      circleId: "circle-1",
+      kind: "scoreboard",
+      title: "Weekly shipping board",
+      appearance: { ...DEFAULT_MODULE_APPEARANCE, concept: { source: "user_reference", direction: "Approved functional scoreboard with strong numeric hierarchy and calm controls.", referenceLabel: "User supplied scoreboard", approvedByUser: true }, layout: "cards" },
+      idempotencyKey: "circle-module-key-1",
+    })).resolves.toMatchObject({ result: { proposalId: "circle-module-proposal-1", status: "voting" } });
+    expect(calls[0]).toMatchObject({ userId: "user_alice", circleId: "circle-1", kind: "scoreboard", title: "Weekly shipping board", appearance: { layout: "cards" } });
+    expect(buildmatesToolRegistry.find((tool) => tool.name === "propose_circle_module")?.description).toContain("ImageGen UI concept");
   });
 
   it("delegates setup-state reads to the website in the external MCP topology", async () => {

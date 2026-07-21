@@ -96,7 +96,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       brief: {
         kind: "room",
         designPolicy: { id: DESIGN_POLICY_ID, version: DESIGN_POLICY_VERSION },
-        instruction: "Compose a trusted room SurfaceSpec for the introduction header. Keep chat, permissions, navigation, scheduling, and other product actions outside the generated surface.",
+        instruction: "Create a complete responsive GeneratedSiteBundle v3 visual world for this introduction room using semantic HTML and CSS. Begin from a member-approved reference; when none exists, use ImageGen to propose one coherent functional room concept for approval, then use Hallmark as the implementation discipline. The concept must cover the room and any enabled shared tools, not merely decoration. Keep chat, permissions, navigation, scheduling, proposal controls, and other product actions in trusted Buildmates UI outside the generated document. Never include messages or private evidence.",
         allowedBindings: [
           { key: "room.title", type: "text" },
           { key: "room.whyTitle", type: "text" },
@@ -105,10 +105,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
           { key: "room.privacyNote", type: "text" },
         ],
         authorizedContent: {
-          "room.title": `${context?.otherName ?? "Buildmate"} × You`,
+          "room.title": `${context?.otherName ?? "Buildmate"} & You`,
           "room.whyTitle": "Why Buildmates connected you",
           "room.whyBody": context?.reason ?? "Buildmates found mutual relevance in your current work.",
-          "room.sharedFacts": sharedContext,
+          "room.sharedFacts": sharedContext.map((value, index) => ({ label: `Shared context ${index + 1}`, value })),
           "room.privacyNote": "Only context authorized for both people appears here. Messages never feed back into matching.",
         },
         forbidden: ["scripts", "forms", "remote URLs", "permission controls", "messages", "private evidence"],

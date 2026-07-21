@@ -24,6 +24,10 @@ import {
   COMPONENT_V2_DESIGN_POLICY_SOURCE,
   COMPONENT_V2_DESIGN_POLICY_SOURCE_HASH,
   COMPONENT_V2_DESIGN_POLICY_VERSION,
+  PROFILE_V3_DESIGN_POLICY_ID,
+  PROFILE_V3_DESIGN_POLICY_SOURCE,
+  PROFILE_V3_DESIGN_POLICY_SOURCE_HASH,
+  PROFILE_V3_DESIGN_POLICY_VERSION,
 } from "./design-policy";
 import { validateGeneratedSiteSource } from "./generated-site";
 
@@ -251,8 +255,9 @@ function createV2SurfaceSpecSchema<const Version extends string>(policyVersion: 
 const legacyV2SurfaceSpecSchema = createV2SurfaceSpecSchema(LEGACY_V2_DESIGN_POLICY_VERSION);
 const priorActiveSurfaceSpecSchema = createV2SurfaceSpecSchema(PRIOR_ACTIVE_DESIGN_POLICY_VERSION);
 const componentV2SurfaceSpecSchema = createV2SurfaceSpecSchema(COMPONENT_V2_DESIGN_POLICY_VERSION);
-export const generatedSiteSpecSchema = z.object({
-  schemaVersion: z.literal("3"), designPolicyVersion: z.literal(DESIGN_POLICY_VERSION), kind: z.literal("profile"), title: z.string().min(1).max(120),
+function createGeneratedSiteSpecSchema<const Version extends string, const Kinds extends readonly ["profile" | "room" | "circle", ...Array<"profile" | "room" | "circle">]>(policyVersion: Version, kinds: Kinds) {
+  return z.object({
+  schemaVersion: z.literal("3"), designPolicyVersion: z.literal(policyVersion), kind: z.enum(kinds), title: z.string().min(1).max(120),
   document: generatedDocumentSchema,
   bindingManifest: bindingManifestV2,
   approvedAssets: approvedAssetsSchema(),
@@ -279,7 +284,12 @@ export const generatedSiteSpecSchema = z.object({
     if (!type || type === "text") context.addIssue({ code: "custom", message: `Repeat binding must declare an array-shaped content type: ${repeat[1]}`, path: ["document", "html"] });
   }
   for (const binding of spec.bindingManifest.media) if (binding.approvedAssetIds.some((id) => !assets.has(id))) context.addIssue({ code: "custom", message: `Media binding ${binding.key} references an unapproved asset`, path: ["bindingManifest", "media"] });
-});
+  });
+}
+const profileGeneratedSiteSpecSchema = createGeneratedSiteSpecSchema(PROFILE_V3_DESIGN_POLICY_VERSION, ["profile"]);
+export const generatedSiteSpecSchema = createGeneratedSiteSpecSchema(DESIGN_POLICY_VERSION, ["profile", "room", "circle"]);
+const profileV3ComponentSurfaceSpecSchema = createV2SurfaceSpecSchema(PROFILE_V3_DESIGN_POLICY_VERSION);
+const profileV3SurfaceSpecSchema = z.union([profileGeneratedSiteSpecSchema, profileV3ComponentSurfaceSpecSchema]);
 const activeComponentSurfaceSpecSchema = createV2SurfaceSpecSchema(DESIGN_POLICY_VERSION);
 export const activeSurfaceSpecSchema = z.union([generatedSiteSpecSchema, activeComponentSurfaceSpecSchema]);
 
@@ -407,13 +417,14 @@ export const SURFACE_POLICY_REGISTRY = Object.freeze({
   [LEGACY_V2_DESIGN_POLICY_VERSION]: Object.freeze({ version: LEGACY_V2_DESIGN_POLICY_VERSION, designPolicyId: LEGACY_V2_DESIGN_POLICY_ID, sourceHash: LEGACY_V2_DESIGN_POLICY_SOURCE_HASH, policyJson: LEGACY_V2_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
   [PRIOR_ACTIVE_DESIGN_POLICY_VERSION]: Object.freeze({ version: PRIOR_ACTIVE_DESIGN_POLICY_VERSION, designPolicyId: PRIOR_ACTIVE_DESIGN_POLICY_ID, sourceHash: PRIOR_ACTIVE_DESIGN_POLICY_SOURCE_HASH, policyJson: PRIOR_ACTIVE_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
   [COMPONENT_V2_DESIGN_POLICY_VERSION]: Object.freeze({ version: COMPONENT_V2_DESIGN_POLICY_VERSION, designPolicyId: COMPONENT_V2_DESIGN_POLICY_ID, sourceHash: COMPONENT_V2_DESIGN_POLICY_SOURCE_HASH, policyJson: COMPONENT_V2_DESIGN_POLICY_SOURCE, parserVersion: "surface-spec-2", reading: "allowed", revisionCreation: "allowed" }),
+  [PROFILE_V3_DESIGN_POLICY_VERSION]: Object.freeze({ version: PROFILE_V3_DESIGN_POLICY_VERSION, designPolicyId: PROFILE_V3_DESIGN_POLICY_ID, sourceHash: PROFILE_V3_DESIGN_POLICY_SOURCE_HASH, policyJson: PROFILE_V3_DESIGN_POLICY_SOURCE, parserVersion: "generated-site-bundle-3", reading: "allowed", revisionCreation: "allowed" }),
   [DESIGN_POLICY_VERSION]: Object.freeze({ version: DESIGN_POLICY_VERSION, designPolicyId: DESIGN_POLICY_ID, sourceHash: DESIGN_POLICY_SOURCE_HASH, policyJson: DESIGN_POLICY_SOURCE, parserVersion: "generated-site-bundle-3", reading: "allowed", revisionCreation: "allowed" }),
 } as const);
 
 type SurfacePolicyVersion = keyof typeof SURFACE_POLICY_REGISTRY;
 export type SurfaceSpecV1 = z.infer<typeof historicalSurfaceSpecSchema> | z.infer<typeof previousSurfaceSpecSchema>;
-export type SurfaceSpecV2 = z.infer<typeof activeComponentSurfaceSpecSchema> | z.infer<typeof componentV2SurfaceSpecSchema> | z.infer<typeof priorActiveSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
-export type SurfaceSpecV3 = z.infer<typeof generatedSiteSpecSchema>;
+export type SurfaceSpecV2 = z.infer<typeof activeComponentSurfaceSpecSchema> | z.infer<typeof profileV3ComponentSurfaceSpecSchema> | z.infer<typeof componentV2SurfaceSpecSchema> | z.infer<typeof priorActiveSurfaceSpecSchema> | z.infer<typeof legacyV2SurfaceSpecSchema>;
+export type SurfaceSpecV3 = z.infer<typeof generatedSiteSpecSchema> | z.infer<typeof profileGeneratedSiteSpecSchema>;
 export type SurfaceSpec = SurfaceSpecV1 | SurfaceSpecV2 | SurfaceSpecV3;
 export type SurfaceSpecParseResult = { success: true; data: SurfaceSpec } | { success: false; error: z.ZodError };
 
@@ -423,6 +434,7 @@ const policySchemas: Record<SurfacePolicyVersion, z.ZodType<SurfaceSpec>> = {
   [LEGACY_V2_DESIGN_POLICY_VERSION]: legacyV2SurfaceSpecSchema,
   [PRIOR_ACTIVE_DESIGN_POLICY_VERSION]: priorActiveSurfaceSpecSchema,
   [COMPONENT_V2_DESIGN_POLICY_VERSION]: componentV2SurfaceSpecSchema,
+  [PROFILE_V3_DESIGN_POLICY_VERSION]: profileV3SurfaceSpecSchema,
   [DESIGN_POLICY_VERSION]: activeSurfaceSpecSchema,
 };
 

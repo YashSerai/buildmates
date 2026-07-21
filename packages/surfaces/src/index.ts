@@ -7,5 +7,6 @@ export * from "./seed-policy";
 export * from "./profile-brief";
 export * from "./profile-fixtures";
 export * from "./generated-site";
+export * from "./module-appearance";
 
 export const surfacesPackage = "@buildmates/surfaces";

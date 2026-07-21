@@ -176,7 +176,6 @@
 .chatComposer textarea,
 .inlineForm input,
 .proposalForm input,
-.proposalForm select,
 .proposalForm textarea {
   width: 100%;
   min-width: 0;
@@ -291,6 +290,7 @@
 
 .page button,
 .designLead a,
+.proposalCodexLink,
 .invitation a {
   display: inline-flex;
   min-height: 44px;
@@ -313,7 +313,8 @@
 .inlineForm button,
 .proposalForm > button,
 .invitation div button:first-child,
-.designLead a {
+.designLead a,
+.proposalCodexLink {
   background: var(--ink);
   color: #fffdf7;
 }
@@ -326,7 +327,8 @@
 .inlineForm button:hover,
 .proposalForm > button:hover,
 .invitation div button:first-child:hover,
-.designLead a:hover {
+.designLead a:hover,
+.proposalCodexLink:hover {
   background: var(--moss);
   border-color: var(--moss);
 }
@@ -394,6 +396,19 @@
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.76rem;
+}
+
+.proposals .proposalOutcome {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.proposalCodexLink {
+  align-self: start;
+  white-space: nowrap;
 }
 
 .empty {
@@ -464,7 +479,6 @@
 .page a:focus-visible,
 .page button:focus-visible,
 .page input:focus-visible,
-.page select:focus-visible,
 .page textarea:focus-visible,
 .page summary:focus-visible {
   outline: 3px solid #d9753b;

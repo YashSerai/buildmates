@@ -1,7 +1,7 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { createD1Repositories, type RepositoryD1 } from "@buildmates/database";
 import { asUserId } from "@buildmates/domain";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, designPolicy, profileMediaBinding, profileSurfaceMediaIsAuthorized, type SurfaceSpec } from "@buildmates/surfaces";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, designPolicy, profileMediaBinding, surfaceMediaIsAuthorized, type SurfaceSpec } from "@buildmates/surfaces";
 import { canonicalFollowWatchId, type IdempotentMutation, type McpPageOptions, type McpProductRepository, type McpRecord, type McpRecordPage, type McpRecordWrite } from "./repository";
 
 type BoundStatement = { first<T>(): Promise<T | null>; all<T>(): Promise<{ results: T[] }>; run(): Promise<{ meta?: { changes?: number } }> };
@@ -9,7 +9,7 @@ type Statement = BoundStatement & { bind(...values: unknown[]): BoundStatement }
 type Database = { prepare(sql: string): Statement; batch(statements: BoundStatement[]): Promise<unknown[]> };
 type Row = Record<string, unknown>;
 
-const OWNED_ID_KINDS = new Set(["work_signal", "networking_pulse", "profile_model", "invite", "candidate_evaluation", "manual_match_response", "connection_private_note", "connection_reminder", "intro_feedback", "surface_revision", "calendar_receipt"]);
+const OWNED_ID_KINDS = new Set(["work_signal", "networking_pulse", "profile_model", "invite", "candidate_evaluation", "manual_match_response", "connection_private_note", "connection_reminder", "intro_feedback", "surface_revision", "surface_asset_attachment", "calendar_receipt"]);
 
 export function createD1McpProductRepository(database: unknown): McpProductRepository {
   const DB = database as Database;
@@ -254,11 +254,24 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         await run(DB, "INSERT INTO introduction_feedback (id,connection_id,user_id,useful,reasons_json,similar_match_preference,created_at) VALUES (?,?,?,?,?,?,?) ON CONFLICT(connection_id,user_id) DO UPDATE SET useful=excluded.useful,reasons_json=excluded.reasons_json,similar_match_preference=excluded.similar_match_preference", id, value.connectionId, actor, value.useful ? 1 : 0, JSON.stringify(value.reasons ?? []), value.preferenceSummary ?? "", at);
         return (await readCanonical<T>(input.kind, input.id, actor))!;
       }
+      if (input.kind === "surface_asset_attachment") {
+        const surfaceId = String(value.surfaceId);
+        const surface = await surfaceRecord<Row>(DB, surfaceId, actor);
+        if (!surface || !["room", "circle"].includes(String(surface.value.kind))) throw new Error("object_not_authorized");
+        const assetId = String(value.assetId);
+        if (!(await first(DB, "SELECT id FROM surface_assets WHERE id=? AND owner_user_id=? AND deleted_at IS NULL", assetId, actor))) throw new Error("surface_asset_not_authorized");
+        const bindingKey = String(value.bindingKey);
+        if (bindingKey !== `surface.media.${assetId.toLowerCase().replace(/[^a-z0-9_-]/g, "")}`) throw new Error("surface_asset_not_authorized");
+        const altText = String(value.altText).trim().slice(0, 300);
+        if (!altText) throw new Error("surface_asset_not_authorized");
+        await run(DB, "INSERT INTO surface_asset_attachments (id,surface_id,asset_id,attached_by_user_id,binding_key,alt_text,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,NULL) ON CONFLICT(surface_id,asset_id) DO UPDATE SET alt_text=excluded.alt_text,revoked_at=NULL", id, surfaceId, assetId, actor, bindingKey, altText, at);
+        return record(input.kind, id, actor, surface.memberUserIds, { surfaceId, assetId, bindingKey, altText } as T, at, input.now);
+      }
       if (input.kind === "surface_revision") {
         const surfaceId = String(value.surfaceId);
         const surface = await surfaceRecord<Row>(DB, surfaceId, actor);
         if (!surface) throw new Error("object_not_authorized");
-        if (surface.value.kind === "profile" && !profileSurfaceMediaIsAuthorized(
+        if (!surfaceMediaIsAuthorized(
           value.spec as SurfaceSpec,
           (surface.value.authorizedMedia ?? []) as Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }>,
           (surface.value.approvedAssets ?? []) as Array<{ id: string; src: string }>,
@@ -523,10 +536,34 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     const members = await all(DB, "SELECT rm.user_id FROM room_memberships rm JOIN users u ON u.id=rm.user_id AND u.status='active' WHERE rm.room_id=? AND rm.left_at IS NULL ORDER BY rm.user_id", base.subject_id);
     const memberIds = members.map((member) => String(member.user_id)).filter(Boolean);
     if (memberIds.length === 0 || !memberIds.includes(actor)) return null;
+    const [context, snapshots, media] = await Promise.all([
+      first(DB, `SELECT COALESCE(topic.label,'Introduction room') AS themeTopic,context.reason,context.shared_context_json AS sharedContextJson
+        FROM rooms room LEFT JOIN topics topic ON topic.id=room.theme_topic_id
+        LEFT JOIN connection_context_snapshots context ON context.connection_id=room.connection_id WHERE room.id=?`, base.subject_id),
+      all(DB, `SELECT snapshot.display_name AS displayName,snapshot.summary
+        FROM rooms room JOIN connection_snapshots snapshot ON snapshot.connection_id=room.connection_id
+        WHERE room.id=? ORDER BY snapshot.display_name LIMIT 20`, base.subject_id),
+      approvedSharedSurfaceMedia(DB, id),
+    ]);
+    const sharedFacts = safeStringArray(context?.sharedContextJson).map((value, index) => ({ label: `Shared context ${index + 1}`, value }));
+    const publicProfiles = snapshots.map((snapshot) => ({ label: String(snapshot.displayName ?? "Buildmate"), value: String(snapshot.summary ?? "") })).filter((item) => item.value.length > 0);
+    const authorizedContent = {
+      "room.title": String(context?.themeTopic ?? "Introduction room"),
+      "room.whyTitle": "Why Buildmates connected you",
+      "room.whyBody": String(context?.reason ?? "Buildmates found mutual relevance in your current work."),
+      "room.sharedFacts": sharedFacts.length ? sharedFacts : publicProfiles,
+      "room.privacyNote": "Only context approved for both people appears here. Messages stay inside this room and never become design bindings.",
+      ...Object.fromEntries(media.map((item) => [item.altKey, item.altText])),
+    };
     return record("surface", id, String(base.owner_user_id), memberIds.filter((user) => user !== base.owner_user_id), {
       kind: "room", subjectId: base.subject_id, publishedRevisionId: base.published_revision_id, governanceVersion: base.governance_version,
       allowedModules: ["room.introduction", "room.chat"],
-      authorizedBindings: ["room.themeTopic", "room.connectionContext", "room.memberPublicProfiles", "room.messageSummaries"],
+      authorizedBindings: ["room.title", "room.whyTitle", "room.whyBody", "room.sharedFacts", "room.privacyNote", ...media.flatMap((item) => [item.key, item.altKey])],
+      authorizedBindingTypes: { "room.title": "text", "room.whyTitle": "text", "room.whyBody": "text", "room.sharedFacts": "facts", "room.privacyNote": "text", ...Object.fromEntries(media.flatMap((item) => [[item.key, "media"], [item.altKey, "text"]])) },
+      authorizedContent,
+      requiredBindings: ["room.title", "room.whyBody"],
+      authorizedMedia: media.map(({ key, altKey, assetId }) => ({ key, altKey, label: "Shared room image", approvedAssetIds: [assetId] })),
+      approvedAssets: media.map(({ assetId, src }) => ({ id: assetId, src })),
       trustedComponents: [...designPolicy.trustedComponents],
       governance: { mode: "unanimous_members", memberUserIds: memberIds, requiredApproverIds: memberIds, requiredApprovals: memberIds.length, governanceVersion: base.governance_version },
     } as T, Number(base.governance_version), new Date(Number(base.updated_at)).toISOString());
@@ -534,14 +571,27 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
 
   const circle = await first(DB, "SELECT c.governance_mode,c.governance_version FROM circles c JOIN circle_memberships current ON current.circle_id=c.id AND current.user_id=? AND current.status='active' JOIN users u ON u.id=current.user_id AND u.status='active' WHERE c.id=? AND c.status='active'", actor, base.subject_id);
   if (!circle) return null;
-  const members = await all(DB, "SELECT cm.user_id,cm.role FROM circle_memberships cm JOIN users u ON u.id=cm.user_id AND u.status='active' WHERE cm.circle_id=? AND cm.status='active' ORDER BY cm.user_id", base.subject_id);
+  const members = await all(DB, "SELECT cm.user_id,cm.role,COALESCE(profile.display_name,'Buildmate') AS display_name FROM circle_memberships cm JOIN users u ON u.id=cm.user_id AND u.status='active' LEFT JOIN profiles profile ON profile.user_id=cm.user_id WHERE cm.circle_id=? AND cm.status='active' ORDER BY profile.display_name,cm.user_id", base.subject_id);
   const memberIds = members.map((member) => String(member.user_id)).filter(Boolean);
   if (memberIds.length === 0 || !memberIds.includes(actor)) return null;
   const modules = await all(DB, "SELECT kind FROM circle_modules WHERE circle_id=? AND active=1 ORDER BY kind LIMIT 20", base.subject_id);
+  const [circleDetails, metrics, media] = await Promise.all([
+    first(DB, "SELECT name,purpose FROM circles WHERE id=?", base.subject_id),
+    all(DB, "SELECT name FROM circle_metrics WHERE circle_id=? ORDER BY name LIMIT 20", base.subject_id),
+    approvedSharedSurfaceMedia(DB, id),
+  ]);
+  const memberFacts = members.map((member) => ({ label: String(member.display_name ?? "Buildmate"), value: ["owner", "admin"].includes(String(member.role)) ? String(member.role) : "member" }));
+  const moduleFacts = modules.map((module) => ({ label: moduleLabel(String(module.kind)), value: "Active" }));
+  const metricFacts = metrics.map((metric) => ({ label: String(metric.name), value: "Tracked" }));
   const common = {
     kind: "circle", subjectId: base.subject_id, publishedRevisionId: base.published_revision_id, governanceVersion: circle.governance_version,
     allowedModules: ["circle.identity", "circle.members", ...modules.map((module) => `circle.${String(module.kind)}`)],
-    authorizedBindings: ["circle.name", "circle.purpose", "circle.members", "circle.modules", "circle.metrics"],
+    authorizedBindings: ["circle.name", "circle.purpose", "circle.members", "circle.modules", "circle.metrics", ...media.flatMap((item) => [item.key, item.altKey])],
+    authorizedBindingTypes: { "circle.name": "text", "circle.purpose": "text", "circle.members": "facts", "circle.modules": "facts", "circle.metrics": "facts", ...Object.fromEntries(media.flatMap((item) => [[item.key, "media"], [item.altKey, "text"]])) },
+    authorizedContent: { "circle.name": String(circleDetails?.name ?? "Build Circle"), "circle.purpose": String(circleDetails?.purpose ?? "A shared space for builders."), "circle.members": memberFacts, "circle.modules": moduleFacts, "circle.metrics": metricFacts, ...Object.fromEntries(media.map((item) => [item.altKey, item.altText])) },
+    requiredBindings: ["circle.name", "circle.purpose", ...(memberFacts.length ? ["circle.members"] : []), ...(moduleFacts.length ? ["circle.modules"] : [])],
+    authorizedMedia: media.map(({ key, altKey, assetId }) => ({ key, altKey, label: "Shared Circle image", approvedAssetIds: [assetId] })),
+    approvedAssets: media.map(({ assetId, src }) => ({ id: assetId, src })),
     trustedComponents: [...designPolicy.trustedComponents],
   };
   if (circle.governance_mode === "vote") {
@@ -619,6 +669,34 @@ async function approvedProfileMedia(DB: Database, actor: string) {
     seen.add(assetId);
     return [{ ...binding, assetId, src: `/api/surface-assets/${actor}/${objectKey.slice(prefix.length)}`, altText: String(row.altText).trim().slice(0, 300), projectTitle: String(row.projectTitle ?? "Project") }];
   });
+}
+
+async function approvedSharedSurfaceMedia(DB: Database, surfaceId: string) {
+  const rows = await all(DB, `SELECT attachment.asset_id AS assetId,attachment.binding_key AS bindingKey,attachment.alt_text AS altText,
+      asset.owner_user_id AS ownerUserId,asset.object_key AS objectKey
+    FROM surface_asset_attachments attachment JOIN surface_assets asset ON asset.id=attachment.asset_id
+    WHERE attachment.surface_id=? AND attachment.revoked_at IS NULL AND asset.deleted_at IS NULL
+    ORDER BY attachment.created_at,attachment.id LIMIT 24`, surfaceId);
+  return rows.flatMap((row) => {
+    const assetId = String(row.assetId ?? "");
+    const ownerUserId = String(row.ownerUserId ?? "");
+    const objectKey = String(row.objectKey ?? "");
+    const prefix = `surface-assets/${ownerUserId}/`;
+    const bindingKey = String(row.bindingKey ?? "");
+    if (!/^asset_[a-z0-9_-]{8,80}$/i.test(assetId) || bindingKey !== `surface.media.${assetId.toLowerCase().replace(/[^a-z0-9_-]/g, "")}` || !objectKey.startsWith(prefix)) return [];
+    return [{ key: bindingKey, altKey: `${bindingKey}.alt`, assetId, src: `/api/surface-assets/${ownerUserId}/${objectKey.slice(prefix.length)}`, altText: String(row.altText ?? "").trim().slice(0, 300) }];
+  }).filter((item) => item.altText.length > 0);
+}
+
+function safeStringArray(raw: unknown): string[] {
+  try {
+    const value = typeof raw === "string" ? JSON.parse(raw) as unknown : raw;
+    return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0).slice(0, 20) : [];
+  } catch { return []; }
+}
+
+function moduleLabel(kind: string) {
+  return ({ resource_shelf: "Resource shelf", experiment_tracker: "Experiment tracker", decision_log: "Decision log", feedback_queue: "Feedback queue", milestone_tracker: "Milestone tracker", scoreboard: "Scoreboard" } as Record<string, string>)[kind] ?? "Shared tool";
 }
 
 async function surfaceReadyToPublish(DB: Database, surfaceId: string, revisionId: string, actor: string): Promise<boolean> {

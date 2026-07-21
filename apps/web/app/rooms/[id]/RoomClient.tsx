@@ -72,6 +72,11 @@ type AvailabilityIntersection = {
 
 export type RoomEnhancements = {
   viewerUserId: string;
+  feedback: {
+    submitted: boolean;
+    useful: boolean | null;
+    createdAt: number | null;
+  };
   upgradeEligible: boolean;
   upgrades: Upgrade[];
   modules: Module[];
@@ -108,6 +113,7 @@ export function RoomClient({
   const [sending, setSending] = useState(false);
   const [module, setModule] = useState("resource_shelf");
   const [upgradeWhy, setUpgradeWhy] = useState("");
+  const [reviewOpen, setReviewOpen] = useState(false);
   const { confirm, confirmationDialog } = useConfirmDialog();
   const cursor = useRef<string | null>(
     initialMessages.length
@@ -121,6 +127,8 @@ export function RoomClient({
   const schedulePrompt = accepted
     ? `Open my Buildmates room ${room.id}. Schedule its accepted meeting proposal ${accepted.id} from ${new Date(accepted.startsAt).toISOString()} to ${new Date(accepted.endsAt).toISOString()} (${accepted.timezone}) using my connected Calendar under its existing permissions. Then attach the provider-confirmed event receipt to this same room and proposal.`
     : `Open my Buildmates room ${room.id} and help us agree on a meeting time. Do not create a Calendar event until a proposal has been accepted in the room.`;
+  const introReviewPrompt = `Use Buildmates get_room_summaries for room ${room.id}, then ask me how the introduction with ${room.otherName} went. Call submit_intro_feedback only after I answer. If I say it was useful, recommend at most one contextual shared tool and explain why. Ask before calling propose_room_upgrade. The proposal must still be accepted by every active room member before the tool activates.`;
+  const toolSuggestionPrompt = `Use Buildmates get_room_summaries for room ${room.id}. Recommend at most one optional shared tool that fits why ${room.otherName} and I connected and where the conversation is now. Explain the value, then ask before calling propose_room_upgrade. The proposal must still be accepted by every active room member before the tool activates.`;
 
   const refreshEnhancements = useCallback(async () => {
     const response = await fetch(
@@ -293,6 +301,51 @@ export function RoomClient({
       setNotice("Copy was blocked. Select the prompt and copy it manually.");
     }
   }
+  async function copyPrompt(prompt: string, success: string) {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setNotice(success);
+    } catch {
+      setNotice("Copy was blocked. Open Codex and paste the prompt manually.");
+    }
+  }
+  function reviewPanel() {
+    return (
+      <div className={styles.reviewArea}>
+        <div className={styles.reviewActions}>
+          <button type="button" onClick={() => setReviewOpen((current) => !current)} aria-expanded={reviewOpen} aria-controls="room-intro-review">
+            {enhancements.feedback.submitted ? "Update introduction review" : "Review the introduction"}
+          </button>
+          <a href={`codex://open?prompt=${encodeURIComponent(introReviewPrompt)}`}>
+            Review with Codex
+          </a>
+          <button type="button" onClick={() => void copyPrompt(introReviewPrompt, "Introduction-review prompt copied.")}>
+            Copy review prompt
+          </button>
+        </div>
+        <small>
+          {enhancements.feedback.submitted
+            ? "Your private review is saved. You can update it here or in Codex."
+            : "Prefer Codex? It will ask for your review before saving anything."}
+        </small>
+        {reviewOpen && (
+          <RoomFeedbackForm
+            id="room-intro-review"
+            onSave={async (value) => {
+              const saved = await lifecycle({ action: "feedback", ...value });
+              if (saved) {
+                setReviewOpen(false);
+                setNotice(value.useful
+                  ? "Private feedback saved. Shared-tool suggestions are now available; nothing was activated."
+                  : "Private feedback saved.");
+              }
+              return saved;
+            }}
+          />
+        )}
+      </div>
+    );
+  }
   async function block() {
     if (!(await confirm({
       title: `Block ${room.otherName}?`,
@@ -387,7 +440,6 @@ export function RoomClient({
         <div className={styles.disclosureBody}>
           {enhancements.modules.length > 0 && (
             <section className={styles.modules}>
-              <p>Room tools</p>
               <ModuleWorkspace
                 modules={enhancements.modules}
                 entries={enhancements.entries}
@@ -428,50 +480,60 @@ export function RoomClient({
               </span>
             </div>
             {enhancements.upgradeEligible ? (
-              <form
-                onSubmit={async (event) => {
-                  event.preventDefault();
-                  if (
-                    await lifecycle({
-                      action: "propose_upgrade",
-                      modules: [module],
-                      explanation: upgradeWhy,
-                    })
-                  )
-                    setUpgradeWhy("");
-                }}
-              >
-                <label>
-                  Shared tool
-                  <select
-                    value={module}
-                    onChange={(event) => setModule(event.target.value)}
-                  >
-                    <option value="resource_shelf">Resource shelf</option>
-                    <option value="experiment_tracker">
-                      Experiment tracker
-                    </option>
-                    <option value="decision_log">Decision log</option>
-                    <option value="feedback_queue">Feedback queue</option>
-                    <option value="milestone_tracker">Milestone tracker</option>
-                  </select>
-                </label>
-                <label>
-                  How would this help your conversation?
-                  <input
-                    value={upgradeWhy}
-                    onChange={(event) => setUpgradeWhy(event.target.value)}
-                    maxLength={1000}
-                  />
-                </label>
-                <button disabled={!upgradeWhy.trim()}>
-                  Propose shared tool
-                </button>
-              </form>
+              <div className={styles.eligibleTools}>
+                {reviewPanel()}
+                <form
+                  onSubmit={async (event) => {
+                    event.preventDefault();
+                    if (
+                      await lifecycle({
+                        action: "propose_upgrade",
+                        modules: [module],
+                        explanation: upgradeWhy,
+                      })
+                    )
+                      setUpgradeWhy("");
+                  }}
+                >
+                  <label>
+                    Shared tool
+                    <select
+                      value={module}
+                      onChange={(event) => setModule(event.target.value)}
+                    >
+                      <option value="resource_shelf">Resource shelf</option>
+                      <option value="experiment_tracker">
+                        Experiment tracker
+                      </option>
+                      <option value="decision_log">Decision log</option>
+                      <option value="feedback_queue">Feedback queue</option>
+                      <option value="milestone_tracker">Milestone tracker</option>
+                    </select>
+                  </label>
+                  <label>
+                    How would this help your conversation?
+                    <input
+                      value={upgradeWhy}
+                      onChange={(event) => setUpgradeWhy(event.target.value)}
+                      maxLength={1000}
+                    />
+                  </label>
+                  <button disabled={!upgradeWhy.trim()}>
+                    Propose shared tool
+                  </button>
+                </form>
+                <div className={styles.codexActions}>
+                  <a href={`codex://open?prompt=${encodeURIComponent(toolSuggestionPrompt)}`}>
+                    Plan a tool with Codex
+                  </a>
+                  <button type="button" onClick={() => void copyPrompt(toolSuggestionPrompt, "Shared-tool prompt copied.")}>
+                    Copy tool prompt
+                  </button>
+                  <small>Codex can prepare the proposal. Every active member must approve before the tool appears.</small>
+                </div>
+              </div>
             ) : (
-              <a href={`/connections#${encodeURIComponent(room.connectionId)}`}>
-                Review the introduction
-              </a>
+              reviewPanel()
             )}
             {enhancements.upgrades
               .filter((item) => item.status === "proposed" && !item.mine)
@@ -696,6 +758,76 @@ export function RoomClient({
         <button onClick={() => void block()}>Block {room.otherName}</button>
       </footer>
     </section>
+  );
+}
+
+function RoomFeedbackForm({
+  id,
+  onSave,
+}: {
+  id: string;
+  onSave: (value: {
+    useful: boolean;
+    reasons: string[];
+    similarMatchPreference: "more" | "same" | "less" | null;
+    followUpIntent: "keep_connected" | "collaborate" | "not_now" | null;
+    privateNote: string | null;
+  }) => Promise<boolean>;
+}) {
+  const [useful, setUseful] = useState(true);
+  const [reason, setReason] = useState("good_conversation");
+  const [saving, setSaving] = useState(false);
+  return (
+    <form
+      id={id}
+      className={styles.feedbackForm}
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setSaving(true);
+        await onSave({
+          useful,
+          reasons: [reason],
+          similarMatchPreference: "same",
+          followUpIntent: useful ? "keep_connected" : "not_now",
+          privateNote: null,
+        });
+        setSaving(false);
+      }}
+    >
+      <fieldset>
+        <legend>How was the introduction?</legend>
+        <label>
+          <input
+            type="radio"
+            name="room-feedback-useful"
+            checked={useful}
+            onChange={() => setUseful(true)}
+          />
+          Useful
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="room-feedback-useful"
+            checked={!useful}
+            onChange={() => setUseful(false)}
+          />
+          Not for me
+        </label>
+      </fieldset>
+      <label>
+        What stood out?
+        <select value={reason} onChange={(event) => setReason(event.target.value)}>
+          <option value="good_conversation">Good conversation</option>
+          <option value="shared_context">Shared context</option>
+          <option value="future_relevance">Future relevance</option>
+          <option value="collaboration_started">We started collaborating</option>
+          <option value="timing_off">Timing was off</option>
+          <option value="not_relevant">Not relevant</option>
+        </select>
+      </label>
+      <button disabled={saving}>{saving ? "Saving..." : "Save private review"}</button>
+    </form>
   );
 }
 

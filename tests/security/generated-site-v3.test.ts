@@ -12,6 +12,17 @@ const base = {
 } as const;
 
 describe("GeneratedSiteBundle v3 security", () => {
+  it.each(["room", "circle"] as const)("accepts safe %s HTML/CSS without widening active authority", (kind) => {
+    const key = kind === "room" ? "room.title" : "circle.name";
+    const parsed = safeParseSurfaceSpec({
+      ...base,
+      kind,
+      title: `Safe ${kind}`,
+      document: { ...base.document, html: `<main><h1>{{${key}}}</h1></main>` },
+      bindingManifest: { content: [{ key, type: "text" }], media: [] },
+    }, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
+    expect(parsed.success).toBe(true);
+  });
   it("renders current bindings inside a scriptless CSP document", () => {
     const parsed = safeParseSurfaceSpec(base, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     expect(parsed.success).toBe(true);

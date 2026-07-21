@@ -92,6 +92,18 @@
   color: #fffdf7;
 }
 
+.headingActions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.headingActions > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
 .suggestions {
   margin: 0 0 34px;
   padding: 22px;
@@ -225,8 +237,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0 26px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .grid article {
@@ -346,8 +357,14 @@
     flex-direction: column;
   }
 
-  .heading button {
+  .headingActions {
     width: 100%;
+    justify-content: space-between;
+  }
+
+  .headingActions button {
+    width: 100%;
+    max-width: 220px;
   }
 
   .suggestions .grid article {

@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, type CSSProperties } from "react";
+import { parseModuleAppearance, type ModuleAppearance } from "@buildmates/surfaces";
 import styles from "./ModuleWorkspace.module.css";
 
 type Module = { id: string; kind: string; config?: Record<string, unknown> };
@@ -125,11 +126,17 @@ export function ModuleWorkspace({
       {modules.map((module) => {
         const definition = MODULE_FIELDS[module.kind];
         if (!definition) return null;
+        const appearance = parseModuleAppearance(module.config?.appearance);
         const moduleEntries = entries.filter(
           (entry) => entry.moduleId === module.id,
         );
         return (
-          <article className={styles.module} key={module.id}>
+          <article
+            className={`${styles.module} ${styles[appearance.layout]} ${styles[appearance.density]} ${styles[`display_${appearance.typography.display}`]} ${styles[`body_${appearance.typography.body}`]} ${appearance.motion === "none" ? styles.noMotion : ""}`}
+            key={module.id}
+            style={appearanceStyle(appearance)}
+            data-module-layout={appearance.layout}
+          >
             <header className={styles.moduleHeader}>
               <h3>{String(module.config?.title ?? definition.label)}</h3>
               <p>{definition.label}</p>
@@ -231,6 +238,20 @@ export function ModuleWorkspace({
       })}
     </div>
   );
+}
+
+function appearanceStyle(appearance: ModuleAppearance): CSSProperties {
+  return {
+    "--module-canvas": appearance.tokens.canvas,
+    "--module-surface": appearance.tokens.surface,
+    "--module-surface-strong": appearance.tokens.surfaceStrong,
+    "--module-text": appearance.tokens.text,
+    "--module-muted": appearance.tokens.mutedText,
+    "--module-accent": appearance.tokens.accent,
+    "--module-accent-text": appearance.tokens.accentText,
+    "--module-border": appearance.tokens.border,
+    "--module-focus": appearance.tokens.focus,
+  } as CSSProperties;
 }
 
 function EntryForm({

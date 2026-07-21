@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { CANONICAL_CITIES, getSetupState, completeSetupStep, resolveCanonicalCity, type SetupProgress } from "@buildmates/domain";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, profileSurfaceMediaIsAuthorized, safeParseSurfaceSpec, type SurfaceSpec } from "@buildmates/surfaces";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, moduleAppearanceSchema, surfaceMediaIsAuthorized, safeParseSurfaceSpec, type ModuleAppearance, type SurfaceSpec } from "@buildmates/surfaces";
 import { canonicalToolInputHash } from "./tool-hash";
 import { z } from "zod";
 import type { McpProductRepository, McpRecord } from "./repository";
@@ -10,7 +10,7 @@ import {
   workSignalSchema, workspaceScopeSchema,
 } from "./schemas";
 import type { CompleteIdentityLinkResult } from "./tools/identity";
-import { customizedProfileSurfaceExample, surfaceComponentReference } from "./surface-generation-reference";
+import { customizedSurfaceExample, surfaceComponentReference } from "./surface-generation-reference";
 import { targetedSurfaceRevisionIsAllowed } from "./surface-revision-intent";
 
 const BUILD_GRAPH_TOPICS = [
@@ -71,6 +71,9 @@ export type BuildmatesToolServices = {
   recordManualMatchResponse?(input: { userId: string; responseId: string; proposalId: string; response: "interested" | "decline"; now: string }): Promise<{ responseId: string; state: string; connectionId: string | null; roomId: string | null }>;
   createSurfaceAssetUploadGrant?(input: { userId: string; contentType: "image/jpeg" | "image/png"; now: string }): Promise<{ uploadUrl: string; expiresAt: string; maximumBytes: number; method: "POST" }>;
   attachProfileProjectMedia?(input: { userId: string; assetId: string; projectKey: string; projectTitle: string; altText: string; now: string }): Promise<{ assetId: string; src: string; altText: string; projectId: string; projectTitle: string }>;
+  proposeRoomUpgrade?(input: { userId: string; roomId: string; proposalId: string; modules: Array<"resource_shelf" | "experiment_tracker" | "decision_log" | "feedback_queue" | "milestone_tracker">; explanation: string; title: string; appearance: ModuleAppearance; now: string }): Promise<{ proposalId: string; status: string }>;
+  respondRoomUpgrade?(input: { userId: string; roomId: string; proposalId: string; response: "accepted" | "declined"; now: string }): Promise<{ proposalId: string; status: string }>;
+  proposeCircleModule?(input: { userId: string; circleId: string; kind: "resource_shelf" | "experiment_tracker" | "decision_log" | "feedback_queue" | "milestone_tracker" | "scoreboard"; title: string; appearance: ModuleAppearance; now: string }): Promise<{ proposalId: string; status: string }>;
   now?: () => Date;
   createId?: () => string;
 };
@@ -293,7 +296,20 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
   }),
 
   tool("get_room_summaries", "Get room summaries", "Returns audience-filtered rooms plus privacy-safe activity, the linked user's own feedback state, and shared upgrade state. It never returns raw messages or another member's private feedback. Work Pulse may ask how a conversation went only when conversation.meaningful is true and feedback.submittedByViewer is false.", z.object({ roomId: idSchema.optional(), ...pageInput }).strict(), readAnnotations, async (input, context, services) => { if (input.roomId) return { rooms: [value(await requiredRecord(services, "room", input.roomId as string, context.userId!))], nextCursor: null }; const page = await services.repository.listPageForMember("room", context.userId!, pageOptions(input)); return { rooms: page.records.map(value), nextCursor: page.nextCursor }; }),
+  tool("propose_room_upgrade", "Propose an optional room tool", "Creates a governed shared-tool proposal only after this user has submitted positive introduction feedback. Before proposing a custom appearance, use an approved user reference or create and show an ImageGen UI concept, obtain approval, then translate it through Hallmark into the bounded appearance fields. The proposer is recorded as interested, but no tool activates until every active room member accepts.", z.object({ proposalId: idSchema, roomId: idSchema, modules: z.array(z.enum(["resource_shelf", "experiment_tracker", "decision_log", "feedback_queue", "milestone_tracker"])).min(1).max(3), title: z.string().trim().min(1).max(120), appearance: moduleAppearanceSchema, explanation: z.string().trim().min(3).max(1000), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "propose_room_upgrade", input, async () => {
+    if (!services.proposeRoomUpgrade) throw new Error("room_upgrade_unavailable");
+    const result = await services.proposeRoomUpgrade({ userId: context.userId!, roomId: input.roomId as string, proposalId: input.proposalId as string, modules: input.modules as Array<"resource_shelf" | "experiment_tracker" | "decision_log" | "feedback_queue" | "milestone_tracker">, title: input.title as string, appearance: input.appearance as ModuleAppearance, explanation: input.explanation as string, now: now(services) });
+    return { ...result, activated: false, approvalRequiredFromEveryActiveMember: true };
+  })),
+  tool("respond_room_upgrade", "Respond to a room tool proposal", "Accepts or declines an existing room shared-tool proposal for the linked user. Acceptance may activate the tool only when every active member has accepted; decline closes the proposal. Show the exact proposal and obtain explicit confirmation before calling.", z.object({ roomId: idSchema, proposalId: idSchema, response: z.enum(["accepted", "declined"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "respond_room_upgrade", input, async () => {
+    if (!services.respondRoomUpgrade) throw new Error("room_upgrade_unavailable");
+    return services.respondRoomUpgrade({ userId: context.userId!, roomId: input.roomId as string, proposalId: input.proposalId as string, response: input.response as "accepted" | "declined", now: now(services) });
+  })),
   tool("get_circle_summaries", "Get Circle summaries", "Returns summaries for Circles where the linked user is an active member.", z.object({ circleId: idSchema.optional(), ...pageInput }).strict(), readAnnotations, async (input, context, services) => { if (input.circleId) return { circles: [value(await requiredRecord(services, "circle", input.circleId as string, context.userId!))], nextCursor: null }; const page = await services.repository.listPageForMember("circle", context.userId!, pageOptions(input)); return { circles: page.records.map(value), nextCursor: page.nextCursor }; }),
+  tool("propose_circle_module", "Propose a Circle tool", "Creates a concrete governed Circle-tool proposal. First use a user-approved reference or an approved ImageGen UI concept, then use Hallmark to translate that direction into the bounded appearance schema. This records a proposal only; Circle admin or voting governance still controls activation.", z.object({ circleId: idSchema, kind: z.enum(["resource_shelf", "experiment_tracker", "decision_log", "feedback_queue", "milestone_tracker", "scoreboard"]), title: z.string().trim().min(1).max(120), appearance: moduleAppearanceSchema, ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "propose_circle_module", input, async () => {
+    if (!services.proposeCircleModule) throw new Error("circle_module_unavailable");
+    return services.proposeCircleModule({ userId: context.userId!, circleId: input.circleId as string, kind: input.kind as "resource_shelf" | "experiment_tracker" | "decision_log" | "feedback_queue" | "milestone_tracker" | "scoreboard", title: input.title as string, appearance: input.appearance as ModuleAppearance, now: now(services) });
+  })),
   tool("submit_intro_feedback", "Submit introduction feedback", "Stores structured private feedback used to improve this user's future matching preferences. Call only after the linked user answers the feedback question; never infer an answer from message activity or save feedback merely because a room is eligible.", z.object({ feedbackId: idSchema, connectionId: idSchema, useful: z.boolean(), reasons: z.array(z.enum(["relevant_work", "shared_ambition", "good_conversation", "timing", "not_relevant", "other"])).min(1).max(6), preferenceSummary: z.string().trim().max(500).default(""), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_intro_feedback", input, async () => {
     await requiredRecord(services, "connection", input.connectionId as string, context.userId!);
     return confirmed(await services.repository.write({ kind: "intro_feedback", id: input.feedbackId as string, ownerUserId: context.userId!, value: withoutRuntime(input), now: now(services) }));
@@ -321,12 +337,13 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
       baseRevision: baseRevisionId,
       currentRevision: baseRevision ? { id: baseRevision.id, version: baseRevision.version, spec: baseRevision.value.spec } : null,
       revisionWorkflow: {
-        targeted: "For a small requested profile change, start from currentRevision.spec, set revisionIntent.mode to targeted, name html and/or css in targetDocumentFields, and preserve every unrelated source field byte-for-byte.",
+        targeted: "For a small requested design change, start from currentRevision.spec, set revisionIntent.mode to targeted, name html and/or css in targetDocumentFields, preserve everything else, and keep every unrelated source field byte-for-byte.",
         fullRedesign: "Use full_redesign only when the user asks for a new direction or approves broad composition changes.",
       },
       starterSpec,
       generatedSiteReference: surfaceComponentReference(trustedComponents),
-      customizedExample: customizedProfileSurfaceExample({
+      customizedExample: customizedSurfaceExample({
+        kind: surface.value.kind as "profile" | "room" | "circle",
         starterSpec,
         authorizedBindingTypes,
         authorizedContent: surface.value.authorizedContent as Record<string, unknown> | null | undefined,
@@ -340,40 +357,43 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
         categories: ["Portfolio", "Technology", "SaaS"],
         selectionRule: "Selected references need not be unique across all people, but the decision must be person-specific and auditable. Extract design DNA: macrostructure, type roles, color anchor, spatial rhythm, navigation, and motion. State why each chosen reference fits and why the others fit less well. Borrow principles without copying branding, copy, assets, exact layout, or a recognizable composition. Do not choose a direction whose quality depends on unavailable photography, 3D, illustration, or product media; either choose a media-independent reference or ask to create the small approved media set first.",
       } : null,
-      designSkill: surface.value.kind === "profile" ? {
-        precedence: ["explicit user-preferred local design skill", "Hallmark", "Buildmates internal design contract"],
+      designSkill: {
+        precedence: ["explicit user-preferred local design skill", "approved visual reference or ImageGen concept", "Hallmark", "Buildmates internal design contract"],
         default: "Hallmark",
-        rule: "Use an explicitly preferred local frontend or design skill when the user has named one. Otherwise use Hallmark when available. If Hallmark is unavailable, use the strongest available design skill with this complete Buildmates quality contract. Do not stack multiple opinionated design systems by default. Design work and profile research stay in the user's Codex context; Buildmates receives only the reviewed brief, quality evidence, and generated HTML/CSS bundle.",
-        hallmarkWorkflow: "Study the selected references for structural DNA rather than pixels. Choose one coherent macrostructure, theme system, typography pairing, spacing rhythm, and at most three useful CSS-only motion primitives. Author the complete semantic HTML fragment and responsive CSS directly; do not reduce the design to Buildmates components.",
-      } : null,
-      directionPreview: surface.value.kind === "profile" ? {
+        rule: "Use an explicitly preferred local frontend or design skill when the user has named one. Establish art direction from a reference the user approved; when none exists, use ImageGen when available to create one polished full-page UI concept from approved facts, show it to the user, and obtain direction approval before implementation. Then use Hallmark as the default implementation discipline. If either tool is unavailable, use the strongest available design skill with this complete Buildmates quality contract. Do not stack multiple opinionated design systems. Design work stays in the user's Codex context; Buildmates receives only the reviewed brief, quality evidence, and generated HTML/CSS bundle.",
+        hallmarkWorkflow: "Translate the approved reference or ImageGen concept into one coherent macrostructure, theme system, typography pairing, spacing rhythm, and at most three useful CSS-only motion primitives. For a shared surface, derive the visual world from approved relationship or Circle-purpose bindings rather than private messages. Author the complete semantic HTML fragment and responsive CSS directly; do not reduce the design to Buildmates components or embed the concept image as a screenshot of the page.",
+        imageGenWorkflow: "Use case: ui-mockup. Create one complete desktop page concept, not a collage or fake browser frame. Use only approved content, omit invented metrics and capabilities, and optimize for a distinctive but implementable HTML/CSS visual system. Treat the output as art direction, show it before coding, and implement its principles responsively rather than publishing the raster mockup as the page.",
+      },
+      directionPreview: {
         requiredBeforeGeneration: true,
-        wording: "Tell the user: I am leaning toward [direction] because [person-specific reason]. Name what the page will emphasize, its signature element, and what it will avoid. Invite a redirect, but do not force another question when the reviewed profile already supports a confident direction.",
-      } : null,
-      mediaWorkflow: surface.value.kind === "profile" ? {
+        wording: surface.value.kind === "profile" ? "Tell the user: I am leaning toward [direction] because [person-specific reason]. Name what the page will emphasize, its signature element, and what it will avoid. Invite a redirect, but do not force another question when the reviewed profile already supports a confident direction." : "Tell the members what visual direction fits the approved relationship or Circle purpose, what the shared page will emphasize, its signature element, and what it will avoid. Invite a redirect before generating the first private preview.",
+      },
+      mediaWorkflow: {
         approvedMediaAvailable: Array.isArray(surface.value.authorizedMedia) && surface.value.authorizedMedia.length > 0,
-        whenMissing: "Media is optional. If the approved direction genuinely benefits from original imagery and ImageGen is available, propose only the small set the composition needs. Generate from approved facts, show every image before attachment, and require approval before upload.",
-        attachAt: new URL("/profile/design", services.linkBaseUrl).toString(),
+        whenMissing: "Media is optional. If the approved direction genuinely benefits from original imagery and ImageGen is available, propose only the small set the composition needs. Generate from approved facts, show every image before attachment, and require approval before upload and surface attachment.",
+        attachAt: new URL(surface.value.kind === "profile" ? "/profile/design" : surface.value.kind === "room" ? `/rooms/${String(surface.value.subjectId)}` : `/circles/${String(surface.value.subjectId)}`, services.linkBaseUrl).toString(),
         safety: "Never invent product screens, logos, customers, metrics, results, or capabilities. Prefer real approved screenshots when available.",
-      } : null,
-      visualQa: surface.value.kind === "profile" ? {
+      },
+      visualQa: {
         requiredBeforeReady: true,
         viewports: [{ name: "desktop checkpoint", width: 1440, height: 1000 }, { name: "phone checkpoint", width: 390, height: 844 }],
-        compareAgainst: "the approved person-specific direction, the chosen references' level of authorship, and the available approved media",
+        compareAgainst: surface.value.kind === "profile" ? "the approved person-specific direction, the chosen references' level of authorship, and the available approved media" : "the approved shared direction, the relationship or Circle purpose, and the available approved media",
         critiqueAxes: ["philosophy", "hierarchy", "execution", "specificity", "restraint", "variety"],
         minimumAxisScore: 3,
         inspect: ["distinctive full-page composition", "one coherent visual world", "one person-specific signature", "reference-quality hierarchy and pacing", "honest project treatment", "no repeated project content", "no generic filler", "no unmotivated decoration", "no known AI-design default stacks", "no excessive dead space", "no empty opening before the main identity unless approved visual media genuinely occupies it", "no vertical viewport units for continuous-page section heights", "fluid reflow at intermediate widths rather than a fixed checkpoint canvas", "alignment and gutters", "clipping and overflow", "readable column widths", "contrast and focus", "content visible without animation", "reduced-motion behavior"],
         onFailure: "A valid JSON document is not a visually approved page. Reject and revise a page with any critique score below three, repeated or filler content, unrelated decoration, incoherent visual worlds, excessive dead space, accidental clipping, weak mobile reflow, or material weakness against the selected references. Do not tell the user it is ready until both screenshots pass.",
-      } : null,
+      },
       constraints: {
         scripts: false, forms: false, arbitraryNetworkRequests: false, reducedMotion: "required", privacy: "server_resolved_bindings_only",
-        media: "deliberately_public_project_assets_only", contentCompleteness: "Every non-empty required binding must appear in the page; placeholder copy is rejected.",
+        media: surface.value.kind === "profile" ? "deliberately_public_project_assets_only" : "explicitly_attached_shared_surface_assets_only", contentCompleteness: "Every non-empty required binding must appear in the page; placeholder copy is rejected.",
         visualCompleteness: "The validator enforces isolation, approved content, and source validity. Codex owns the complete HTML/CSS art direction and must reject generic output during rendered visual QA. Projects are approved material, not a mandatory visual template.",
       },
-      nextAction: "Use the user's explicitly preferred local design skill when named; otherwise use Hallmark, with the Buildmates design contract as fallback. Research four to eight materially different references and study the selected actual public sites for structural DNA without sending user data. Present one confident person-specific direction before generation. Author a complete semantic HTML fragment and responsive CSS using only the documented public bindings and approved asset paths. Do not compose Buildmates components or force a project template. Validate, render complete desktop and phone screenshots, and record the design-system selection, content plan, design DNA, critique scores, checks, and repairs. Reject generic, duplicated, incoherent, reference-disconnected, incomplete, or under-authored output before saying it is ready.",
+      nextAction: surface.value.kind === "profile"
+        ? "Use the user's explicitly preferred local design skill when named; otherwise use Hallmark, with the Buildmates design contract as fallback. Research four to eight materially different references and study the selected actual public sites for structural DNA without sending user data. Present one confident person-specific direction before generation. Author a complete semantic HTML fragment and responsive CSS using only the documented public bindings and approved asset paths. Do not compose Buildmates components or force a project template. Validate, render complete desktop and phone screenshots, and record the design-system selection, content plan, design DNA, critique scores, checks, and repairs. Reject generic, duplicated, incoherent, reference-disconnected, incomplete, or under-authored output before saying it is ready."
+        : "Author a complete semantic HTML fragment and responsive CSS using only the shared bindings and explicitly attached assets in this brief. Keep chat, membership, approvals, scheduling, safety actions, and shared-tool behavior in trusted Buildmates controls outside the generated document. Validate, save a private preview, render desktop and phone checks, then collect the governance approvals returned in this brief before publication.",
     };
   }),
-  tool("create_surface_asset_upload_grant", "Prepare generated image upload", "Creates a short-lived, one-time upload URL for one PNG or JPEG generated for the linked user's profile. The URL accepts raw image bytes, stores only sanitized image data, and expires after ten minutes. It never grants access to other files or profile data.", z.object({ contentType: z.enum(["image/png", "image/jpeg"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "create_surface_asset_upload_grant", input, async () => {
+  tool("create_surface_asset_upload_grant", "Prepare generated image upload", "Creates a short-lived, one-time upload URL for one PNG or JPEG generated for a Buildmates surface. Uploading does not authorize the image for any profile, room, or Circle; attach it explicitly to the intended surface after upload. The URL stores only sanitized image data and expires after ten minutes.", z.object({ contentType: z.enum(["image/png", "image/jpeg"]), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "create_surface_asset_upload_grant", input, async () => {
     if (!services.createSurfaceAssetUploadGrant) throw new Error("surface_asset_upload_grant_unavailable");
     return services.createSurfaceAssetUploadGrant({ userId: context.userId!, contentType: input.contentType as "image/jpeg" | "image/png", now: now(services) });
   })),
@@ -381,7 +401,13 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     if (!services.attachProfileProjectMedia) throw new Error("profile_project_media_attachment_unavailable");
     return services.attachProfileProjectMedia({ userId: context.userId!, assetId: input.assetId as string, projectKey: input.projectKey as string, projectTitle: input.projectTitle as string, altText: input.altText as string, now: now(services) });
   })),
-  tool("validate_surface_spec", "Validate generated page", "Validates a generated profile HTML/CSS bundle or legacy shared SurfaceSpec without saving it and returns exact field-level problems. New profiles use GeneratedSiteBundle v3; the example is syntax recovery, not art direction.", z.object({ surfaceId: idSchema, spec: z.unknown(), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
+  tool("attach_surface_media", "Attach approved shared-surface image", "Authorizes one uploaded image owned by the linked user for one room or Circle surface where they are an active member. This does not publish a revision. Room unanimity or Circle governance still controls publication.", z.object({ attachmentId: idSchema, surfaceId: idSchema, assetId: z.string().regex(/^asset_[a-z0-9_-]{8,80}$/i), altText: z.string().trim().min(1).max(300), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "attach_surface_media", input, async () => {
+    const surface = await requiredRecord<Record<string, unknown>>(services, "surface", input.surfaceId as string, context.userId!);
+    if (!["room", "circle"].includes(String(surface.value.kind))) throw new Error("shared_surface_required");
+    const bindingKey = `surface.media.${String(input.assetId).toLowerCase().replace(/[^a-z0-9_-]/g, "")}`;
+    return confirmed(await services.repository.write({ kind: "surface_asset_attachment", id: input.attachmentId as string, ownerUserId: context.userId!, memberUserIds: surface.memberUserIds, value: { surfaceId: surface.id, assetId: input.assetId, bindingKey, altText: input.altText }, now: now(services) }));
+  })),
+  tool("validate_surface_spec", "Validate generated page", "Validates a GeneratedSiteBundle v3 for a profile, room, or Circle, while retaining legacy shared SurfaceSpec compatibility for stored pages. It returns exact field-level problems without saving. The example is syntax recovery, not art direction.", z.object({ surfaceId: idSchema, spec: z.unknown(), ...workspaceInput }).strict(), readAnnotations, async (input, context, services) => {
     const surface = await requiredRecord<Record<string, unknown>>(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     const kindMatches = parsed.success && parsed.data.kind === surface.value.kind;
@@ -391,7 +417,7 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     const issues = parsed.success ? [!kindMatches ? { path: "kind", message: `Expected ${String(surface.value.kind)}` } : null, !bindingsAllowed ? { path: "bindingManifest", message: "A binding is not authorized for this page" } : null, ...qualityIssues].filter(Boolean) : parsed.error.issues.slice(0, 30).map((issue) => ({ path: issue.path.join("."), message: issue.message }));
     return { valid: false, issues, recovery: "Restart from customizedExample, include every required binding, and replace placeholder or empty-shell content. Repair only the exact returned paths." };
   }),
-  tool("submit_surface_revision", "Submit generated page revision", "Validates and stores a private generated-page revision. New profiles use complete semantic HTML and responsive CSS in GeneratedSiteBundle v3. Small changes target html and/or css while preserving unrelated source. Profile revisions require an approved direction, researched references, filler-free content plan, and passing desktop/phone critique. Generated documents cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown().describe("Complete generated-page bundle previously checked with validate_surface_spec."), visibility: z.enum(["private_preview", "personal_view"]), revisionIntent: surfaceRevisionIntentSchema.optional(), designBrief: profileDesignBriefSchema.optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
+  tool("submit_surface_revision", "Submit generated page revision", "Validates and stores a private generated-page revision. Profiles, rooms, and Circles may use complete semantic HTML and responsive CSS in GeneratedSiteBundle v3. Small changes target html and/or css while preserving unrelated source. Shared publication remains governed; generated documents cannot execute scripts or authorize data access.", z.object({ revisionId: idSchema, surfaceId: idSchema, baseRevisionId: idSchema.nullable(), spec: z.unknown().describe("Complete generated-page bundle previously checked with validate_surface_spec."), visibility: z.enum(["private_preview", "personal_view"]), revisionIntent: surfaceRevisionIntentSchema.optional(), designBrief: profileDesignBriefSchema.optional(), designBriefApproved: z.literal(true).optional(), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "submit_surface_revision", input, async () => {
     const surface = await requiredRecord(services, "surface", input.surfaceId as string, context.userId!);
     const parsed = safeParseSurfaceSpec(input.spec, DESIGN_POLICY_VERSION, { forRevisionCreation: true });
     if (!parsed.success) throw new Error("surface_spec_invalid");
@@ -415,7 +441,8 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
     const qualityIssues = surfaceQualityIssues(parsed.data, surfaceValue);
     if (qualityIssues.length > 0) throw new Error(`surface_spec_invalid:${JSON.stringify({ issues: qualityIssues })}`);
     const saved = confirmed(await services.repository.write({ kind: "surface_revision", id: input.revisionId as string, ownerUserId: context.userId!, memberUserIds: input.visibility === "personal_view" ? [] : surface.memberUserIds, value: { surfaceId: surface.id, baseRevisionId: input.baseRevisionId, spec: parsed.data, visibility: input.visibility, status: "preview", revisionIntent: revisionIntent ?? { mode: "full_redesign", summary: "New design direction" }, ...(input.designBrief ? { designBrief: input.designBrief } : {}) }, now: now(services) }));
-    return { ...saved, previewUrl: new URL("/profile/design", services.linkBaseUrl).toString() };
+    const previewPath = surfaceValue.kind === "profile" ? "/profile/design" : surfaceValue.kind === "room" ? `/rooms/${encodeURIComponent(String(surfaceValue.subjectId))}` : `/circles/${encodeURIComponent(String(surfaceValue.subjectId))}`;
+    return { ...saved, previewUrl: new URL(previewPath, services.linkBaseUrl).toString() };
   })),
   tool("decide_surface_revision", "Approve or reject surface revision", "Records this authorized member's explicit approval or rejection; shared publication remains governed. When an approved profile revision publishes, the result includes its canonical /builders/{handle} public URL.", z.object({ revisionId: idSchema, decision: z.enum(["approved", "rejected"]), confirmation: z.literal("confirmed"), ...mutate }).strict(), writeAnnotations, async (input, context, services) => idempotent(context, services, "decide_surface_revision", input, async () => {
     const saved = confirmed(await services.repository.write({ kind: "surface_approval", id: `${input.revisionId}:${context.userId}`, ownerUserId: context.userId!, value: { revisionId: input.revisionId, decision: input.decision }, now: now(services) }));
@@ -587,7 +614,6 @@ function surfaceBindingsAllowed(spec: SurfaceSpec, authorized: unknown): boolean
 
 type SurfaceIssue = { path: string; message: string };
 function surfaceQualityIssues(spec: SurfaceSpec, surface: Record<string, unknown>): SurfaceIssue[] {
-  if (spec.kind !== "profile") return [];
   const issues: SurfaceIssue[] = [];
   const manifestBindings = new Set(spec.bindingManifest.content.map((binding) => binding.key));
   const requiredBindings = Array.isArray(surface.requiredBindings) ? surface.requiredBindings.filter((binding): binding is string => typeof binding === "string") : [];
@@ -596,11 +622,12 @@ function surfaceQualityIssues(spec: SurfaceSpec, surface: Record<string, unknown
     const source = spec.document.html;
     for (const binding of requiredBindings) {
       const escaped = binding.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      if (!new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}|data-buildmates-repeat=[\"']${escaped}[\"']`, "i").test(source)) issues.push({ path: "document.html", message: `Render approved profile content binding ${binding}` });
+      if (!new RegExp(`\\{\\{\\s*${escaped}\\s*\\}\\}|data-buildmates-repeat=[\"']${escaped}[\"']`, "i").test(source)) issues.push({ path: "document.html", message: `Render approved ${spec.kind} content binding ${binding}` });
     }
     if (/\b(?:will appear|coming soon|ready to personali[sz]e|lorem ipsum|placeholder|add your)\b/i.test(source)) issues.push({ path: "document.html", message: "Replace placeholder copy with approved content or remove it" });
     return issues.slice(0, 30);
   }
+  if (spec.kind !== "profile") return issues.slice(0, 30);
   const nodes = collectSurfaceNodes(spec.root as unknown as Record<string, unknown>);
   if (requiredBindings.includes("profile.projects") && !nodes.some((node) => (node.type === "project-list" || node.type === "featured-project" || node.type === "project-artifact") && node.binding === "profile.projects")) issues.push({ path: "root", message: "Approved projects require a visible project list, feature, or governed project artifact" });
   if (requiredBindings.includes("profile.facts") && !nodes.some((node) => node.type === "fact-list" && node.binding === "profile.facts")) issues.push({ path: "root", message: "Approved interests, ambitions, or current-work facts require a visible fact-list" });
@@ -622,8 +649,7 @@ function collectSurfaceNodes(root: Record<string, unknown>): Record<string, unkn
 }
 
 function surfaceMediaAllowed(spec: SurfaceSpec, surface: Record<string, unknown>): boolean {
-  if (surface.kind !== "profile") return spec.bindingManifest.media.length === 0 && spec.approvedAssets.length === 0;
-  return profileSurfaceMediaIsAuthorized(
+  return surfaceMediaIsAuthorized(
     spec,
     Array.isArray(surface.authorizedMedia) ? surface.authorizedMedia as Array<{ key: string; label: string; altKey: string; approvedAssetIds: string[] }> : [],
     Array.isArray(surface.approvedAssets) ? surface.approvedAssets as Array<{ id: string; src: string }> : [],
@@ -717,27 +743,15 @@ function starterSurfaceSpec(kind: string): SurfaceSpec {
       approvedAssets: [], responsive: { desktopMinHeight: 1100, phoneMinHeight: 1400 }, accessibility: { label: "Builder profile", reducedMotion: "required" },
     };
   }
-  const prefix = kind === "profile" ? "profile" : kind;
-  const titleBinding = kind === "profile" ? "profile.displayName" : kind === "room" ? "room.themeTopic" : "circle.name";
-  const summaryBinding = kind === "profile" ? "profile.summary" : kind === "room" ? "room.connectionContext" : "circle.purpose";
+  if (kind === "room") return {
+    schemaVersion: "3", designPolicyVersion: DESIGN_POLICY_VERSION, kind: "room", title: "Buildmates generated room recovery seed",
+    document: { html: '<main class="shared"><p>{{room.whyTitle}}</p><h1>{{room.title}}</h1><p>{{room.whyBody}}</p><dl><template data-buildmates-repeat="room.sharedFacts"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl><small>{{room.privacyNote}}</small></main>', css: ':root{color-scheme:light}.shared{max-width:72rem;margin:auto;padding:clamp(1rem,5vw,4rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.shared h1{font-size:clamp(2.5rem,8vw,7rem);line-height:.95}@media(max-width:600px){.shared{padding:1rem}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}' },
+    bindingManifest: { content: [{ key: "room.title", type: "text" }, { key: "room.whyTitle", type: "text" }, { key: "room.whyBody", type: "text" }, { key: "room.sharedFacts", type: "facts" }, { key: "room.privacyNote", type: "text" }], media: [] }, approvedAssets: [], responsive: { desktopMinHeight: 800, phoneMinHeight: 900 }, accessibility: { label: "Introduction room", reducedMotion: "required" },
+  };
   return {
-    schemaVersion: "2", designPolicyVersion: DESIGN_POLICY_VERSION, kind: kind as SurfaceSpec["kind"], title: "Buildmates recovery seed",
-    theme: {
-      mode: "light",
-      colors: { canvas: "#f5f1e8", surface: "#fffdf8", ink: "#192019", mutedInk: "#4f5a50", accent: "#c9d7ad", accentInk: "#192019", secondary: "#29352b", secondaryInk: "#ffffff", highlight: "#f3c76d", highlightInk: "#221900", rule: "#7a8379", focusInner: "#000000", focusOuter: "#ffffff" },
-      typography: { display: "sturdy-slab", body: "warm-grotesk", data: "engine-mono", scale: "comfortable", headingWeight: "bold", headingCase: "as-written", letterSpacing: "tight" },
-      shape: { corners: "soft", density: "comfortable", border: "hairline" },
-      atmosphere: { motif: "none", density: "quiet", tone: "accent", continuity: "page" },
-      motion: { preset: "none", durationMs: 400, iterations: 1 },
-    },
-    root: {
-      id: `${prefix}-root`, type: "section", tone: "canvas", layout: "flow", padding: "lg", bleed: false, minHeight: "half", background: "solid", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center",
-      children: [{ id: `${prefix}-container`, type: "container", width: "standard", align: "center", padding: "none", children: [{ id: `${prefix}-stack`, type: "stack", gap: "md", align: "start", justify: "start", width: "full", children: [
-        { id: `${prefix}-title`, type: "heading", level: 1, binding: titleBinding, fallback: kind === "profile" ? "Builder profile" : kind === "room" ? "Introduction room" : "Build Circle", size: "display", align: "start", width: "balanced", weight: "bold", lineHeight: "tight", tracking: "tight" },
-        { id: `${prefix}-summary`, type: "text", style: "lead", binding: summaryBinding, fallback: "This page is ready to personalize.", align: "start", width: "prose", weight: "regular", lineHeight: "relaxed", tracking: "normal" },
-      ] }] }],
-    },
-    bindingManifest: { content: [{ key: titleBinding, type: "text" }, { key: summaryBinding, type: "text" }], media: [] }, approvedAssets: [], decorativeRegions: [], responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true }, accessibility: { label: `${kind} page`, primaryHeadingNodeId: `${prefix}-title`, reducedMotion: "required" },
+    schemaVersion: "3", designPolicyVersion: DESIGN_POLICY_VERSION, kind: "circle", title: "Buildmates generated Circle recovery seed",
+    document: { html: '<main class="shared"><h1>{{circle.name}}</h1><p>{{circle.purpose}}</p><section><h2>Members</h2><dl><template data-buildmates-repeat="circle.members"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></section><section><h2>Shared tools</h2><dl><template data-buildmates-repeat="circle.modules"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></section><dl><template data-buildmates-repeat="circle.metrics"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></main>', css: ':root{color-scheme:light}.shared{max-width:72rem;margin:auto;padding:clamp(1rem,5vw,4rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.shared h1{font-size:clamp(2.5rem,8vw,7rem);line-height:.95}@media(max-width:600px){.shared{padding:1rem}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}' },
+    bindingManifest: { content: [{ key: "circle.name", type: "text" }, { key: "circle.purpose", type: "text" }, { key: "circle.members", type: "facts" }, { key: "circle.modules", type: "facts" }, { key: "circle.metrics", type: "facts" }], media: [] }, approvedAssets: [], responsive: { desktopMinHeight: 900, phoneMinHeight: 1100 }, accessibility: { label: "Build Circle", reducedMotion: "required" },
   };
 }
 

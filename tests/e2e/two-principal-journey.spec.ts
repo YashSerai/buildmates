@@ -1,6 +1,5 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
-import { DESIGN_POLICY_VERSION, type SurfaceSpecV2 } from "@buildmates/surfaces";
-import { fieldNotesRoomSpec } from "../../apps/web/app/surface-lab/fixtures";
+import { DESIGN_POLICY_VERSION, type SurfaceSpecV3 } from "@buildmates/surfaces";
 
 test("two independently authenticated principals complete the relationship journey", async ({ browser }, testInfo) => {
   test.setTimeout(300_000);
@@ -90,10 +89,10 @@ test("two independently authenticated principals complete the relationship journ
     await b.getByRole("button", { name: "Approve tool" }).click();
     await expect(b.getByRole("heading", { name: "Decision log" })).toBeVisible();
 
-    const drafted = await post(a, `/api/rooms/${roomId}/surface`, { action: "draft", spec: fieldNotesRoomSpec }) as {
+    const drafted = await post(a, `/api/rooms/${roomId}/surface`, { action: "draft", spec: roomSurfaceSpec }) as {
       status: number; body: { id: string };
     };
-    expect(drafted.status).toBe(201);
+    expect(drafted.status, JSON.stringify(drafted.body)).toBe(201);
     await approveRoomDesign(a, roomHref!);
     await approveRoomDesign(b, roomHref!);
     await a.goto(roomHref!);
@@ -118,14 +117,50 @@ test("two independently authenticated principals complete the relationship journ
     await expect(a.getByText("Blair joined through a separately authenticated browser session.", { exact: true })).toBeVisible();
 
     await b.goto(`/circles/${circleId}`);
-    await b.getByText("Design and shared-tool proposals", { exact: true }).click();
-    await b.locator('select[name="moduleKind"]').selectOption("experiment_tracker");
-    await b.getByLabel("Proposal title").fill("Retrieval experiment tracker");
-    await b.getByRole("button", { name: "Submit proposal" }).click();
+    await b.getByText("Proposals", { exact: true }).click();
+    await b.getByLabel("What would you like to change?").fill("Add a retrieval experiment tracker");
+    await b.getByLabel("What should this help the Circle do?").fill("Compare retrieval experiments without losing their results");
+    await b.getByRole("button", { name: "Save request" }).click();
+    await expect(b.getByText("Request saved.", { exact: false })).toBeVisible();
+
+    const toolProposal = await post(b, `/api/circles/${circleId}`, {
+      action: "propose",
+      kind: "module",
+      payload: {
+        kind: "experiment_tracker",
+        config: {
+          title: "Retrieval experiment tracker",
+          appearance: {
+            concept: {
+              source: "imagegen",
+              direction: "Approved functional experiment board with clear status, evidence, and outcome hierarchy.",
+              referenceLabel: "Retrieval field board concept",
+              approvedByUser: true,
+            },
+            layout: "cards",
+            density: "comfortable",
+            typography: { display: "grotesk", body: "humanist" },
+            tokens: {
+              canvas: "#eef0e8",
+              surface: "#f4f0e6",
+              surfaceStrong: "#e2dccd",
+              text: "#172019",
+              mutedText: "#4f584f",
+              accent: "#b8d36a",
+              accentText: "#172019",
+              border: "#7c877d",
+              focus: "#8b3d16",
+            },
+            motion: "subtle",
+          },
+        },
+      },
+    }) as { status: number };
+    expect(toolProposal.status).toBe(200);
 
     await a.goto(`/circles/${circleId}`);
-    await a.getByText("Design and shared-tool proposals", { exact: true }).click();
-    await expect(a.getByRole("heading", { name: "Retrieval experiment tracker" })).toBeVisible();
+    await a.getByText("Proposals", { exact: true }).click();
+    await expect(a.getByRole("heading", { name: "Retrieval experiment tracker", exact: true })).toBeVisible();
     await a.getByRole("button", { name: "Publish approved change" }).click();
     await a.locator("details").filter({ hasText: "Active shared tools" }).locator("summary").click();
     await expect(a.locator("p").filter({ hasText: /^Experiment tracker$/ })).toBeVisible();
@@ -138,7 +173,7 @@ test("two independently authenticated principals complete the relationship journ
     expect(circleDesign.status).toBe(200);
 
     await a.goto(`/circles/${circleId}`);
-    await a.getByText("Design and shared-tool proposals", { exact: true }).click();
+    await a.getByText("Proposals", { exact: true }).click();
     await expect(a.getByRole("heading", { name: "Shared field notebook" })).toBeVisible();
     await a.getByRole("button", { name: "Publish approved change" }).click();
     await expect(a.getByRole("status")).toContainText("Approved change published to the Circle.");
@@ -146,6 +181,8 @@ test("two independently authenticated principals complete the relationship journ
     await a.getByRole("button", { name: "Make admin" }).click();
     await expect(a.getByText("Admin / Joined", { exact: true })).toBeVisible();
     await expect(a.getByRole("status")).toBeEmpty();
+    await a.locator("details").filter({ hasText: "Active shared tools" }).locator("summary").click();
+    await expect(a.locator('[data-module-layout="cards"]')).toBeVisible();
     await a.screenshot({ path: testInfo.outputPath("circle-owner-governance.png"), fullPage: true });
     await b.goto(`/circles/${circleId}`);
     await expect(b.getByText("Blair joined through a separately authenticated browser session.", { exact: true })).toBeVisible();
@@ -262,30 +299,28 @@ async function post(page: Page, path: string, body: unknown, includeTestHeader?:
 }
 
 
+const roomSurfaceSpec = {
+  schemaVersion: "3",
+  designPolicyVersion: DESIGN_POLICY_VERSION,
+  kind: "room",
+  title: "Shared retrieval room",
+  document: {
+    html: '<main class="room"><p class="eyebrow">Shared room</p><h1>{{room.title}}</h1><section><h2>{{room.whyTitle}}</h2><p>{{room.whyBody}}</p><dl><template data-buildmates-repeat="room.sharedFacts"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></section><p class="privacy">{{room.privacyNote}}</p></main>',
+    css: ':root{color-scheme:dark}.room{box-sizing:border-box;max-width:76rem;margin:auto;padding:clamp(1.25rem,6vw,5rem);background:#17251d;color:#f6f0df;font-family:Georgia,serif}.room h1{max-width:11ch;font-size:clamp(3rem,9vw,8rem);line-height:.9}.room section{border-top:1px solid #839477;padding-top:2rem}.room dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr));gap:1rem}.room dt{color:#bdd38f}.privacy{max-width:60ch;color:#c7c9bf}@media(max-width:600px){.room{padding:1rem}.room h1{font-size:clamp(2.7rem,15vw,5rem)}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}',
+  },
+  bindingManifest: { content: [{ key: "room.title", type: "text" }, { key: "room.whyTitle", type: "text" }, { key: "room.whyBody", type: "text" }, { key: "room.sharedFacts", type: "facts" }, { key: "room.privacyNote", type: "text" }], media: [] },
+  approvedAssets: [], responsive: { desktopMinHeight: 900, phoneMinHeight: 1050 }, accessibility: { label: "Shared retrieval room", reducedMotion: "required" },
+} satisfies SurfaceSpecV3;
+
 const circleSurfaceSpec = {
-  schemaVersion: "2",
+  schemaVersion: "3",
   designPolicyVersion: DESIGN_POLICY_VERSION,
   kind: "circle",
   title: "Shared field notebook",
-  theme: {
-    mode: "light",
-    colors: { canvas: "#fffdf7", surface: "#eee9dc", ink: "#171814", mutedInk: "#55584f", accent: "#cad7ad", accentInk: "#181b12", secondary: "#26382f", secondaryInk: "#ffffff", highlight: "#f6c445", highlightInk: "#171814", rule: "#aaa99f", focusInner: "#000000", focusOuter: "#ffffff" },
-    typography: { display: "sturdy-slab", body: "warm-grotesk", data: "engine-mono", scale: "comfortable", headingWeight: "bold", headingCase: "as-written", letterSpacing: "tight" },
-    shape: { corners: "soft", density: "comfortable", border: "hairline" },
-    atmosphere: { motif: "constellation", density: "present", tone: "accent", continuity: "page" },
-    motion: { preset: "drift", durationMs: 8000, iterations: 2 },
+  document: {
+    html: '<main class="circle"><header><p>Field notebook</p><h1>{{circle.name}}</h1><p>{{circle.purpose}}</p></header><section><h2>Members</h2><dl><template data-buildmates-repeat="circle.members"><div><dt>{{item.label}}</dt><dd>{{item.value}}</dd></div></template></dl></section></main>',
+    css: ':root{color-scheme:light}.circle{box-sizing:border-box;max-width:78rem;margin:auto;padding:clamp(1.25rem,6vw,5rem);background:#f4eedf;color:#172018;font-family:Georgia,serif}.circle header{border-bottom:2px solid #172018;padding-bottom:3rem}.circle h1{max-width:12ch;font-size:clamp(3rem,10vw,8rem);line-height:.88}.circle dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(12rem,1fr));gap:1rem}.circle dl div{border-top:1px solid #8b9485;padding-top:1rem}@media(max-width:600px){.circle{padding:1rem}.circle h1{font-size:clamp(2.7rem,16vw,5rem)}}@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}',
   },
-  root: { id: "circle-root", type: "section", tone: "canvas", layout: "flow", padding: "lg", bleed: false, minHeight: "auto", background: "paper-rule", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center", children: [
-    { id: "circle-container", type: "container", width: "standard", align: "center", padding: "none", children: [
-      { id: "circle-stack", type: "stack", gap: "lg", align: "start", justify: "start", width: "full", children: [
-        { id: "circle-title", type: "heading", level: 1, binding: "circle.name", fallback: "Circle", size: "display", align: "start", width: "balanced", weight: "bold", lineHeight: "snug", tracking: "tight" },
-        { id: "circle-purpose", type: "text", style: "lead", binding: "circle.purpose", fallback: "Shared purpose", align: "start", width: "prose", weight: "regular", lineHeight: "relaxed", tracking: "normal" },
-        { id: "circle-members", type: "fact-list", binding: "circle.members", emptyMessage: "Members appear after joining.", layout: "rail", emphasis: "quiet" },
-      ] },
-    ] },
-  ] },
   bindingManifest: { content: [{ key: "circle.name", type: "text" }, { key: "circle.purpose", type: "text" }, { key: "circle.members", type: "facts" }], media: [] },
-  approvedAssets: [], decorativeRegions: [],
-  responsive: { collapseGridsBelow: "md", contentWidth: "standard", edgePadding: "comfortable", heroStackBelow: "md", preserveContentOrder: true },
-  accessibility: { label: "Reliable Agents Lab", primaryHeadingNodeId: "circle-title", reducedMotion: "required" },
-} satisfies SurfaceSpecV2;
+  approvedAssets: [], responsive: { desktopMinHeight: 900, phoneMinHeight: 1050 }, accessibility: { label: "Reliable Agents Lab", reducedMotion: "required" },
+} satisfies SurfaceSpecV3;
