@@ -2,66 +2,106 @@
 
 Meet people through what you build.
 
-Buildmates is a Codex-native builder network. It turns user-approved connected-app context into privacy-safe Work Signals, uses deterministic retrieval to find mutually relevant builders, and lets each person's Codex independently evaluate the connection. Reciprocal approval creates a persistent Connection and a lightweight room grounded in why the people should meet.
+Buildmates is a Codex-native builder network. Codex turns the work a builder is already doing into a living profile, Buildmates ranks people whose work or ambition overlaps, and each person's Codex can review the match before anything interpersonal happens.
 
-## Set up with Codex
+The goal is simple: make networking start from real work instead of stale profiles, cold messages, and popularity signals.
 
-Start from the [official setup guide](https://buildmates.yashns.chatgpt.site/install) and paste its prompt into a new Codex task. Before the public directory release, Codex can install the complete repository beta or connect the production MCP server directly. Both routes require confirmation and account authorization.
+Live app: [buildmates.yashns.chatgpt.site](https://buildmates.yashns.chatgpt.site)  
+Codex setup guide: [buildmates.yashns.chatgpt.site/install](https://buildmates.yashns.chatgpt.site/install)  
+Agent instructions: [buildmates.yashns.chatgpt.site/llms.txt](https://buildmates.yashns.chatgpt.site/llms.txt)  
+Production MCP endpoint: `https://buildmates-mcp.yashserai1.workers.dev/mcp`
 
-For the complete beta plugin:
+## What it does
+
+- Creates a builder profile from Codex context the user approves.
+- Lets Codex design a custom responsive profile page with generated HTML and CSS.
+- Matches builders through mutual relevance, not popularity.
+- Supports Manual review and Full Autopilot for introductions.
+- Opens persistent one-to-one rooms after mutual interest.
+- Lets Codex redesign rooms and Circles with custom tools such as timers, checklists, research boards, decision logs, or trackers.
+- Runs Work Pulse as a Codex automation to refresh approved context, find matches, surface follow-ups, and ask how introductions went.
+- Shows a City Map and Build Graph so the network can be explored by location and topic overlap.
+
+## How Buildmates uses Codex and GPT-5.6
+
+Buildmates was built for OpenAI Build Week with Codex and GPT-5.6.
+
+Codex helped plan the product, build the ChatGPT Sites app, build the MCP server, design and revise generated profile surfaces, test onboarding, seed QA data, and prepare the demo. The strongest workflow was not asking Codex to make tiny isolated changes forever. The better workflow was to build a meaningful product slice, run the real flow, inspect screenshots, then fix the exact defects.
+
+GPT-5.6 is also part of the product. Buildmates does deterministic server-side ranking first. Then the user's Codex and the other person's Codex can independently review a bounded shortlist and look for a reason the connection would genuinely matter.
+
+## Architecture
+
+This is a monorepo with separate deployment units.
+
+```text
+apps/web        ChatGPT Sites web app, auth, product UI, and data APIs
+apps/mcp        Streamable HTTP MCP adapter for Codex
+packages/domain entities, policies, state machines, authorization, validation
+packages/database schema, migrations, repositories, D1 and service adapters
+packages/matching taxonomy, builder index, deterministic scoring
+packages/surfaces generated-site contracts, sanitization, revision history
+packages/mcp-core transport-independent MCP tool registry
+plugin          public-submission plugin package
+plugins/buildmates repository beta package bound to production MCP
+```
+
+The website runs on ChatGPT Sites. The MCP server runs separately at the production Worker endpoint so the web app and Codex connector are not locked to one runtime.
+
+## Identity and privacy model
+
+Buildmates uses GitHub OAuth for the website and MCP OAuth for Codex. Those are separate identity boundaries. A short-lived one-time code links the website account to the Codex MCP account.
+
+Buildmates never receives connector credentials. Codex reads only what the user approves in its own environment and submits structured summaries. Raw private repositories, full chats, documents, emails, calendars, and prompts are not stored by Buildmates.
+
+Generated profile, room, and Circle pages use GeneratedSiteBundle v3:
+
+- Codex writes semantic HTML and responsive CSS.
+- Generated JavaScript is not accepted.
+- Generated pages run inside a scriptless, credential-isolated iframe.
+- Buildmates keeps identity, privacy, navigation, actions, approved content, media bindings, revision history, and publishing controls outside the generated page.
+
+## Try it with Codex
+
+Start from the live setup page:
+
+[buildmates.yashns.chatgpt.site/install](https://buildmates.yashns.chatgpt.site/install)
+
+Before the public plugin-directory release, reviewers can use the repository beta plugin:
 
 ```powershell
 codex plugin marketplace add YashSerai/buildmates --ref launch/buildmates
 codex plugin add buildmates@buildmates-beta
 ```
 
-After installation and MCP authorization, Codex asks permission to open the fresh task required to load the plugin's skills and tools. If the host cannot create that task, it gives the same one-line continuation prompt for manual use. The installer never hides this boundary behind recursive `codex exec` processes.
+Then start setup from the prompt on the website.
 
-For the MCP-only fallback:
+If the beta plugin route is unavailable, connect the production MCP server directly:
 
 ```powershell
 codex mcp add buildmates --url https://buildmates-mcp.yashserai1.workers.dev/mcp --oauth-resource https://buildmates-mcp.yashserai1.workers.dev
 codex mcp login buildmates --scopes mcp:tools
 ```
 
-For Codex and other agents, the canonical machine-readable instructions are at [buildmates.yashns.chatgpt.site/llms.txt](https://buildmates.yashns.chatgpt.site/llms.txt). Once the Buildmates app is connected, an install, setup, start, or resume request must invoke the plugin's mandatory onboarding skill, call `get_setup_state` first, and use bounded batches of up to three fully described actions. Meaningful consent checkpoints remain separate. Do not infer permissions or send raw private source material; submit only user-approved structured summaries.
+Supported platform for the tested flow: Codex on Windows with the production Buildmates website and MCP endpoint.
 
-Source selection can combine context already surfaced in the current Codex task, connected apps genuinely available in that task, and descriptions or links the user supplies. GitHub website identity does not grant repository or profile access, and Buildmates does not ask Codex to inspect unrelated chats or session IDs.
+## Run locally
 
-## Product boundaries
+Requirements:
 
-- Buildmates is the only required plugin. Other connected apps remain under their existing host permissions.
-- Buildmates receives approved structured summaries, not connector credentials, raw prompts, complete chats, private repositories, full documents, email bodies, or calendars.
-- Launch matching is deterministic and uses no backend model inference or embeddings.
-- New profiles, rooms, and Circles use versioned GeneratedSiteBundle v3 pages: Codex writes complete semantic HTML and responsive CSS inside a scriptless, credential-isolated iframe. Buildmates keeps identity, privacy, navigation, actions, approved content and media bindings, revision history, and publication governance outside the generated page. Generated JavaScript is not accepted.
-- Manual and Full Autopilot both require two independent Codex evaluations. Manual mode also requires that person's Interested action.
-
-## Repository
-
-```text
-apps/web        ChatGPT Sites web application and authoritative data APIs
-apps/mcp        independently deployable Streamable HTTP MCP adapter
-packages/domain entities, policies, state machines, authorization, validation
-packages/database schema, migrations, repositories, D1 and service adapters
-packages/matching taxonomy, builder index, deterministic scoring
-packages/surfaces generated-site contracts, compatibility renderer, sanitization, Design Policy
-packages/mcp-core one transport-independent MCP tool registry
-plugin          public-submission plugin package bound to the development app
-plugins/buildmates repository beta package bound directly to production MCP
-```
-
-## Local development
-
-Requirements: Node.js 22.13 or newer and npm 11.
+- Node.js 22.13 or newer
+- npm 11 or newer
 
 ```powershell
 npm install
 npm run dev
 ```
 
-The web workspace uses the Sites vinext runtime. Copy `.env.example` to `.env.local` only when a local capability needs values; never commit credentials.
+Copy `.env.example` to `.env.local` only when a local capability needs values. Do not commit credentials.
 
 ## Verification
+
+Use the full suite when changing product code:
 
 ```powershell
 npm run lint
@@ -71,7 +111,19 @@ npm run test:e2e
 npm run build
 ```
 
-The complete release boundary and evidence requirements are in [GOAL.md](GOAL.md), [BUILD_INDEX.md](BUILD_INDEX.md), and `docs/aegis/`.
+For submission review, the live app is the primary test surface. The demo data used for the City Map, Build Graph, and seeded introductions is fictional QA data retained for OpenAI Build Week judging. It should not be described as organic usage or traction.
+
+## Build Week submission notes
+
+Recommended Devpost category: Work and Productivity.
+
+The submission should include:
+
+- Live app URL: `https://buildmates.yashns.chatgpt.site`
+- Repository URL: `https://github.com/YashSerai/buildmates`
+- Demo video: public YouTube URL, under 3 minutes, with voiceover
+- `/feedback` Codex session ID from the main build task
+- If the repository remains private, share it with `testing@devpost.com` and `build-week-event@openai.com`
 
 ## License
 
