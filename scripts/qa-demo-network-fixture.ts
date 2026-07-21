@@ -48,6 +48,9 @@ async function main() {
       DB.prepare("INSERT INTO builder_match_index(user_id,version,taxonomy_version_id,topics_json,tools_json,domains_json,stages_json,intents_json,updated_at) VALUES(?,3,?,'[\"ai-agents\",\"mcp\"]','[]','[]','[\"building\"]','[]',?)").bind(viewerId, taxonomy.id, now),
     ]);
 
+    // Exercise the production migration in the state it will actually see: the
+    // existing yashns account already has a handle and match index.
+    await applySql(DB, "apps/web/drizzle/0020_demo_network_yashns.sql");
     await applySql(DB, fixture);
     await applySql(DB, fixture);
 
