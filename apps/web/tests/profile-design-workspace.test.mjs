@@ -79,16 +79,14 @@ test("profile design quality gate rejects an empty opening composition", async (
   assert.match(quality, /opening\.querySelector\("img,picture,figure"\)/);
 });
 
-test("generated profile frames measure their content instead of enforcing design dimensions", async () => {
+test("generated frames measure fluid content and retain a responsive nonzero fallback", async () => {
   const [renderer, styles] = await Promise.all([
     readFile(rendererUrl, "utf8"),
     readFile(rendererStylesUrl, "utf8"),
   ]);
 
   assert.match(renderer, /document\.documentElement\.scrollHeight/);
-  assert.match(renderer, /frame\.style\.height = `\$\{height\}px`/);
-  assert.doesNotMatch(renderer, /--surface-generated-desktop-height/);
-  assert.doesNotMatch(renderer, /--surface-generated-phone-height/);
-  assert.match(styles, /\.renderer:global\(\.surface-generated-site\)\s*\{[^}]*height:\s*600px;[^}]*min-height:\s*0;/s);
-  assert.doesNotMatch(styles, /var\(--surface-generated-(?:desktop|phone)-height\)/);
+  assert.match(renderer, /frame\.style\.height = height > 0 \? `\$\{height\}px` : previousHeight/);
+  assert.match(styles, /\.renderer:global\(\.surface-generated-site\)\s*\{[^}]*height:\s*600px;[^}]*min-height:\s*var\(--surface-generated-desktop-min-height, 600px\);/s);
+  assert.match(styles, /@media \(max-width: 42rem\)[\s\S]*min-height:\s*var\(--surface-generated-phone-min-height, 720px\)/);
 });

@@ -19,9 +19,14 @@
   display: block;
   width: 100%;
   height: 600px;
-  min-height: 0;
+  min-height: var(--surface-generated-desktop-min-height, 600px);
   overflow: hidden;
   background: transparent;
+}
+@media (max-width: 42rem) {
+  .renderer:global(.surface-generated-site) {
+    min-height: var(--surface-generated-phone-min-height, 720px);
+  }
 }
 .renderer:global(.surface-width-narrow) {
   --surface-content-width: 46rem;
