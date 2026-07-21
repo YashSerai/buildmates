@@ -4,15 +4,19 @@ import { useState } from "react";
 import styles from "./onboarding.module.css";
 import {
   BUILDMATES_APP_URL,
+  BUILDMATES_CONTINUE_SETUP_PROMPT,
   BUILDMATES_SETUP_PROMPT,
 } from "../../src/product/codex-setup";
 
-export function CodexSetupActions({ complete }: { complete: boolean }) {
+export function CodexSetupActions({ complete, hasProgress }: { complete: boolean; hasProgress: boolean }) {
   const [copyStatus, setCopyStatus] = useState("");
+  const prompt = hasProgress || complete
+    ? BUILDMATES_CONTINUE_SETUP_PROMPT
+    : BUILDMATES_SETUP_PROMPT;
 
   async function copyPrompt() {
     try {
-      await navigator.clipboard.writeText(BUILDMATES_SETUP_PROMPT);
+      await navigator.clipboard.writeText(prompt);
       setCopyStatus("Prompt copied.");
     } catch {
       setCopyStatus("Copy was blocked. Select the prompt and copy it manually.");
@@ -29,7 +33,7 @@ export function CodexSetupActions({ complete }: { complete: boolean }) {
       </button>
       <label className={styles.promptField}>
         <span>Prompt to use in Codex</span>
-        <textarea value={BUILDMATES_SETUP_PROMPT} readOnly rows={7} onFocus={(event) => event.currentTarget.select()} />
+        <textarea value={prompt} readOnly rows={7} onFocus={(event) => event.currentTarget.select()} />
       </label>
       <p className={styles.copyStatus} role="status" aria-live="polite">{copyStatus}</p>
     </div>

@@ -33,7 +33,10 @@ export default async function OnboardingPage() {
           <h2 id="codex-handoff-title">Take the next guided step</h2>
           <p className={styles.description}>Continue in Codex to finish the next step. You review everything before it is saved.</p>
           {!snapshot.codexConnected && <div className={styles.inlineNote}><strong>Connect Codex once</strong><p>This lets Codex update your Buildmates profile and find relevant people for you.</p></div>}
-          <CodexSetupActions complete={snapshot.setup.complete} />
+          <CodexSetupActions
+            complete={snapshot.setup.complete}
+            hasProgress={snapshot.setup.completedCount > 0}
+          />
           <div className={styles.websiteRole}>
             <strong>The website is your shared space</strong>
             <p>Publish and share your generated profile, review introductions, chat in private rooms, and manage privacy or account settings here.</p>
