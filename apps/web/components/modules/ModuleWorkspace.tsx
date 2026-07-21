@@ -174,7 +174,7 @@ export function ModuleWorkspace({
                                 entry.payload[field.key],
                             )
                             .map((field) => (
-                              <div key={field.key}>
+                              <div key={field.key} data-field={field.key}>
                                 <dt>{field.label}</dt>
                                 <dd>
                                   {field.type === "url" ? (
