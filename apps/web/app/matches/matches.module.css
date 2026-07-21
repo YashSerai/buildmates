@@ -232,6 +232,12 @@
   font-weight: 700;
 }
 
+.reviewExplanation {
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
 .actions {
   display: flex;
   align-items: center;

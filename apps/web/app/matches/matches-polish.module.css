@@ -1,7 +1,9 @@
 .candidateActions {
   display: grid;
-  justify-items: stretch;
-  min-width: 9.5rem;
+  align-content: center;
+  gap: 0.7rem;
+  width: 13rem;
+  min-width: 13rem;
 }
 
 .candidateActions a,
@@ -17,7 +19,7 @@
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: none;
-  white-space: nowrap;
+  text-align: center;
 }
 
 .candidateActions a {
@@ -30,32 +32,26 @@
 }
 
 .candidateActions button {
-  min-height: 36px;
-  color: var(--muted);
-  text-decoration: underline;
-  text-underline-offset: 0.2rem;
+  width: 100%;
+  min-height: 40px;
+  background: #dfe4d8;
+  color: var(--night);
 }
 
 .candidateActions button:hover {
-  color: var(--ink);
+  background: #cfd7c7;
 }
 
-.candidateActions details {
-  position: relative;
-  text-align: center;
+.copyFallback {
+  display: grid;
+  gap: 0.5rem;
 }
 
-.candidateActions summary {
-  padding: 0.55rem 0.75rem;
+.copyFallback span {
   color: var(--muted);
-  cursor: pointer;
-  font-size: 0.78rem;
-  text-decoration: underline;
-  text-underline-offset: 0.2rem;
-}
-
-.candidateActions details[open] summary {
-  color: var(--ink);
+  font-size: 0.73rem;
+  line-height: 1.35;
+  text-align: left;
 }
 
 @media (max-width: 680px) {

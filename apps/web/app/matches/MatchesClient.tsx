@@ -173,14 +173,19 @@ export function MatchesClient({
                   </div>
                   <dl className={styles.reviewState}>
                     <div>
-                      <dt>Your recommendation</dt>
+                      <dt>Your Codex</dt>
                       <dd>{evaluationLabel(proposal.myEvaluation)}</dd>
                     </div>
                     <div>
-                      <dt>Their recommendation</dt>
+                      <dt>{possessive(proposal.candidateName)} Codex</dt>
                       <dd>{evaluationLabel(proposal.theirEvaluation)}</dd>
                     </div>
                   </dl>
+                  <p className={styles.reviewExplanation}>
+                    Each person&apos;s Codex checks the introduction independently.
+                    Your response is shared only after you choose Interested or
+                    Pass.
+                  </p>
                   <ProposalActions
                     proposal={proposal}
                     busy={busy}
@@ -261,10 +266,10 @@ function Candidate({
       </div>
       <div className={polish.candidateActions}>
         <a href={`codex://open?prompt=${encodeURIComponent(prompt)}`}>
-          Review recommendation in Codex
+          Review with Codex
         </a>
-        <details>
-          <summary>Can&apos;t open Codex?</summary>
+        <div className={polish.copyFallback}>
+          <span>Codex didn&apos;t open? Paste the review prompt into any task.</span>
           <button
             type="button"
             onClick={() =>
@@ -278,9 +283,9 @@ function Candidate({
                 )
             }
           >
-            Copy prompt instead
+            Copy review prompt
           </button>
-        </details>
+        </div>
       </div>
     </article>
   );
@@ -366,12 +371,16 @@ function formatReason(value: string) {
 }
 
 function evaluationLabel(value: MatchInboxRow["myEvaluation"]) {
-  if (!value) return "Not reviewed";
+  if (!value) return "Not reviewed yet";
   return value === "approve"
-    ? "Recommended"
+    ? "Strong fit"
     : value === "decline"
-      ? "Not recommended"
+      ? "Not a fit"
       : "Review later";
+}
+
+function possessive(value: string) {
+  return value.endsWith("s") ? `${value}\u2019` : `${value}\u2019s`;
 }
 
 function proposalState(proposal: MatchInboxRow) {
@@ -393,6 +402,7 @@ function proposalState(proposal: MatchInboxRow) {
     !proposal.myResponse
   )
     return "Your interest is needed";
-  if (!proposal.theirEvaluation) return "Waiting for their Codex review";
+  if (!proposal.theirEvaluation)
+    return `Waiting for ${possessive(proposal.candidateName)} Codex`;
   return "Waiting for their interest";
 }
