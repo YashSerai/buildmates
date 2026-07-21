@@ -19,6 +19,7 @@ The visual master intentionally has no narration baked in. Record the approved s
 ## Editable production
 
 - `../05-remotion`: complete Remotion project.
+- `../06-renders/scenes`: seventeen full-resolution, narration-free scene clips.
 - `../02-storyboard/production-contract.md`: scene and transition contract.
 - `../03-captures/raw`: original product captures organized by feature.
 - `../04-assets`: generated visual assets, saved surface bundles, and the real Codex task excerpt.

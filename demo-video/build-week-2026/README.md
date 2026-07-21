@@ -9,6 +9,7 @@ This folder contains the editable production package for the under-three-minute 
 - `03-captures/raw/`: untouched product recordings and screenshots.
 - `04-assets/`: approved generated concepts, saved surface bundles, and the real Codex task excerpt.
 - `05-remotion/`: source composition and local render instructions.
+- `06-renders/scenes/`: seventeen full-resolution scene clips for precise editing.
 - `07-qa/`: desktop/mobile surface evidence, transition contact sheets, and final playback checks.
 - `08-devpost/`: unpublished Devpost draft and submission asset checklist.
 - `09-delivery/`: morning handoff and the remaining human submission steps.
