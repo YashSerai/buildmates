@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import styles from "./product-shell.module.css";
 import polish from "./product-shell-polish.module.css";
 import { ProductNavLinks, type ProductNavItem } from "./ProductNav";
@@ -26,11 +27,7 @@ export function ProductHeader({ signedIn = false }: { signedIn?: boolean }) {
       data-auth={signedIn ? "signed-in" : "signed-out"}
     >
       <Link className={styles.wordmark} href={signedIn ? "/home" : "/"} aria-label="Buildmates home">
-        <span aria-hidden="true">
-          <i />
-          <i />
-          <i />
-        </span>
+        <Image aria-hidden="true" src="/brand/buildmates-mark-reversed.svg" alt="" width={40} height={32} priority />
         <strong>buildmates</strong>
       </Link>
       <nav

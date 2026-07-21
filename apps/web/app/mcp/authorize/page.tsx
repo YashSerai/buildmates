@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getCurrentUser } from "../../../src/auth/require-user";
 import styles from "./authorize.module.css";
@@ -19,7 +20,7 @@ export default async function McpAuthorizePage({ searchParams }: { searchParams:
     <main className={styles.page} id="main-content">
       <header className={styles.header}>
         <Link className={styles.brand} href="/" aria-label="Buildmates home">
-          <span className={styles.brandSignal} aria-hidden="true"><i /><i /><i /></span>
+          <Image aria-hidden="true" src="/brand/buildmates-mark.svg" alt="" width={40} height={32} />
           <strong>buildmates</strong>
         </Link>
         <span className={styles.secure}><i aria-hidden="true" /> Secure account connection</span>
@@ -31,7 +32,7 @@ export default async function McpAuthorizePage({ searchParams }: { searchParams:
             <p className={styles.connectionLabel}>Connection request</p>
             <div className={styles.connectionRoute} aria-hidden="true">
               <div className={styles.endpoint}>
-                <span className={styles.codexMark}>&gt;_</span>
+                <span className={styles.codexMark}><Image src="/brand/codex-app-cropped.png" alt="" width={44} height={44} unoptimized /></span>
                 <span><strong>Codex</strong><small>Your current task</small></span>
               </div>
               <div className={styles.bridge}>
@@ -39,7 +40,7 @@ export default async function McpAuthorizePage({ searchParams }: { searchParams:
                 <small>secure handoff</small>
               </div>
               <div className={styles.endpoint}>
-                <span className={styles.buildmatesMark}><i /><i /><i /></span>
+                <span className={styles.buildmatesMark}><Image src="/brand/buildmates-mark-reversed.svg" alt="" width={52} height={44} /></span>
                 <span><strong>Buildmates</strong><small>Your builder network</small></span>
               </div>
             </div>

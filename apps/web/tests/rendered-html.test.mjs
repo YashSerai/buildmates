@@ -21,9 +21,13 @@ test("server-renders the Buildmates public landing page", async () => {
   assert.match(html, /<title>Buildmates<\/title>/i);
   assert.match(html, /Find your people/);
   assert.match(html, /Set up with Codex/);
-  assert.match(html, /Codex turns the work you choose to share/);
-  assert.match(html, /one Buildmates app/);
-  assert.match(html, /Review every introduction or let Full Autopilot/);
+  assert.match(html, /Codex turns the work you.*already doing into a living/);
+  assert.doesNotMatch(html, /built for people/i);
+  assert.match(html, /Mutual relevance over popularity/);
+  assert.match(html, /Codex can give every room its own interface/);
+  assert.match(html, /The group does not have to fit a template/);
+  assert.match(html, /See where builders are/);
+  assert.match(html, /See where ideas overlap/);
   assert.match(html, /your work changes. your network keeps up./);
   assert.doesNotMatch(html, /Browse coarse locations/);
   assert.doesNotMatch(html, /Your site is taking shape|Codex is working|react-loading-skeleton/);

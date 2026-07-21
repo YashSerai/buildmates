@@ -26,9 +26,9 @@ export default async function Home() {
             <span>through what you build.</span>
           </h1>
           <p>
-            Codex turns the work you choose to share into a living profile, then
-            Buildmates finds people whose work, ambition, stage, or location
-            gives you a reason to talk.
+            Codex turns the work you&rsquo;re already doing into a living
+            profile, then finds builders whose work or ambition gives you a
+            reason to connect.
           </p>
           <div className={styles.heroActions}>
             <CodexHandoff className={styles.codexHandoff} />
@@ -63,49 +63,82 @@ export default async function Home() {
         </div>
       </section>
       <section className={styles.promise}>
-        <p>
-          one Buildmates app.
-          <br />
-          you choose what to share.
-        </p>
         <div>
-          <strong>Codex builds your profile</strong>
+          <strong>Networking through real work</strong>
           <span>
-            Turn the work you care about into a page that feels like you.
+            Meet people shipping products, exploring ideas, and solving real
+            problems.
           </span>
         </div>
         <div>
-          <strong>Meet through real overlap</strong>
+          <strong>Mutual relevance over popularity</strong>
           <span>
-            Find people connected to what you are building, learning, or aiming
-            for.
+            Similar work can start a conversation. So can adjacent ambition,
+            stage, location, or curiosity. The overlap only needs to matter to
+            both people.
           </span>
         </div>
         <div>
-          <strong>Choose your pace</strong>
+          <strong>Your profile keeps up</strong>
           <span>
-            Review every introduction or let Full Autopilot handle strong
-            matches.
+            Once you approve the sources, Codex brings in your projects,
+            refreshes your profile, and looks for relevant builders as your work
+            changes.
           </span>
         </div>
       </section>
-      <section className={styles.network}>
-        <div>
-          <h2>
-            Mutual relevance
-            <br />
-            over popularity.
-          </h2>
+      <section className={styles.spaces}>
+        <div className={styles.spacesIntro}>
+          <h2>Generative UI for every connection.</h2>
           <p>
-            Similar work can start a conversation. So can adjacent ambition,
-            location, stage, or simple curiosity. The overlap only needs to be
-            interesting to both people.
+            Start with a conversation. When you need more, tell Codex what the
+            space should become. It can shape the room around why you met,
+            creating a custom interface with a timer, checklist, research board,
+            decision log, or another useful tool.
           </p>
         </div>
-        <nav aria-label="Explore Buildmates">
+        <div className={styles.spaceDetails}>
+          <article>
+            <span>One-to-one rooms</span>
+            <strong>A custom room for two builders</strong>
+            <p>
+              Builders discussing RAG might get a shared research board.
+              Cofounders might add a decision log or launch checklist. Codex
+              designs the space and publishes it only after approval.
+            </p>
+            <small>Timer · Checklist · Research board · Decision log</small>
+          </article>
+          <article>
+            <span>Circle spaces</span>
+            <strong>The same idea, expanded to a group</strong>
+            <p>
+              A Circle is a group conversation with its own custom interface and
+              tools. A shipping group might add a sprint timer and tracker. A
+              local community might create an event board. Codex designs the
+              shared space, and its members decide what goes live.
+            </p>
+            <small>Sprint timer · Tracker · Event board · Shared tools</small>
+          </article>
+        </div>
+      </section>
+      <section className={styles.network}>
+        <article>
+          <h2>See where builders are.</h2>
+          <p>
+            Explore anonymous city activity and see where builders and new
+            connections are taking shape without exposing anyone&rsquo;s precise
+            location.
+          </p>
           <Link href="/map">View city activity</Link>
+        </article>
+        <article>
+          <h2>See where ideas overlap.</h2>
+          <p>
+            Move through the topics builders are working on and see which ideas,
+            tools, and fields are being explored together.
+          </p>
           <Link href="/graph">Follow the build graph</Link>
-        </nav>
+        </article>
       </section>
       <section className={styles.control}>
         <h2>Share only what you choose.</h2>

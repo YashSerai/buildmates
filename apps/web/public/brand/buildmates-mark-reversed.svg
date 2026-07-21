@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 56" role="img" aria-labelledby="title">
+  <title id="title">Buildmates</title>
+  <path d="M13 43 36 11" fill="none" stroke="#f3f0e7" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 11 59 43" fill="none" stroke="#d95f20" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M13 43h18v-4a9 9 0 0 1 9-9" fill="none" stroke="#f3f0e7" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M40 30a9 9 0 0 1 9 9v4h10" fill="none" stroke="#d95f20" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="m32 23 4-5 4 5-4 5z" fill="#9cab83"/>
+  <circle cx="36" cy="11" r="8" fill="#f3f0e7"/>
+  <circle cx="13" cy="43" r="8" fill="#9cab83"/>
+  <circle cx="59" cy="43" r="8" fill="#d95f20"/>
+</svg>

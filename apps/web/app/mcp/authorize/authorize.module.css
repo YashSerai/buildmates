@@ -22,37 +22,7 @@
   font-size: 1rem;
 }
 
-.brandSignal {
-  width: 38px;
-  display: grid;
-  grid-template-columns: repeat(3, 5px);
-  justify-content: space-between;
-  align-items: center;
-  position: relative;
-}
-
-.brandSignal::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  height: 1px;
-  background: var(--ink);
-}
-
-.brandSignal i,
-.buildmatesMark i {
-  width: 5px;
-  height: 5px;
-  display: block;
-  border-radius: 50%;
-  background: var(--signal);
-  border: 1px solid currentColor;
-  z-index: 1;
-}
-
-.brandSignal i:nth-child(2),
-.buildmatesMark i:nth-child(2) { background: var(--leaf); }
+.brand > img { width: 38px; height: 30px; object-fit: contain; }
 
 .secure {
   display: inline-flex;
@@ -67,7 +37,6 @@
   height: 7px;
   border-radius: 50%;
   background: var(--moss);
-  box-shadow: 0 0 0 4px rgb(36 79 57 / 12%);
 }
 
 .stage {
@@ -135,23 +104,20 @@
   height: 44px;
   display: grid;
   place-items: center;
-  border: 1px solid rgb(243 240 231 / 28%);
-  font: 700 .82rem/1 var(--font-code);
+  overflow: hidden;
 }
 
-.buildmatesMark {
-  grid-template-columns: repeat(3, 5px);
-  justify-content: space-evenly;
-  position: relative;
+.codexMark img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+  border-radius: 10px;
 }
 
-.buildmatesMark::before {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  height: 1px;
-  background: rgb(243 240 231 / 60%);
+.buildmatesMark img {
+  width: 48px;
+  height: 38px;
+  object-fit: contain;
 }
 
 .bridge {

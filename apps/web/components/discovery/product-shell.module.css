@@ -17,33 +17,10 @@
   gap: 0.72rem;
   text-decoration: none;
 }
-.wordmark span {
-  position: relative;
+.wordmark img {
   width: 38px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.wordmark span::before {
-  content: "";
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  top: 9px;
-  border-top: 1px solid var(--leaf);
-}
-.wordmark i {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  background: var(--leaf);
-  border: 2px solid var(--night);
-  border-radius: 50%;
-}
-.wordmark i:nth-child(2) {
-  transform: translateY(-5px);
-  background: var(--signal);
+  height: 30px;
+  object-fit: contain;
 }
 .wordmark strong {
   font-size: 1.02rem;
@@ -179,8 +156,9 @@
   .wordmark {
     gap: 0.45rem;
   }
-  .wordmark span {
+  .wordmark img {
     width: 27px;
+    height: 23px;
   }
   .wordmark strong {
     font-size: 0.92rem;
