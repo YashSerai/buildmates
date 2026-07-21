@@ -83,7 +83,7 @@ describe("canonical shared GeneratedSiteBundle v3 surfaces", () => {
       expect(brief.governance.mode).toBe(governanceMode === "admin" ? "circle_admin" : "circle_vote");
       await expect(call(BOB_SUB, "validate_surface_spec", { surfaceId, spec: brief.customizedExample })).resolves.toEqual({ valid: true, issues: [] });
       const revision = await call(BOB_SUB, "submit_surface_revision", { revisionId: `${governanceMode}-circle-v3`, surfaceId, baseRevisionId: null, spec: brief.customizedExample, visibility: "private_preview", idempotencyKey: `${governanceMode}-circle-v3-01` }) as MutationResult;
-      expect(revision.result.previewUrl).toBe(`https://buildmates.example/circles/${circleId}`);
+      expect(revision.result.previewUrl).toBe(`https://buildmates.example/circles/${circleId}?design=preview`);
       await expect(DB.prepare("SELECT published_revision_id AS published FROM surfaces WHERE id=?").bind(surfaceId).first()).resolves.toEqual({ published: null });
 
       await call(BOB_SUB, "decide_surface_revision", { revisionId: revision.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: `${governanceMode}-circle-bob-approval` });
