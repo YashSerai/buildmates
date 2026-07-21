@@ -12,7 +12,7 @@ export function BuildGraph({topics,edges,relationships,totalBuilders,signedIn}:{
   const [view,setView]=useState<"topics"|"relationships">("topics");
   const [query,setQuery]=useState("");
   const [searchTarget,setSearchTarget]=useState<string|null>(null);
-  const suggestions=useMemo(()=>query.trim().length<2?[]:topics.filter(topic=>topic.label.toLowerCase().includes(query.trim().toLowerCase())).slice(0,7),[query,topics]);
+  const suggestions=useMemo(()=>searchTarget||query.trim().length<2?[]:topics.filter(topic=>topic.label.toLowerCase().includes(query.trim().toLowerCase())).slice(0,7),[query,topics,searchTarget]);
   if(!topics.length)return <div className={styles.empty}><div><span aria-hidden="true">○</span><h2>The graph starts with the first topic.</h2><p>Approved project topics will appear here after setup or a Work Pulse.</p></div></div>;
   const choose=(topic:BuildGraphTopic)=>{setQuery(topic.label);setSearchTarget(topic.id)};
   return <div className={styles.shell}>
