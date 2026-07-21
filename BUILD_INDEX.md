@@ -223,6 +223,13 @@ The copy audit must cover projects, Circle admin/invite flows, map and graph agg
 
 Run one clean 0/10 Codex onboarding QA against the production MCP and preserve the full task as evidence. The task handoff must label the setup and completed-installation tasks distinctly, and exact source-selection approval authorizes the stated private context collection without a second prompt. A second independent account remains necessary only for genuine two-person match, room, and Circle behavior.
 
+## Hackathon demo-data retention - 2026-07-20
+
+- The anonymous `qa_visual_*` Map and Build Graph fixture is intentionally retained through OpenAI Build Week judging. Real approved aggregate contributions continue to accumulate alongside it. Demo totals must never be described as organic users, traction, or adoption.
+- The reversible `demo_network_*` fixture is scoped only to the existing `yashns` QA account. It provides three ranked fictional candidates, one incoming-interest proposal, one existing Connection and room, Activity items, and a Circle. Its profiles are unindexed and unavailable to anonymous viewers.
+- Both fixture families have exact cleanup SQL under `scripts/fixtures/`. Remove them after judging and the winners announcement on August 12, 2026, or before making any public claim about organic network size, whichever happens first. Rerun public aggregate, shortlist, room, Activity, and Circle smoke checks after cleanup.
+- A genuine two-independent-account production run remains the final interpersonal confidence gate. Demo fixtures prove presentation and deterministic state handling; they do not replace external identity/authentication proof.
+
 ## Release-candidate deployment and clean reset - 2026-07-18
 
 - Functional release commit `7bd395337faeecf21b1d53c0685e1f2c113b5cbb` is pushed on `launch/buildmates`.
