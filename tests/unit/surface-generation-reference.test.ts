@@ -8,6 +8,8 @@ describe("Generated profile reference", () => {
     expect(reference.format).toBe("GeneratedSiteBundle v3");
     expect(reference.css.arbitrarySelectorsAndLayout).toBe(true);
     expect(reference.contract.join(" ")).toContain("Do not compose Buildmates components");
+    expect(reference.contract.join(" ")).toContain("Do not size page sections with vh, svh, lvh, or dvh");
+    expect(reference.contract.join(" ")).toContain("representative QA checkpoints and initial loading estimates, not fixed canvases");
     expect(Buffer.byteLength(JSON.stringify(reference), "utf8")).toBeLessThan(16_000);
   });
 

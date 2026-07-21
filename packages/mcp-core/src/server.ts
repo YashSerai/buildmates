@@ -358,11 +358,11 @@ export const buildmatesToolRegistry: readonly ToolDefinition[] = [
       } : null,
       visualQa: surface.value.kind === "profile" ? {
         requiredBeforeReady: true,
-        viewports: [{ name: "desktop", width: 1440, height: 1000 }, { name: "phone", width: 390, height: 844 }],
+        viewports: [{ name: "desktop checkpoint", width: 1440, height: 1000 }, { name: "phone checkpoint", width: 390, height: 844 }],
         compareAgainst: "the approved person-specific direction, the chosen references' level of authorship, and the available approved media",
         critiqueAxes: ["philosophy", "hierarchy", "execution", "specificity", "restraint", "variety"],
         minimumAxisScore: 3,
-        inspect: ["distinctive full-page composition", "one coherent visual world", "one person-specific signature", "reference-quality hierarchy and pacing", "honest project treatment", "no repeated project content", "no generic filler", "no unmotivated decoration", "no known AI-design default stacks", "no excessive dead space", "alignment and gutters", "clipping and overflow", "readable column widths", "contrast and focus", "content visible without animation", "reduced-motion behavior"],
+        inspect: ["distinctive full-page composition", "one coherent visual world", "one person-specific signature", "reference-quality hierarchy and pacing", "honest project treatment", "no repeated project content", "no generic filler", "no unmotivated decoration", "no known AI-design default stacks", "no excessive dead space", "no empty opening before the main identity unless approved visual media genuinely occupies it", "no vertical viewport units for continuous-page section heights", "fluid reflow at intermediate widths rather than a fixed checkpoint canvas", "alignment and gutters", "clipping and overflow", "readable column widths", "contrast and focus", "content visible without animation", "reduced-motion behavior"],
         onFailure: "A valid JSON document is not a visually approved page. Reject and revise a page with any critique score below three, repeated or filler content, unrelated decoration, incoherent visual worlds, excessive dead space, accidental clipping, weak mobile reflow, or material weakness against the selected references. Do not tell the user it is ready until both screenshots pass.",
       } : null,
       constraints: {

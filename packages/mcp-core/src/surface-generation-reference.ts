@@ -21,6 +21,8 @@ export function surfaceComponentReference(trustedComponents: readonly string[]):
       "Render current public data with {{binding.key}}. Render arrays with <template data-buildmates-repeat=\"binding.key\"> and item tokens such as {{item.title}}, {{item.summary}}, {{item.href}}, {{item.label}}, and {{item.value}}.",
       "Every declared content binding must appear. Images may use only exact approvedAssets src paths. CSS url() values may use only those same paths.",
       "Include real desktop and phone layout rules plus @media (prefers-reduced-motion: reduce). Content must be visible without animation.",
+      "Generated profiles are continuous auto-height documents. Do not size page sections with vh, svh, lvh, or dvh; use content sizing, rem, px, percentages of width, or width-based clamp values so the iframe cannot manufacture empty vertical space.",
+      "The saved desktop and phone dimensions are representative QA checkpoints and initial loading estimates, not fixed canvases. The page must reflow fluidly at every intermediate and larger viewport width.",
       "Use validate_surface_spec once before submission. Repair exact returned paths rather than reducing the design to a preset.",
     ],
     html: {

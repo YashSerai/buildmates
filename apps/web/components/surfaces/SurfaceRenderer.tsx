@@ -14,10 +14,10 @@ export function SurfaceRenderer(props: SurfaceRendererProps) {
     const resize = () => {
       const document = frame.contentDocument;
       if (!document?.documentElement) return;
-      // Measure against the trusted minimum viewport, not the frame's previous
-      // content height. Generated pages may legitimately use vh/min-height:
-      // 100%; measuring those against an already-expanded iframe creates an
-      // unbounded resize feedback loop.
+      // Collapse the frame before measuring so its previous content height
+      // cannot feed back into the document. Generated pages are fluid,
+      // continuous documents; the saved responsive heights are metadata rather
+      // than a canvas enforced by the renderer.
       frame.style.height = "0px";
       const height = Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight ?? 0);
       if (height > 0) frame.style.height = `${height}px`;

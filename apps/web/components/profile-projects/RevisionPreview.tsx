@@ -99,7 +99,9 @@ export function RevisionPreview() {
   }
 
   const privatePreview = data?.history.find(
-    (revision) => revision.id !== data.surface.publishedRevisionId,
+    (revision) =>
+      revision.status === "draft" &&
+      revision.baseRevisionNumber === data.surface.publishedRevisionNumber,
   );
   const publishedRevision = data?.history.find(
     (revision) => revision.id === data.surface.publishedRevisionId,
@@ -281,9 +283,9 @@ export function RevisionPreview() {
                     const published = data.surface.publishedRevisionId === revision.id;
                     const currentPrivatePreview = revision.id === privatePreview?.id;
                     const label = published
-                      ? "Published"
+                      ? `Published · Version ${revision.revisionNumber}`
                       : currentPrivatePreview
-                        ? "Current private preview"
+                        ? `Current private preview · Version ${revision.revisionNumber}`
                         : `Private version ${revision.revisionNumber}`;
                     return (
                       <li key={revision.id}>

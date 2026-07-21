@@ -18,15 +18,10 @@
   border: 0;
   display: block;
   width: 100%;
-  min-height: var(--surface-generated-desktop-height);
+  height: 600px;
+  min-height: 0;
   overflow: hidden;
   background: transparent;
-}
-
-@media (max-width: 600px) {
-  .renderer:global(.surface-generated-site) {
-    min-height: var(--surface-generated-phone-height);
-  }
 }
 .renderer:global(.surface-width-narrow) {
   --surface-content-width: 46rem;

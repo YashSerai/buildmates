@@ -34,7 +34,6 @@ export function SurfaceRendererCore({ spec: input, bindings, onAction, state = "
         sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
         referrerPolicy="no-referrer"
         srcDoc={srcDoc}
-        style={{ "--surface-generated-desktop-height": `${spec.responsive.desktopMinHeight}px`, "--surface-generated-phone-height": `${spec.responsive.phoneMinHeight}px` } as CSSProperties}
     />;
   }
   const shell = spec ?? SAFE_SHELL;

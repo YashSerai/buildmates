@@ -1,5 +1,5 @@
 export type RenderedSurfaceIssue = {
-  code: "clipped_text" | "low_contrast" | "small_text" | "horizontal_overflow";
+  code: "clipped_text" | "low_contrast" | "small_text" | "horizontal_overflow" | "opening_dead_space";
   message: string;
 };
 
@@ -12,6 +12,7 @@ export function auditRenderedSurface(root: HTMLElement): RenderedSurfaceIssue[] 
   const iframe = root.querySelector<HTMLIFrameElement>("iframe.surface-generated-site");
   const generatedRoot = iframe?.contentDocument?.body ?? null;
   if (generatedRoot && generatedRoot.scrollWidth > generatedRoot.clientWidth + 1) add({ code: "horizontal_overflow", message: "The generated page extends beyond its preview width." });
+  if (generatedRoot && hasEmptyOpeningComposition(generatedRoot)) add({ code: "opening_dead_space", message: "The opening leaves too much empty space before the main profile content." });
   const auditRoot = generatedRoot ?? root;
   for (const element of auditRoot.querySelectorAll<HTMLElement>("h1,h2,h3,h4,h5,h6,p,li,dt,dd,a,button,strong,span")) {
     if (!isVisibleText(element)) continue;
@@ -31,6 +32,21 @@ export function auditRenderedSurface(root: HTMLElement): RenderedSurfaceIssue[] 
     }
   }
   return issues;
+}
+
+function hasEmptyOpeningComposition(root: HTMLElement) {
+  const heading = root.querySelector<HTMLElement>("h1");
+  const opening = heading?.closest<HTMLElement>("header,section,article,main");
+  if (!heading || !opening) return false;
+  const openingRect = opening.getBoundingClientRect();
+  const headingRect = heading.getBoundingClientRect();
+  if (openingRect.height < 640 || openingRect.width < 280) return false;
+  const style = getComputedStyle(opening);
+  const hasVisual = style.backgroundImage !== "none" || Boolean(opening.querySelector("img,picture,figure"));
+  if (hasVisual) return false;
+  const emptyBeforeHeading = headingRect.top - openingRect.top;
+  const maximumIntentionalGap = Math.max(320, Math.min(640, openingRect.width * 0.45));
+  return emptyBeforeHeading > maximumIntentionalGap && emptyBeforeHeading / openingRect.height > 0.45;
 }
 
 function isVisibleText(element: HTMLElement) {

@@ -10,6 +10,18 @@ const stylesUrl = new URL(
   "../components/profile-projects/ProductForms.module.css",
   import.meta.url,
 );
+const qualityUrl = new URL(
+  "../src/client/surface-quality.ts",
+  import.meta.url,
+);
+const rendererUrl = new URL(
+  "../components/surfaces/SurfaceRenderer.tsx",
+  import.meta.url,
+);
+const rendererStylesUrl = new URL(
+  "../components/surfaces/SurfaceRenderer.module.css",
+  import.meta.url,
+);
 
 test("profile design workspace keeps the intro, actions, preview, and history on one axis", async () => {
   const [component, styles] = await Promise.all([
@@ -30,7 +42,10 @@ test("profile design workspace distinguishes private previews from published ver
 
   assert.match(component, /Only you can see this version\./);
   assert.match(component, /Publishing replaces the page people see at your public profile link\./);
-  assert.match(component, /const label = published\s*\? "Published"/);
+  assert.match(component, /revision\.status === "draft"/);
+  assert.match(component, /revision\.baseRevisionNumber === data\.surface\.publishedRevisionNumber/);
+  assert.match(component, /Published · Version \$\{revision\.revisionNumber\}/);
+  assert.match(component, /Current private preview · Version \$\{revision\.revisionNumber\}/);
   assert.match(component, /You review every version\s+before it goes live\./);
   assert.match(component, /otherwise use Hallmark/);
   assert.match(component, /first direction/);
@@ -46,4 +61,27 @@ test("profile design workspace keeps actions and history usable on phones", asyn
   assert.match(styles, /\.designWorkspaceHeader\s*\{\s*grid-template-columns:\s*1fr;/s);
   assert.match(styles, /\.currentDesignActions button\s*\{\s*width:\s*100%;/s);
   assert.match(styles, /\.designHistory > li\s*\{\s*padding-block:\s*\.85rem;/s);
+});
+
+test("profile design quality gate rejects an empty opening composition", async () => {
+  const quality = await readFile(qualityUrl, "utf8");
+
+  assert.match(quality, /opening_dead_space/);
+  assert.match(quality, /hasEmptyOpeningComposition/);
+  assert.match(quality, /emptyBeforeHeading \/ openingRect\.height > 0\.45/);
+  assert.match(quality, /opening\.querySelector\("img,picture,figure"\)/);
+});
+
+test("generated profile frames measure their content instead of enforcing design dimensions", async () => {
+  const [renderer, styles] = await Promise.all([
+    readFile(rendererUrl, "utf8"),
+    readFile(rendererStylesUrl, "utf8"),
+  ]);
+
+  assert.match(renderer, /document\.documentElement\.scrollHeight/);
+  assert.match(renderer, /frame\.style\.height = `\$\{height\}px`/);
+  assert.doesNotMatch(renderer, /--surface-generated-desktop-height/);
+  assert.doesNotMatch(renderer, /--surface-generated-phone-height/);
+  assert.match(styles, /\.renderer:global\(\.surface-generated-site\)\s*\{[^}]*height:\s*600px;[^}]*min-height:\s*0;/s);
+  assert.doesNotMatch(styles, /var\(--surface-generated-(?:desktop|phone)-height\)/);
 });
