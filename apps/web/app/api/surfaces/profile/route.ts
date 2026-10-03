@@ -87,12 +87,12 @@ export async function GET() {
         .bind(user.id)
         .all<{ id: string; title: string; summary: string; slug: string }>(),
       DB.prepare(
-        "SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' ORDER BY field_key",
+        "SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' AND source_status='confirmed' AND cohort_scope_id IS NULL ORDER BY field_key",
       )
         .bind(profile.id)
         .all<{ key: string; valueJson: string }>(),
       DB.prepare(
-        "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' ORDER BY updated_at DESC LIMIT 20",
+        "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' AND published_at IS NOT NULL AND deleted_at IS NULL AND cohort_scope_id IS NULL ORDER BY updated_at DESC LIMIT 20",
       )
         .bind(user.id)
         .all<{ id: string; title: string; summary: string; slug: string }>(),

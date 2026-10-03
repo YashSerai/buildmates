@@ -1,4 +1,3 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { DEFAULT_MODULE_APPEARANCE, DESIGN_POLICY_VERSION, type SurfaceSpecV2 } from "@buildmates/surfaces";
@@ -18,6 +17,7 @@ import {
   updateCircleModuleEntry,
   voteCircleProposal,
 } from "../../apps/web/src/circles/service";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 const circleDesignSpec: SurfaceSpecV2 = {
   schemaVersion: "2",
@@ -58,15 +58,12 @@ const circleDesignSpec: SurfaceSpecV2 = {
 describe("Circle governance and privacy", () => {
   let mf: Miniflare;
   let DB: D1Database;
-  const now = Date.parse("2026-07-18T12:00:00Z");
+  const now = Date.parse("2026-10-02T12:00:00Z");
 
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default {fetch(){return new Response('ok')}}", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    for (const file of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
     await DB.prepare("INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('owner','active','none',?,?),('member','active','none',?,?),('stranger','active','none',?,?)").bind(now,now,now,now,now,now).run();
     await DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,audience,allow_matching,created_at,updated_at) VALUES ('po','owner','Owner','Builds retrieval systems','public',1,?,?),('pm','member','Member','Builds evaluation tools','public',1,?,?),('ps','stranger','Stranger','Not invited','public',1,?,?)").bind(now,now,now,now,now,now).run();
   });
@@ -84,6 +81,21 @@ describe("Circle governance and privacy", () => {
     expect(await getCircle(DB,circle.id,"stranger")).toBeNull();
     await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+3});
     expect((await getCircle(DB,circle.id,"member"))?.members).toHaveLength(2);
+  });
+
+  it("rate limits Circle creation at the shared service boundary", async () => {
+    for (let index = 0; index < 5; index += 1) {
+      await createCircle(DB, { actorId: "owner", name: `Circle ${index}`, purpose: "A bounded Circle creation test.", governanceMode: "admin", now: now + index });
+    }
+    await expect(createCircle(DB, { actorId: "owner", name: "Circle 6", purpose: "This creation should be throttled.", governanceMode: "admin", now: now + 6 })).rejects.toThrow("circle_create_rate_limited");
+  });
+
+  it("rate limits repeated Circle invitations at the shared service boundary", async () => {
+    const circle = await createCircle(DB, { actorId: "owner", name: "Invitation limits", purpose: "Bound repeated Circle invitations.", governanceMode: "admin", now });
+    for (let index = 0; index < 30; index += 1) {
+      await inviteCircleMember(DB, { actorId: "owner", circleId: circle.id, userId: "member", now: now + index + 1 });
+    }
+    await expect(inviteCircleMember(DB, { actorId: "owner", circleId: circle.id, userId: "member", now: now + 31 })).rejects.toThrow("circle_invite_rate_limited");
   });
 
   it("requires an admin to publish in admin governance and activates a module once", async () => {

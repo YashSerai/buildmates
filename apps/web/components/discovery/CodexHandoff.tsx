@@ -7,6 +7,7 @@ import styles from "./CodexHandoff.module.css";
 type CodexHandoffProps = {
   className?: string;
   label?: string;
+  pasteTarget?: string;
 };
 
 const subscribeToHydration = () => () => {};
@@ -14,6 +15,7 @@ const subscribeToHydration = () => () => {};
 export function CodexHandoff({
   className,
   label = "Set up with Codex",
+  pasteTarget = "a new Codex task",
 }: CodexHandoffProps) {
   const [status, setStatus] = useState("");
   const [open, setOpen] = useState(false);
@@ -68,7 +70,7 @@ export function CodexHandoff({
     setOpen(true);
     try {
       await navigator.clipboard.writeText(BUILDMATES_SETUP_PROMPT);
-      setStatus("Copied to your clipboard. Paste it into a new Codex task.");
+      setStatus(`Copied to your clipboard. Paste it into ${pasteTarget}.`);
     } catch {
       setStatus("Clipboard access was blocked. Select the prompt below to copy it.");
     }

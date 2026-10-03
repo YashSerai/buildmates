@@ -3,8 +3,8 @@
 import { useState } from "react";
 import styles from "./onboarding.module.css";
 import {
-  BUILDMATES_APP_URL,
   BUILDMATES_CONTINUE_SETUP_PROMPT,
+  BUILDMATES_INSTALL_URL,
   BUILDMATES_SETUP_PROMPT,
 } from "../../src/product/codex-setup";
 
@@ -25,14 +25,14 @@ export function CodexSetupActions({ complete, hasProgress }: { complete: boolean
 
   return (
     <div className={styles.codexActions}>
-      <a className={styles.primaryLink} href={BUILDMATES_APP_URL} target="_blank" rel="noreferrer">
-        {complete ? "Open Buildmates in Codex" : "Continue setup in Codex"}
+      <a className={styles.primaryLink} href={BUILDMATES_INSTALL_URL} target="_blank" rel="noreferrer">
+        {complete ? "Open setup guide" : "Continue in ChatGPT or Codex"}
       </a>
       <button className={styles.secondaryButton} type="button" onClick={copyPrompt}>
         Copy setup prompt
       </button>
       <label className={styles.promptField}>
-        <span>Prompt to use in Codex</span>
+        <span>Prompt to use in ChatGPT or Codex</span>
         <textarea value={prompt} readOnly rows={7} onFocus={(event) => event.currentTarget.select()} />
       </label>
       <p className={styles.copyStatus} role="status" aria-live="polite">{copyStatus}</p>

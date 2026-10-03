@@ -42,7 +42,7 @@ async function main() {
       .first<{ id: string; version: number }>();
     assert.ok(taxonomy);
     await DB.batch([
-      DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES(?,'active','none',?,?)").bind(viewerId, now, now),
+      DB.prepare("INSERT INTO users(id,status,operator_role,data_origin,created_at,updated_at) VALUES(?,'active','none','qa_fixture',?,?)").bind(viewerId, now, now),
       DB.prepare("INSERT INTO handles(user_id,handle,normalized_handle,created_at) VALUES(?,'yashns','yashns',?)").bind(viewerId, now),
       DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES('fixture_yashns_profile',?,'Yash Serai','Builds AI-native products.','Buildmates','[]','public',1,'manual',1,?,?,?)").bind(viewerId, now, now, now),
       DB.prepare("INSERT INTO builder_match_index(user_id,version,taxonomy_version_id,topics_json,tools_json,domains_json,stages_json,intents_json,updated_at) VALUES(?,3,?,'[\"ai-agents\",\"mcp\"]','[]','[]','[\"building\"]','[]',?)").bind(viewerId, taxonomy.id, now),

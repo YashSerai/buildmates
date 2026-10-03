@@ -65,6 +65,7 @@ const ERROR_MESSAGES: Readonly<Record<string, string>> = {
   payload_too_large: "This entry is too large. Shorten it and try again.",
   account_assets_unavailable: "Your account assets could not be reached. Try again.",
   account_deletion_conflict: "Account deletion could not start. Try again.",
+  actor_not_active: "Your Buildmates account is unavailable for changes.",
 };
 
 export function userFacingError(value: unknown, fallback: string): string {

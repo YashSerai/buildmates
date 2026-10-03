@@ -1,7 +1,7 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getProfileByHandle, getProjectBySlug, publishProfile, saveProfile } from "../../apps/web/src/profile-projects/service";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 it("exports a server-owned profile projection boundary", async () => {
   const service =
@@ -35,16 +35,7 @@ describe("profile field audience projection", () => {
       compatibilityDate: "2026-05-22",
     });
     db = (await mf.getD1Database("DB")) as D1Database;
-    for (const name of (await readdir("apps/web/drizzle"))
-      .filter((name) => name.endsWith(".sql"))
-      .sort()) {
-      const sql = await readFile(`apps/web/drizzle/${name}`, "utf8");
-      for (const statement of sql
-        .split("--> statement-breakpoint")
-        .map((value) => value.trim())
-        .filter(Boolean))
-        await db.prepare(statement).run();
-    }
+    await applyD1Migrations(db);
     const now = Date.now();
     for (const id of ["owner", "viewer"])
       await db
@@ -67,6 +58,7 @@ describe("profile field audience projection", () => {
       .run();
     for (const [key, audience] of [
       ["public_fact", "public"],
+      ["generated_public_fact", "public"],
       ["member_fact", "signed_in"],
       ["secret_fact", "private"],
     ])
@@ -76,6 +68,7 @@ describe("profile field audience projection", () => {
         )
         .bind(key, JSON.stringify(key), audience, now)
         .run();
+    await db.prepare("UPDATE profile_fields SET source_status='generated' WHERE profile_id='profile-owner' AND field_key='generated_public_fact'").run();
   });
   afterEach(async () => mf.dispose());
   it("does not return unauthorized rows to anonymous or signed-in viewers", async () => {
@@ -83,14 +76,16 @@ describe("profile field audience projection", () => {
     expect(anonymous?.fields.map((field) => field.key)).toEqual([
       "public_fact",
     ]);
+    expect(JSON.stringify(anonymous)).not.toContain("generated_public_fact");
     expect(JSON.stringify(anonymous)).not.toContain("secret_fact");
     const signedIn = await getProfileByHandle(db, "owner", "viewer");
     expect(signedIn?.fields.map((field) => field.key)).toEqual([
       "member_fact",
       "public_fact",
     ]);
+    expect(JSON.stringify(signedIn)).not.toContain("generated_public_fact");
     const owner = await getProfileByHandle(db, "owner", "owner");
-    expect(owner?.fields).toHaveLength(3);
+    expect(owner?.fields).toHaveLength(4);
   });
   it("keeps public drafts private until they become active", async () => {
     const now=Date.now();

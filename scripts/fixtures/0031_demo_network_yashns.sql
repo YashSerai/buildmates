@@ -16,8 +16,8 @@ WITH viewer AS (
 ), candidates(user_id) AS (
   VALUES ('demo_network_user_amina'),('demo_network_user_marcus'),('demo_network_user_noor'),('demo_network_user_rowan')
 )
-INSERT OR IGNORE INTO users(id,status,operator_role,created_at,updated_at)
-SELECT candidates.user_id,'active','none',unixepoch()*1000,unixepoch()*1000 FROM candidates,viewer;
+INSERT OR IGNORE INTO users(id,status,operator_role,data_origin,created_at,updated_at)
+SELECT candidates.user_id,'active','none','qa_fixture',unixepoch()*1000,unixepoch()*1000 FROM candidates,viewer;
 --> statement-breakpoint
 UPDATE users SET status='active',deleted_at=NULL,updated_at=unixepoch()*1000
 WHERE id IN ('demo_network_user_amina','demo_network_user_marcus','demo_network_user_noor','demo_network_user_rowan')

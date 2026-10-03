@@ -1,5 +1,18 @@
 import { createHash, randomBytes } from "node:crypto";
 import { resolveCanonicalCity } from "@buildmates/domain";
+import {
+  aggregateProfilePredicate,
+  aggregateProjectPredicate,
+} from "./aggregate-eligibility";
+
+export {
+  aggregateProfilePredicate,
+  aggregateProjectPredicate,
+  publicAggregateProfilePredicate,
+  publicAggregateProjectPredicate,
+} from "./aggregate-eligibility";
+export type { AggregateScope } from "./aggregate-eligibility";
+import type { AggregateScope } from "./aggregate-eligibility";
 
 export type DiscoveryBuilder = {
   userId: string;
@@ -339,11 +352,17 @@ export async function listDiscovery(
 export async function listLocationGroups(
   db: D1Database,
   viewerId: string | null,
+  options: { scope?: AggregateScope } = {},
 ) {
   void viewerId;
+  const scope = options.scope ?? "public";
+  const mapProfileEligibility = aggregateProfilePredicate("p", "u", {
+    requireMapOptIn: true,
+    scope,
+  });
   const profiles = await db
     .prepare(
-      `SELECT p.user_id AS userId,p.coarse_location AS location FROM profiles p JOIN users u ON u.id=p.user_id WHERE u.status='active' AND p.location_map_opt_in=1 AND p.coarse_location IS NOT NULL AND trim(p.coarse_location)<>'' LIMIT 5000`,
+      `SELECT p.user_id AS userId,p.coarse_location AS location FROM profiles p JOIN users u ON u.id=p.user_id WHERE ${mapProfileEligibility} AND p.coarse_location IS NOT NULL AND trim(p.coarse_location)<>'' LIMIT 5000`,
     )
     .all<{ userId: string; location: string }>();
   const cityByUser = new Map<string, string>();
@@ -380,12 +399,28 @@ export async function listLocationGroups(
     const [projects, connections] = await Promise.all([
       db
         .prepare(
-          "SELECT x.id,x.owner_user_id AS userId FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id WHERE p.location_map_opt_in=1 AND x.status='active' LIMIT 10000",
+          `SELECT x.id,x.owner_user_id AS userId FROM projects x JOIN profiles p ON p.user_id=x.owner_user_id JOIN users u ON u.id=x.owner_user_id WHERE ${aggregateProjectPredicate("x", "p", "u", { scope })} AND p.location_map_opt_in=1 LIMIT 10000`,
         )
         .all<{ id: string; userId: string }>(),
       db
         .prepare(
-          "SELECT cs.connection_id AS connectionId,cs.user_id AS userId FROM connection_sides cs JOIN connections c ON c.id=cs.connection_id JOIN profiles p ON p.user_id=cs.user_id WHERE p.location_map_opt_in=1 AND c.state='active' LIMIT 20000",
+          `WITH eligible_connections AS (
+            SELECT cs.connection_id AS connectionId
+            FROM connection_sides cs
+            JOIN profiles p ON p.user_id=cs.user_id
+            JOIN users u ON u.id=cs.user_id
+            WHERE ${mapProfileEligibility}
+            GROUP BY cs.connection_id
+            HAVING count(*)=2
+          )
+          SELECT cs.connection_id AS connectionId,cs.user_id AS userId
+          FROM connection_sides cs
+          JOIN connections c ON c.id=cs.connection_id AND c.state='active'
+          JOIN profiles p ON p.user_id=cs.user_id
+          JOIN users u ON u.id=cs.user_id
+          JOIN eligible_connections ec ON ec.connectionId=cs.connection_id
+          WHERE ${mapProfileEligibility}
+          LIMIT 20000`,
         )
         .all<{ connectionId: string; userId: string }>(),
     ]);
@@ -416,17 +451,21 @@ export async function listLocationGroups(
     .slice(0, 80);
 }
 
-export async function getBuildGraph(db: D1Database, viewerId: string | null) {
+export async function getBuildGraph(
+  db: D1Database,
+  viewerId: string | null,
+  options: { scope?: AggregateScope } = {},
+) {
   void viewerId;
+  const scope = options.scope ?? "public";
+  // Anonymous graph contributions must have an explicit public project
+  // audience. Profile topic contributions are matching context without an
+  // audience marker and cannot prove public disclosure.
   const contributions = `WITH RECURSIVE base_contributions AS (
     SELECT x.owner_user_id AS user_id,'project:'||x.id AS contribution_id,pti.taxonomy_item_id AS topic_id,x.updated_at AS updated_at,1 AS is_project
     FROM project_taxonomy_items pti JOIN projects x ON x.id=pti.project_id JOIN users u ON u.id=x.owner_user_id
-    WHERE pti.kind='topic' AND x.status='active' AND u.status='active'
-    UNION ALL
-    SELECT c.user_id,'profile:'||c.user_id,c.topic_id,c.updated_at,0 FROM profile_topic_contributions c JOIN users u ON u.id=c.user_id WHERE u.status='active'
-    UNION ALL
-    SELECT w.user_id,'signal:'||w.id,topic.value,w.updated_at,0 FROM work_signals w JOIN users u ON u.id=w.user_id JOIN json_each(w.canonical_topic_ids_json) topic
-    WHERE u.status='active' AND w.approved_at IS NOT NULL AND w.revoked_at IS NULL AND w.expires_at>CAST(strftime('%s','now') AS INTEGER)*1000
+    JOIN profiles p ON p.user_id=x.owner_user_id
+    WHERE pti.kind='topic' AND ${aggregateProjectPredicate("x", "p", "u", { scope })}
   ), contributions(user_id,contribution_id,topic_id,updated_at,is_project) AS (
     SELECT user_id,contribution_id,topic_id,updated_at,is_project FROM base_contributions
     UNION
@@ -959,15 +998,21 @@ export async function revokeInvite(
   return { revoked: true };
 }
 export async function listInvites(db: D1Database, userId: string) {
+  return (await listInvitesPage(db,userId,null,50)).items;
+}
+export async function listInvitesPage(db: D1Database, userId: string, after: string|null, limit=50): Promise<{items:Array<Record<string,unknown>>;nextCursor:string|null}> {
   await assertActiveUser(db, userId);
+  const bounded=Math.max(1,Math.min(100,limit)),cursor=parseInviteCursor(after);
   const rows = await db
     .prepare(
-      "SELECT id,kind,target_id AS targetId,maximum_uses AS maximumUses,use_count AS useCount,expires_at AS expiresAt,revoked_at AS revokedAt,created_at AS createdAt FROM invite_links WHERE creator_user_id=? ORDER BY created_at DESC LIMIT 50",
+      "SELECT id,kind,target_id AS targetId,maximum_uses AS maximumUses,use_count AS useCount,expires_at AS expiresAt,revoked_at AS revokedAt,created_at AS createdAt FROM invite_links WHERE creator_user_id=? AND (created_at<? OR (created_at=? AND id<?)) ORDER BY created_at DESC,id DESC LIMIT ?",
     )
-    .bind(userId)
+    .bind(userId,cursor.at,cursor.at,cursor.id,bounded+1)
     .all();
-  return rows.results;
+  const items=rows.results.slice(0,bounded) as Array<Record<string,unknown>>;
+  return {items,nextCursor:rows.results.length>bounded&&items.length?`i:${items[items.length-1]!.createdAt}:${encodeURIComponent(String(items[items.length-1]!.id))}`:null};
 }
+function parseInviteCursor(value:string|null){if(!value)return{at:Number.MAX_SAFE_INTEGER,id:"~"};if(!value.startsWith("i:"))throw new Error("invalid_invite_cursor");const parts=value.split(":");const at=Number(parts[1]);if(!Number.isSafeInteger(at)||at<0||!parts[2])throw new Error("invalid_invite_cursor");let id="";try{id=decodeURIComponent(parts.slice(2).join(":"))}catch{throw new Error("invalid_invite_cursor")}if(!id)throw new Error("invalid_invite_cursor");return{at,id}}
 export async function getInvite(db: D1Database, token: string) {
   return db
     .prepare(

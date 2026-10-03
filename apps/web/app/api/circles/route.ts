@@ -29,6 +29,7 @@ export async function POST(request: Request) {
     const { DB } = await getPlatformBindings();
     return Response.json(await createCircle(DB, { actorId: user.id, ...parsed.data, now: Date.now() }), { status: 201 });
   } catch (error) {
-    return Response.json({ error: error instanceof Error ? error.message : "circle_create_failed" }, { status: 400 });
+    const code = error instanceof Error ? error.message : "circle_create_failed";
+    return Response.json({ error: code }, { status: code === "circle_create_rate_limited" ? 429 : 400 });
   }
 }

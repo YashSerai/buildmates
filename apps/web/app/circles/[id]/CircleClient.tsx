@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { ModuleWorkspace } from "@/components/modules/ModuleWorkspace";
 import { useConfirmDialog } from "@/components/discovery/ConfirmDialog";
 import { SafetyReportDialog } from "@/components/safety/SafetyReportDialog";
@@ -28,7 +29,14 @@ export function CircleClient({
   const [message, setMessage] = useState("");
   const [chatBody, setChatBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
   const { confirm, confirmationDialog } = useConfirmDialog();
+
+  useEffect(() => {
+    let mounted = true;
+    void Promise.resolve().then(() => { if (mounted) setHydrated(true); });
+    return () => { mounted = false; };
+  }, []);
 
   async function command(body: Record<string, unknown>, success?: string) {
     setMessage("");
@@ -130,7 +138,7 @@ export function CircleClient({
 
   if (circle.membershipStatus === "invited")
     return (
-      <section className={styles.invitation}>
+      <section className={styles.invitation} data-hydrated={hydrated} aria-busy={!hydrated || busy}>
         <p className={styles.invitationContext}>Invitation to {circle.name}</p>
         <h2>Join this Circle?</h2>
         <p className={styles.invitationPurpose}>
@@ -143,7 +151,7 @@ export function CircleClient({
         </p>
         <div>
           <button
-            disabled={busy}
+            disabled={!hydrated || busy}
             onClick={() =>
               void command(
                 { action: "respond_invite", accept: true },
@@ -154,7 +162,7 @@ export function CircleClient({
             Join Circle
           </button>
           <button
-            disabled={busy}
+            disabled={!hydrated || busy}
             onClick={() =>
               void command(
                 { action: "respond_invite", accept: false },
@@ -192,7 +200,7 @@ export function CircleClient({
             ? "The member list, chat, and shared tools stay closed until every invited builder accepts."
             : "An invited builder declined, or the Circle was closed. Your one-to-one Connections are unchanged."}
         </p>
-        <a href="/circles">Return to Circles</a>
+        <Link href="/circles">Return to Circles</Link>
       </section>
     );
 
@@ -214,7 +222,7 @@ export function CircleClient({
     "circle.metrics": [],
   };
   return (
-    <div className={styles.layout} aria-busy={busy}>
+    <div className={styles.layout} data-hydrated={hydrated} aria-busy={!hydrated || busy}>
       {confirmationDialog}
       <section className={styles.chatPanel}>
         <div className={styles.heading}>
@@ -254,7 +262,7 @@ export function CircleClient({
               maxLength={4000}
             />
           </label>
-          <button disabled={busy || !chatBody.trim()}>
+          <button disabled={!hydrated || busy || !chatBody.trim()}>
             {busy ? "Sending..." : "Send"}
           </button>
         </form>
@@ -288,7 +296,7 @@ export function CircleClient({
                       {circle.role === "owner" &&
                         (member.role === "member" ? (
                           <button
-                            disabled={busy}
+                            disabled={!hydrated || busy}
                             onClick={() =>
                               void command({
                                 action: "manage_member",
@@ -301,7 +309,7 @@ export function CircleClient({
                           </button>
                         ) : (
                           <button
-                            disabled={busy}
+                            disabled={!hydrated || busy}
                             onClick={() =>
                               void command({
                                 action: "manage_member",
@@ -315,7 +323,7 @@ export function CircleClient({
                         ))}
                       {circle.role === "owner" && (
                         <button
-                          disabled={busy}
+                          disabled={!hydrated || busy}
                           onClick={async () => {
                             if (!(await confirm({
                               title: `Make ${member.displayName} the Circle owner?`,
@@ -334,7 +342,7 @@ export function CircleClient({
                         </button>
                       )}
                       <button
-                        disabled={busy}
+                        disabled={!hydrated || busy}
                         onClick={async () => {
                           if (!(await confirm({
                             title: `Remove ${member.displayName}?`,
@@ -363,12 +371,12 @@ export function CircleClient({
                 Invite by Buildmates handle
                 <input name="handle" placeholder="builder-handle" required />
               </label>
-              <button disabled={busy}>Send invitation</button>
+              <button disabled={!hydrated || busy}>Send invitation</button>
             </form>
           )}
           {circle.role !== "owner" && (
             <button
-              disabled={busy}
+              disabled={!hydrated || busy}
               className={styles.leaveButton}
               onClick={async () => {
                 if (!(await confirm({
@@ -400,6 +408,7 @@ export function CircleClient({
               </a>
               <button
                 type="button"
+                disabled={!hydrated || busy}
                 onClick={() =>
                   void navigator.clipboard
                     .writeText(circleDesignPrompt)
@@ -440,7 +449,7 @@ export function CircleClient({
                 required
               />
             </label>
-            <button disabled={busy}>
+            <button disabled={!hydrated || busy}>
               {busy ? "Saving..." : "Save request"}
             </button>
           </form>
@@ -478,7 +487,7 @@ export function CircleClient({
                       proposal.status === "voting" && (
                         <>
                           <button
-                            disabled={busy}
+                            disabled={!hydrated || busy}
                             onClick={() =>
                               void command(
                                 {
@@ -493,7 +502,7 @@ export function CircleClient({
                             Approve
                           </button>
                           <button
-                            disabled={busy}
+                            disabled={!hydrated || busy}
                             onClick={() =>
                               void command(
                                 {
@@ -511,7 +520,7 @@ export function CircleClient({
                       )}
                     {proposal.canPublish ? (
                       <button
-                        disabled={busy}
+                        disabled={!hydrated || busy}
                         onClick={() =>
                           void command(
                             { action: "publish", proposalId: proposal.id },
@@ -548,6 +557,7 @@ export function CircleClient({
         <section className={styles.disclosureBody}>
           {circle.modules.some((module) => module.active) ? (
             <ModuleWorkspace
+              disabled={!hydrated || busy}
               modules={circle.modules.filter((module) => module.active)}
               entries={entries}
               viewerUserId={circle.viewerUserId}

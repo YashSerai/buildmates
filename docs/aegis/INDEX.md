@@ -1,5 +1,7 @@
 # Buildmates Aegis Index
 
+The active post-hackathon program and restart authority are [chat-native delivery](../product/chat-native/INDEX.md) and its [current checkpoint](../product/chat-native/CURRENT.md). The July entries below are retained foundation and historical evidence; they are not the current execution tracker.
+
 ## Launch goal
 
 - `../../GOAL.md`

@@ -34,12 +34,12 @@ async function load(handle: string) {
         .bind(profile.id)
         .first<{ specJson: string }>(),
       DB.prepare(
-        "SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' ORDER BY field_key",
+        "SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' AND source_status='confirmed' AND cohort_scope_id IS NULL ORDER BY field_key",
       )
         .bind(profile.id)
         .all<{ key: string; valueJson: string }>(),
       DB.prepare(
-        "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' ORDER BY updated_at DESC LIMIT 20",
+        "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' AND published_at IS NOT NULL AND deleted_at IS NULL AND cohort_scope_id IS NULL ORDER BY updated_at DESC LIMIT 20",
       )
         .bind(profile.userId)
         .all<{ id: string; title: string; summary: string; slug: string }>(),
@@ -64,11 +64,11 @@ async function load(handle: string) {
   const currentWorkProjects =
     approvedDraftProjects.length || publicProjects.results.length
       ? []
-      : profile.fields.flatMap((field) =>
-          field.key === "current_work"
-            ? currentWorkProjectsValue(JSON.stringify(field.value))
-            : [],
-        );
+      : publicFields.results.flatMap((field) =>
+        field.key === "current_work"
+          ? currentWorkProjectsValue(field.valueJson)
+          : [],
+      );
   const surfaceProjects = dedupeProjects([
     ...approvedDraftProjects,
     ...publicProjects.results.map((project) => ({
@@ -245,27 +245,7 @@ export default async function BuilderPage({
   const { handle } = await params;
   const profile = await load(handle);
   if (!profile) notFound();
-  const factLabels: Record<string, string> = {
-    current_work: "Building now",
-    previous_work: "Previous work",
-    interests: "Interests",
-    ambitions: "Ambitions",
-    stage: "Current stage",
-    exploring: "Exploring",
-    offers: "Happy to share",
-    needs: "Would value",
-    networking_intent: "Interested in meeting",
-    cohorts: "Communities",
-  };
-  const facts = profile.fields
-    .filter((field) => field.key !== "projects")
-    .map((field) => ({
-      label:
-        factLabels[String(field.key)] ?? String(field.key).replaceAll("_", " "),
-      value: Array.isArray(field.value)
-        ? field.value.join(", ")
-        : String(field.value),
-    }));
+  const facts = profile.surfaceFacts;
   const ownProfile = profile.viewerId === profile.userId;
   const ownPublishedProfile = ownProfile && Boolean(profile.publishedSpec);
   const trustedActions = (

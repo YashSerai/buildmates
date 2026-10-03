@@ -1,4 +1,3 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { asUserId, type ProfileId } from "@buildmates/domain";
@@ -9,6 +8,7 @@ import {
   listApprovedProfileProjects,
   uploadSurfaceAsset,
 } from "../../apps/web/src/platform/surface-assets";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("structured profile project media", () => {
   let mf: Miniflare;
@@ -22,10 +22,7 @@ describe("structured profile project media", () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], r2Buckets: ["ASSETS"], compatibilityDate: "2026-05-22" });
     db = await mf.getD1Database("DB") as D1Database;
     bucket = await mf.getR2Bucket("ASSETS") as R2Bucket;
-    for (const migration of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((item) => item.trim()).filter(Boolean)) await db.prepare(statement).run();
-    }
+    await applyD1Migrations(db);
     const repositories = createD1Repositories(db as unknown as RepositoryD1);
     await repositories.users.create({ id: alice, status: "active", operatorRole: "none", createdAt: new Date(now) });
     await repositories.users.create({ id: bob, status: "active", operatorRole: "none", createdAt: new Date(now) });
@@ -48,6 +45,9 @@ describe("structured profile project media", () => {
       expect.objectContaining({ assetId: asset.id, projectId: "buildmates", projectTitle: "Buildmates", altText: "Dark Buildmates product interface" }),
     ]);
     await db.prepare("UPDATE profile_fields SET audience='private' WHERE profile_id='profile-media-draft' AND field_key='projects'").run();
+    await expect(listApprovedProfileMedia({ DB: db as unknown as RepositoryD1, actorId: alice })).resolves.toEqual([]);
+    await db.prepare("UPDATE profile_fields SET audience='public',source_status='generated' WHERE profile_id='profile-media-draft' AND field_key='projects'").run();
+    await expect(listApprovedProfileProjects({ DB: db as unknown as RepositoryD1, actorId: alice })).resolves.toEqual([]);
     await expect(listApprovedProfileMedia({ DB: db as unknown as RepositoryD1, actorId: alice })).resolves.toEqual([]);
   });
 });

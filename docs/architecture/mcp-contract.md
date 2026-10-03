@@ -12,16 +12,17 @@ Caller-selected IDs are always namespaced deterministically by the linked intern
 
 ## Identity and first run
 
-Every request requires a valid OAuth bearer with an opaque `mcp_sub`. Exactly two tools work before an active web identity link:
+Every request requires a valid OAuth bearer with an opaque `mcp_sub`. Three tools work before an active web identity link:
 
 - `get_link_url` returns the HTTPS web sign-in/approval page and no user data.
 - `complete_identity_link` is rate-limited and can only atomically consume a short-lived code for the current principal and workspace scope.
+- `get_setup_state` returns only the account-connection step until the principal has an active identity link.
 
 `get_link_url` opens the authenticated `/settings/connections` page. That page shows current connection state, explains the privacy boundary, creates a rate-limited ten-minute single-use code only after explicit approval, polls for completion, and supports user-scoped disconnection. It never renders provider subjects or connector credentials.
 
-After the link resolves, setup state automatically records `identity_link` complete. The remaining visible sequence is storage explanation, source selection, context collection, signal/privacy review, basic profile, page preview, Networking Pulse, acceptance mode, automation, and one real useful outcome: a canonical candidate batch, active follow/watch, or invite. Writes are ordered and idempotent; the state is resumable from web or Codex.
+After the link resolves, setup state automatically records `identity_link` complete. The remaining visible sequence is storage explanation, source selection, context collection, signal/privacy review, basic profile, page choice, Networking Pulse, acceptance mode, and optional Work Pulse. Page choice `later` completes private signup; disabled/manual Work Pulse completes signup without a background task. Writes are ordered and idempotent; state is resumable from ChatGPT, Codex, or the web.
 
-Sparse setup accepts focused answers, a manual profile, one repository/project, a pasted description, or portfolio/GitHub/LinkedIn/project URLs. The recommended rich path is a permissioned Codex-workspace review of host-visible recent tasks, selected project folders, and selected local GBrain or memory files. Codex maintains `.buildmates/profile-context.md` locally for compaction continuity; raw research and full source material are never uploaded. Buildmates receives only the complete structured profile the user reviews. Saving intended public visibility does not publish it: `published_at` remains null until the owner approves a valid private Surface revision, while an approved private draft can satisfy the basic-profile checkpoint.
+Context collection accepts focused answers, a manual profile, one selected repository/project, a pasted description, or portfolio/GitHub/LinkedIn/project URLs. In Codex, the user may approve specific local projects or notes. In ChatGPT, use the current conversation and explicitly selected accessible sources. Neither host is assumed to expose all history or files. Buildmates receives only reviewed structured facts. Saving intended public visibility does not publish a profile: `published_at` remains null until explicit owner publication, while an approved private draft can satisfy the basic-profile checkpoint.
 
 ## Source and data boundary
 
@@ -31,7 +32,7 @@ Strict Zod objects are passed intact to the MCP SDK, so unknown keys are rejecte
 
 ## Public tools
 
-The 39-tool registry covers:
+The canonical registry is `buildmatesToolRegistry` in `packages/mcp-core/src/server.ts`. It covers:
 
 - linking: `get_link_url`, `complete_identity_link`;
 - setup and sources: `get_setup_state`, `complete_setup_step`, `get_source_preferences`, `save_source_preference`;
@@ -39,9 +40,14 @@ The 39-tool registry covers:
 - growth/discovery: `create_invite_link`, `revoke_invite_link`, `set_follow_or_watch`, `get_candidate_shortlist`;
 - reciprocal matching: `record_candidate_evaluation`, `record_manual_match_response`;
 - relationships: `get_connections`, `update_connection`, `save_connection_private_note`, `get_connection_private_notes`, `schedule_connection_reminder`, `get_connection_reminders`, `get_room_summaries`, `get_circle_summaries`, `submit_intro_feedback`;
-- generated surfaces: `get_surface_generation_brief`, `validate_surface_spec`, `submit_surface_revision`, `decide_surface_revision`, `rollback_surface`;
+- generated surfaces: generation briefs, validation, owned image grants and media attachment, revision submission, `get_surface_revision`, `get_surface_history`, `get_surface_preview`, explicit governed decisions, and rollback;
 - scheduling: `prepare_calendar_handoff`, `attach_calendar_event`;
-- automations: `get_automation_checkpoint`, `update_automation_checkpoint`.
+- automations: `get_automation_checkpoint`, `update_automation_checkpoint`, `probe_automation_capability`;
+- chat operations: `get_buildmates_workspace` exposes bounded views. Four strict action tools cover account/privacy (`perform_buildmates_action`), projects (`perform_buildmates_project_action`), relationships (`perform_buildmates_relationship_action`), and Circles (`perform_buildmates_circle_action`). Each preserves its original action-specific validation and stays within the 16 KB schema budget. The service derives the actor; inputs cannot provide one.
+
+The embedded MCP Apps resource is `ui://buildmates/workspace/v1.html`, served as `text/html;profile=mcp-app`. It contains no account data and makes no direct network requests. Workspace results use `structuredContent`; the UI invokes the same authenticated tools through the host bridge. Generated previews are passive HTML/CSS rendered from authorized bindings. Image bytes arrive through an authenticated bounded R2/D1 read. Preview HTML is in tool-result `_meta`, outside model text, and rendered in a scriptless sandbox. Rendering never publishes a revision.
+
+Saving a requested Work Pulse or reporting a successful run does not prove a host task exists. Foreground capability probes return `approval_required` or `automation_unavailable`. Full Autopilot cannot activate from a foreground probe or an agent-reported checkpoint; a verified host-event implementation and real execution evidence remain a separate release gate.
 
 All linked mutations require idempotency keys. Evaluation, manual response, revision decisions, rollback, and Calendar attachment carry explicit confirmation inputs and consequential metadata. Collection reads use opaque ID cursors, default to 20 records, reject limits above 50, and return `nextCursor`; note and reminder pages apply Connection scope before cursor/limit. D1 uses direct indexed list queries rather than ID fan-out, and taxonomy sets use at most one bounded query per taxonomy table. Calendar preparation is read-only and audience-filtered. Calendar attachment accepts only a provider-confirmed minimal receipt: provider label/event ID, start/end, participant labels, and status.
 
@@ -57,7 +63,7 @@ The external Worker needs these Task 2 variables: `OAUTH_ISSUER`, `MCP_RESOURCE`
 
 The web deployment needs `MCP_TOPOLOGY=external`, `MCP_DELEGATION_PUBLIC_KEY_PEM`, and matching delegation issuer/audience values. Apply D1 migrations before enabling the registry route. OAuth clients must use exact registered redirect URIs and resource audience. The beta MCP supports stateless dynamic registration only for exact HTTP loopback IP redirects, requires PKCE S256, binds registration metadata in a signed client ID, rate-limits registration and authorization handoffs, and shows an explicit website consent screen before issuing a code.
 
-`plugin/.codex-plugin/plugin.json` references only `plugin/.app.json`; there is no `.mcp.json` or direct `mcpServers` registration. Until ChatGPT creates the real app, `.app.json` truthfully has no app entry. Set the returned `asdk_app_*` or `connector_*` value as `BUILDMATES_APP_ID` and run `node plugin/scripts/bind-app-registration.mjs`. The binder rejects synthetic IDs. App creation and clean-account connection are account-side release checks, not values inferred in source.
+The portable directory submission package lives in `plugin/`: `plugin.json`, `mcp.json`, skills, and branded assets. It declares the remote MCP endpoint directly. Compatibility manifests support the Codex package surface; `plugins/buildmates/` is a generated mirror, validated against the canonical package. `npm run plugin:check` validates references and mirror parity; `npm run plugin:package` creates an allowlisted deterministic ZIP. The legacy `.app.json` registration and binder were removed. Actual host installation, authorization, directory submission, and review acceptance require account-side evidence.
 
 ## Verification
 

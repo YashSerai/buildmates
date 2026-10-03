@@ -1,4 +1,3 @@
-import { readFile, readdir } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { exportPKCS8, exportSPKI, generateKeyPair } from "jose";
 import { Miniflare } from "miniflare";
@@ -11,6 +10,7 @@ import { createExternalMcpFetchHandler } from "../../apps/mcp/src/server";
 import { createMcpAuthorizationAssertion } from "../../apps/web/src/platform/mcp-authorization";
 import { createPrivateCapabilityRepository } from "../../packages/database/src/private-capability-repository";
 import { getIdentityConnectionStatus, revokeIdentityConnections } from "../../apps/web/src/platform/identity-connections";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("real local D1 platform boundaries", () => {
   let mf: Miniflare;
@@ -19,11 +19,7 @@ describe("real local D1 platform boundaries", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    const files = (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort();
-    for (const file of files) {
-      const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
   });
 
   afterEach(async () => { await mf.dispose(); });

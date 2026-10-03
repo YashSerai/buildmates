@@ -80,6 +80,8 @@ export type OnboardingSnapshot = {
     state: string;
     sourceLivenessReviewed: boolean;
     capability: "available" | "approval_required" | "automation_unavailable";
+    hostTaskConfirmed: false;
+    backgroundExecutionVerified: false;
     updatedAt: string;
   };
   lifecycle: Array<{
@@ -299,7 +301,9 @@ export async function getOnboardingSnapshot(
         ? {
             cadence: readCadence(automationState.cadence),
             enabled: Boolean(automationState.enabled),
-            state: String(automationState.state ?? "configured"),
+            state: automationState.enabled && readCadence(automationState.cadence) !== "manual" ? "requested" : "disabled",
+            hostTaskConfirmed: false,
+            backgroundExecutionVerified: false,
             sourceLivenessReviewed: Boolean(
               automationState.sourceLivenessReviewed,
             ),
@@ -529,6 +533,12 @@ export async function mutateOnboarding(
       allowMatching,
     });
   }
+  if (action === "skip_preview") {
+    const profile = await DB.prepare("SELECT id FROM profiles WHERE user_id=?").bind(userId).first<{ id: string }>();
+    if (!profile) throw new InputError("Review your profile before continuing.");
+    await completeStepInOrder(DB, userId, "page_preview");
+    return audit(DB, userId, "profile.page_deferred", "profile", profile.id, {});
+  }
   if (action === "approve_preview") {
     const profile = await DB.prepare("SELECT id,audience,allow_matching AS allowMatching FROM profiles WHERE user_id=?")
       .bind(userId)
@@ -675,18 +685,18 @@ export async function mutateOnboarding(
     const existingState = safeObject(existingRow?.stateJson??"{}");
     const connected = await hasActiveBuildmatesIdentityLink(DB,userId);
     const requestCapabilityRecheck = body.requestCapabilityRecheck === true;
-    const existingCapability = existingState.capability === "available" || existingState.capability === "approval_required" || existingState.capability === "automation_unavailable" ? existingState.capability : "approval_required";
+    const existingCapability = readCapability(existingState.capability);
     const capability = !connected ? "automation_unavailable" : requestCapabilityRecheck ? "approval_required" : existingCapability;
     const state = {
       cadence,
       enabled,
-      state: enabled ? "configured" : "disabled",
+      state: enabled ? "requested" : "disabled",
+      hostTaskConfirmed: false,
+      backgroundExecutionVerified: false,
       sourceLivenessReviewed,
       capability,
       checkedAt: capability === "available" && typeof existingState.checkedAt === "string" ? existingState.checkedAt : null,
       recheckRequestedAt: requestCapabilityRecheck ? new Date(now).toISOString() : null,
-      modelRecommendation: "Luna High",
-      initialGenerativeRecommendation: "GPT-5.6 Luna High",
     };
     await DB.prepare(
       "INSERT INTO automation_checkpoints (id,user_id,kind,cursor,state_json,updated_at) VALUES (?,?, 'buildmates',NULL,?,?) ON CONFLICT(user_id,kind) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at",
@@ -699,7 +709,7 @@ export async function mutateOnboarding(
       )
       .run();
     await completeStepIfCurrent(DB, userId, "automation");
-    return audit(DB, userId, "automation.configured", "user", userId, {
+    return audit(DB, userId, "automation.preferences_saved", "user", userId, {
       cadence,
       enabled,
       capability,
@@ -795,6 +805,11 @@ export async function runPrivacyCommand(
     await audit(DB, userId, "matching.paused", "user", userId, { until });
     return {};
   }
+  if (command === "resume_matching") {
+    await DB.prepare("DELETE FROM matching_snoozes WHERE user_id=? AND ends_at>? ").bind(userId, now).run();
+    await audit(DB, userId, "matching.resumed", "user", userId, {});
+    return {};
+  }
   if (command === "disable_autopilot") {
     await DB.prepare(
       "UPDATE profiles SET acceptance_mode='manual',updated_at=? WHERE user_id=?",
@@ -854,9 +869,9 @@ export async function recordTrustedAutomationCapability(
   checkedAt = Date.now(),
 ): Promise<void> {
   if (!Number.isFinite(checkedAt) || Math.abs(Date.now() - checkedAt) > 5 * 60_000) throw new InputError("Automation capability proof timestamp is invalid.");
-  if (capability === "available" && !(await hasActiveBuildmatesIdentityLink(DB,userId))) throw new ConflictError("Connect Buildmates before proving unattended automation.");
+  if (capability === "available") throw new ConflictError("A foreground connection cannot prove unattended automation.");
   const row=await DB.prepare("SELECT state_json AS stateJson FROM automation_checkpoints WHERE user_id=? AND kind='buildmates'").bind(userId).first<{stateJson:string}>();
-  const state={...safeObject(row?.stateJson??"{}"),capability,checkedAt:capability==="available"?iso(checkedAt):null,proofSource:capability==="available"?"mcp_delegated_probe":null,recheckRequestedAt:null};
+  const state={...safeObject(row?.stateJson??"{}"),capability,checkedAt:null,proofSource:null,recheckRequestedAt:null};
   await DB.prepare("INSERT INTO automation_checkpoints (id,user_id,kind,state_json,updated_at) VALUES (?,?,'buildmates',?,?) ON CONFLICT(user_id,kind) DO UPDATE SET state_json=excluded.state_json,updated_at=excluded.updated_at").bind(`automation_${stableIdSuffix(userId)}`,userId,JSON.stringify(state),checkedAt).run();
 }
 
@@ -1091,6 +1106,7 @@ function readCadence(value: unknown): AutomationCadence {
 function readCapability(
   value: unknown,
 ): "available" | "approval_required" | "automation_unavailable" {
+  if (value === "available") return "approval_required";
   return choice(
     value,
     ["available", "approval_required", "automation_unavailable"] as const,

@@ -143,12 +143,16 @@ export async function respondReconnect(DB:D1Database,input:{connectionId:string;
   const context=await connectionContext(DB,input.connectionId,input.userId);
   const request=await DB.prepare("SELECT requester_user_id AS requesterUserId FROM reconnect_requests WHERE id=? AND connection_id=? AND response='pending' LIMIT 1").bind(input.requestId,input.connectionId).first<{requesterUserId:string}>();
   if(!request||request.requesterUserId===input.userId)throw new Error("reconnect_not_found");
-  const statements=[DB.prepare("UPDATE reconnect_requests SET response=?,responded_at=? WHERE id=? AND connection_id=? AND requester_user_id<>? AND response='pending'").bind(input.response,input.now,input.requestId,input.connectionId,input.userId)];
+  // The response and the account-status check must be one compare-and-set.
+  // Account deletion can revoke a participant between the initial read and
+  // this write; an old pending request must never revive the relationship.
+  const statements=[DB.prepare("UPDATE reconnect_requests SET response=?,responded_at=? WHERE id=? AND connection_id=? AND requester_user_id<>? AND response='pending' AND EXISTS (SELECT 1 FROM connections active_connection JOIN match_pairs active_pair ON active_pair.id=active_connection.match_pair_id JOIN users active_a ON active_a.id=active_pair.user_a_id AND active_a.status='active' JOIN users active_b ON active_b.id=active_pair.user_b_id AND active_b.status='active' WHERE active_connection.id=? AND active_connection.id=reconnect_requests.connection_id)").bind(input.response,input.now,input.requestId,input.connectionId,input.userId,input.connectionId)];
   if(input.response==="accepted")statements.push(
-    DB.prepare("UPDATE connections SET state='active',ended_by_user_id=NULL,ended_at=NULL,updated_at=? WHERE id=? AND state='ended' AND EXISTS (SELECT 1 FROM reconnect_requests WHERE id=? AND connection_id=? AND response='accepted' AND responded_at=?)").bind(input.now,input.connectionId,input.requestId,input.connectionId,input.now),
-    DB.prepare("UPDATE rooms SET status='active',updated_at=? WHERE id=? AND status='ended' AND EXISTS (SELECT 1 FROM reconnect_requests WHERE id=? AND connection_id=? AND response='accepted' AND responded_at=?)").bind(input.now,context.roomId,input.requestId,input.connectionId,input.now),
+    DB.prepare("UPDATE connections SET state='active',ended_by_user_id=NULL,ended_at=NULL,updated_at=? WHERE id=? AND state='ended' AND EXISTS (SELECT 1 FROM reconnect_requests WHERE id=? AND connection_id=? AND response='accepted' AND responded_at=?) AND EXISTS (SELECT 1 FROM match_pairs active_pair JOIN users active_a ON active_a.id=active_pair.user_a_id AND active_a.status='active' JOIN users active_b ON active_b.id=active_pair.user_b_id AND active_b.status='active' WHERE active_pair.id=connections.match_pair_id)").bind(input.now,input.connectionId,input.requestId,input.connectionId,input.now),
+    DB.prepare("UPDATE rooms SET status='active',updated_at=? WHERE id=? AND status='ended' AND EXISTS (SELECT 1 FROM reconnect_requests WHERE id=? AND connection_id=? AND response='accepted' AND responded_at=?) AND EXISTS (SELECT 1 FROM connections active_connection JOIN match_pairs active_pair ON active_pair.id=active_connection.match_pair_id JOIN users active_a ON active_a.id=active_pair.user_a_id AND active_a.status='active' JOIN users active_b ON active_b.id=active_pair.user_b_id AND active_b.status='active' WHERE active_connection.id=? AND active_connection.id=rooms.connection_id)").bind(input.now,context.roomId,input.requestId,input.connectionId,input.now,input.connectionId),
   );
-  await DB.batch(statements);
+  const results=await DB.batch(statements);
+  if(!Number(results[0]?.meta.changes??0))throw new Error("reconnect_not_found");
   const won=await DB.prepare("SELECT response,responded_at AS respondedAt FROM reconnect_requests WHERE id=? AND connection_id=?").bind(input.requestId,input.connectionId).first<{response:string;respondedAt:number|null}>();
   if(!won||won.response!==input.response||won.respondedAt!==input.now)throw new Error("reconnect_not_found");
 }

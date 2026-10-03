@@ -1,11 +1,11 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { asUserId, type ProfileId } from "@buildmates/domain";
 import { createD1Repositories, type RepositoryD1 } from "@buildmates/database";
 import { DESIGN_POLICY_ID, DESIGN_POLICY_VERSION, seedDesignPolicy, surfaceSpecSchema, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
-import { listApprovedProfileMedia, MAX_SURFACE_ASSET_BYTES, readRequestBodyWithLimit, readSurfaceAsset, sanitizeSurfaceAssetUpload, uploadSurfaceAsset } from "../../apps/web/src/platform/surface-assets";
+import { listApprovedProfileMedia, loadSurfacePreviewAssets, MAX_SURFACE_ASSET_BYTES, readRequestBodyWithLimit, readSurfaceAsset, sanitizeSurfaceAssetUpload, uploadSurfaceAsset } from "../../apps/web/src/platform/surface-assets";
 import type { R2Like } from "../../apps/web/src/platform/r2";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("protected surface asset API service", () => {
   let mf: Miniflare;
@@ -19,10 +19,7 @@ describe("protected surface asset API service", () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], r2Buckets: ["ASSETS"], compatibilityDate: "2026-05-22" });
     db = await mf.getD1Database("DB") as D1Database;
     bucket = await mf.getR2Bucket("ASSETS") as R2Bucket;
-    for (const migration of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((item) => item.trim()).filter(Boolean)) await db.prepare(statement).run();
-    }
+    await applyD1Migrations(db);
     const repositories = createD1Repositories(db as unknown as RepositoryD1);
     await repositories.users.create({ id: alice, status: "active", operatorRole: "none", createdAt: new Date() });
     await repositories.users.create({ id: bob, status: "active", operatorRole: "none", createdAt: new Date() });
@@ -117,6 +114,18 @@ describe("protected surface asset API service", () => {
     const response = await readSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket: unavailableBucket, viewerId: alice, ownerId: alice, filename: asset.src.split("/").at(-1)! });
     expect(response.status).toBe(200);
     expect(new Uint8Array(await response.arrayBuffer())).toEqual(new Uint8Array(png));
+  });
+
+  it("loads only bounded, path-validated media for an in-band surface preview", async () => {
+    const png = validPng();
+    const asset = await uploadSurfaceAsset({ DB: db as unknown as RepositoryD1, bucket, actorId: alice, bytes: png, claimedContentType: "image/png" });
+    const source = asset.src;
+    const loaded = await loadSurfacePreviewAssets({ DB: db as unknown as RepositoryD1, bucket, userId: alice, surfaceId: "surface-preview", sources: [source] });
+    expect(loaded[source]).toMatchObject({ contentType: "image/png", base64: expect.any(String) });
+    expect(new Uint8Array(Buffer.from(loaded[source]!.base64, "base64"))).toEqual(new Uint8Array(png));
+    await expect(loadSurfacePreviewAssets({ DB: db as unknown as RepositoryD1, bucket, userId: alice, surfaceId: "surface-preview", sources: ["https://example.com/asset.png"] })).rejects.toThrow("surface_preview_media_invalid");
+    await db.prepare("INSERT INTO surface_assets (id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) VALUES ('preview-too-large',?,?,?,?,?,?)").bind(alice, `surface-assets/${alice}/${"c".repeat(64)}.png`, "image/png", 1_000_001, "c".repeat(64), Date.now()).run();
+    await expect(loadSurfacePreviewAssets({ DB: db as unknown as RepositoryD1, bucket, userId: alice, surfaceId: "surface-preview", sources: [`/api/surface-assets/${alice}/${"c".repeat(64)}.png`] })).rejects.toThrow("surface_preview_media_too_large");
   });
 
   it("offers only owner-bound media attached to currently public published projects", async () => {

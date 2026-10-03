@@ -19,8 +19,7 @@ test("a room offers one inline introduction review plus Codex and copy routes", 
   assert.match(room, /codex:\/\/open\?prompt=/);
   assert.match(room, /get_room_summaries/);
   assert.match(room, /submit_intro_feedback only after I answer/);
-  assert.match(room, /Do not claim to create or activate/);
-  assert.match(room, /both members must approve/);
+  assert.match(room, /proposal must still be accepted by every active room member before the tool activates/);
   assert.doesNotMatch(room, /\/connections#/);
   assert.equal(room.match(/Shared room tools/g)?.length, 1);
   assert.doesNotMatch(room, />Room tools</);

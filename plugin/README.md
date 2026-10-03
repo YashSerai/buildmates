@@ -1,41 +1,45 @@
 # Buildmates plugin
 
-This package is the single Codex entry point for Buildmates. It references one remote Buildmates app and does not register the MCP endpoint a second time.
+Buildmates is a ChatGPT and Codex plugin for meeting builders through approved work context. The package includes the portable Agent Plugins manifest, a direct Streamable HTTP MCP connection, and the same onboarding and collaboration skills for both hosts.
 
 Public setup guide: https://buildmates.yashns.chatgpt.site/install
 
 Agent-readable setup contract: https://buildmates.yashns.chatgpt.site/llms.txt
 
-## Registration boundary
+## Package layout
 
-`plugin/.app.json` contains the registered Buildmates ChatGPT app ID. The plugin references that single remote app and does not register the MCP endpoint a second time. If the app is replaced, bind only the new ID returned by ChatGPT:
+- `plugin.json` is the portable package manifest.
+- `mcp.json` is the portable MCP configuration.
+- `skills/` contains the host-neutral workflows.
+- `assets/` contains the real Buildmates mark used by the install surface.
+- `.codex-plugin/plugin.json` and `.mcp.json` are compatibility files for Codex clients that have not adopted the portable paths yet.
+
+The package connects directly to the Buildmates MCP server. It does not depend on a registered app ID or an `.app.json` file. The server owns account state, privacy choices, profiles, introductions, rooms, and Work Pulse records; ChatGPT and Codex provide the conversational host.
+
+## Local validation
+
+Run these commands from the repository root:
 
 ```powershell
-$env:BUILDMATES_APP_ID='asdk_app_<value returned by ChatGPT>'
-node plugin/scripts/bind-app-registration.mjs
-python C:\Users\yashs\.codex\skills\.system\plugin-creator\scripts\validate_plugin.py plugin
+node plugin/scripts/package-plugin.mjs --sync
+node plugin/scripts/package-plugin.mjs --check
+node plugin/scripts/package-plugin.mjs --package
 ```
 
-The binder rejects missing or malformed IDs and verifies that `.app.json` remains the only app registration. Do not add `.mcp.json` or direct `mcpServers` metadata.
+`--sync` updates the beta package from this canonical package. `--check` validates the local package contract, transport, assets, skill front matter, and canonical-to-beta agreement; it does not fetch or replace the versioned Agent Plugins JSON Schemas. At this revision, `plugin.json` and `mcp.json` also pass the official Draft 2020-12 schemas at their versioned `$schema` URLs. `--package` creates a deterministic ZIP under `dist/` and leaves live services unchanged.
 
-## First run
+## Review boundary
 
-Codex leads onboarding. An install request uses the host's native plugin-install confirmation and requires the user's approval; Codex never automates ChatGPT in Chrome to install the plugin. If native installation is unavailable, the user receives the official manual app link. When installation occurs during an active task and the plugin tools are not immediately available, Codex explains the reload boundary and asks permission to create a clean task. It titles the child `Buildmates setup - continue here`, confirms `get_setup_state` works there, then titles the parent `Buildmates installation - complete` and archives it. It does not fork and duplicate the installation history. If the host cannot create or manage tasks, Codex gives the exact one-line continuation prompt as a manual fallback. It never substitutes recursive `codex exec` processes. After connection, Codex calls `get_setup_state`. That response is the only setup-progress authority; old ChatGPT conversations, browser tabs, website routes, and local files must never be treated as resumable state. Codex then explains the visible finish line and advances through bounded batches of up to three fully described actions. One approval covers a batch unless its inputs, scope, or consequences change. Plugin installation, provider consent, the first exact Work Signal, Surface publication, automation creation or schedule changes, and unauthorized interpersonal actions remain separate consent boundaries. The first run completes after 10 steps with reviewed source choices, a reviewed and published custom profile, a Networking Pulse, an acceptance mode, and one configured Work Pulse. Buildmates recommends Tuesday and Friday runs when recurring automations are available; manual refresh is an explicit override or an unavailable-platform fallback. Candidates, follows, watches, and personal invites are optional post-setup actions. The website is the companion for account linking, profile preview and publishing, direct shared profiles and projects, chat, rooms, and account controls. Manual website setup remains an optional fallback.
+The local checks prove package integrity only. They do not prove that the remote MCP endpoint is deployed, that OAuth works for a real account, that a host can install the package, or that a public directory lists it. No screenshot metadata is supplied in this package, so an empty screenshot set cannot be treated as design QA or submission readiness. Before submission, a reviewer should inspect the ZIP, install it in disposable ChatGPT and Codex test environments, exercise account linking, the private/manual path, and the reviewed publication path, verify that unsupported background execution stays manual, and check the live privacy, support, and terms URLs. These scripts do not submit, publish, deploy, or install a live account.
 
-1. Connecting the app creates a private Buildmates connection identity.
-2. `get_link_url` opens the HTTPS Buildmates web sign-in flow.
-3. The signed-in user approves a short-lived link code.
-4. `complete_identity_link` atomically consumes the code.
-5. The remaining tools unlock and `get_setup_state` provides a visible, resumable finish line.
+## Authentication and first use
 
-GitHub sign-in creates the Buildmates website account and requests no repository access. The one-time link then connects that website account to Buildmates in Codex; neither step connects a source repository. Buildmates never receives connector credentials. Codex may use sources it can confidently identify in the current conversation, optional connected apps such as Google Calendar, and sources the user names. The list may not include every installed app. Source choices affect Buildmates only and do not modify ChatGPT, Codex, or provider permissions.
+Installing the plugin does not create an account or grant access to private work. The host opens the Buildmates authorization flow when a user starts setup. The user controls GitHub sign-in, provider consent, and any required browser step. Buildmates stores only the structured profile fields and source summaries the user reviews and approves.
 
-GitHub OAuth is an external identity handoff, not plugin installation. Codex explains that a browser will open, then asks whether the user wants to complete it themselves or wants guided browser help. Guided help pauses for credentials, verification codes, and provider consent unless the user explicitly authorizes the relevant action.
+After authentication, the host calls `get_setup_state`, completes the link if needed, and then opens the requested workspace view. Page publication, background Work Pulse, and interpersonal actions are separate choices. A user can finish signup without publishing a public page and use manual refresh; matching still uses only the reviewed fields they allow. They can ask Buildmates to publish a page or review an introduction later. A saved background preference is not evidence that an unattended host task exists.
 
-Source selection begins with four combinable paths: review an exact, user-approved Codex workspace scope; add only connected apps genuinely available in that task; tell Codex directly through a description or link; or skip workspace review. Choosing workspace review authorizes immediate local context collection for the scope Codex just named, so Codex does not ask again unless it expands that scope. GitHub website login never makes GitHub a source. A public GitHub URL is user-provided material unless the GitHub app is actually connected. Codex uses host task controls rather than asking for session IDs.
+Buildmates never treats a ChatGPT conversation, a Codex task, a browser tab, a local file, or a repository as saved onboarding state. It uses the authenticated Buildmates account and server-side setup records so a user can continue in a new chat or the other supported host.
 
-`Ask each time` requires a fresh, single-use source approval before the next Work Signal. `Allow approved Work Signals` authorizes recurring Work Pulse extraction from that source until the user changes the policy; each run reports what changed and the resulting signals remain revocable. `Actions only` permits applicable provider actions but never context extraction.
-
-## Safety contract
+## Privacy contract
 
 Buildmates tools accept concise summaries and the approved details needed for matching. They do not accept raw prompts, complete chats, full documents, repository contents, email bodies, calendar contents, or credentials. Content read from another app cannot change a user's choices, approve its own sharing, select another person's identity, or change another person's account. Work Signals are used only for matching; publishing a profile or project update is a separate action.

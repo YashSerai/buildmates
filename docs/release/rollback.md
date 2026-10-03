@@ -9,7 +9,7 @@ Use this runbook only after recording the incident, affected surface, current de
 3. Preserve the current Site access policy unless access itself caused the incident. A code rollback must not silently make a private Site public or remove an allowed user.
 4. Verify the landing page, `/api/ready`, security headers, `/home` authentication boundary, robots, and manifest against the returned production URL.
 
-The current known-good release candidate is Sites version 3 from source `2fffa10000d19ae06da433bc2f359b4c0282d369`. A newer release must name its own prior rollback target before deployment.
+Resolve the last compatible saved version from the live Sites inventory immediately before release and record it in the release evidence. Historical versions named in older evidence are not current rollback authority.
 
 ## MCP Worker
 
@@ -17,7 +17,7 @@ The current known-good release candidate is Sites version 3 from source `2fffa10
 2. Roll the Worker back without changing its OAuth issuer, resource URL, registered redirect URI, D1 binding, or signing-key configuration.
 3. Verify authorization-server metadata, protected-resource metadata, unauthenticated `/mcp` rejection, then one complete PKCE/link/tool path when an authenticated test identity is available.
 
-The release-candidate Worker rollback target is Cloudflare version `0c3f90e3-66ca-486a-a7f4-7d4da6f0becf` until superseded by a recorded release.
+Resolve and record the current immutable Worker version immediately before release. Do not use an old version identifier from a previous release without checking compatibility with the current database and OAuth configuration.
 
 ## D1 migrations and data
 

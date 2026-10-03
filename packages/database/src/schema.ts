@@ -27,10 +27,15 @@ export const users = sqliteTable("users", {
   operatorRole: text("operator_role", { enum: ["none", "moderator", "admin"] })
     .notNull()
     .default("none"),
+  dataOrigin: text("data_origin", { enum: ["live", "qa_fixture"] })
+    .notNull()
+    .default("live"),
   createdAt: created(),
   updatedAt: updated(),
   deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
-});
+}, (t) => [
+  check("user_data_origin_valid", sql`${t.dataOrigin} in ('live','qa_fixture')`),
+]);
 
 export const handles = sqliteTable(
   "handles",
@@ -444,6 +449,7 @@ export const profiles = sqliteTable(
       .default(true),
     timezone: text("timezone"),
     publishedAt: integer("published_at", { mode: "timestamp_ms" }),
+    matchingReviewedAt: integer("matching_reviewed_at", { mode: "timestamp_ms" }),
     createdAt: created(),
     updatedAt: updated(),
   },
@@ -839,6 +845,7 @@ export const surfaceAssets = sqliteTable(
     sha256: text("sha256").notNull(),
     createdAt: created(),
     deletedAt: integer("deleted_at", { mode: "timestamp_ms" }),
+    objectPurgedAt: integer("object_purged_at", { mode: "timestamp_ms" }),
   },
   (t) => [uniqueIndex("surface_asset_object_key_unique").on(t.objectKey)],
 );

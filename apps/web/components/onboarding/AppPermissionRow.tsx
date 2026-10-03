@@ -72,11 +72,11 @@ export function AppPermissionRow({
   );
 }
 const policyHelp: Record<SourcePolicy, string> = {
-  never: "Buildmates workflows will not ask Codex to read this source.",
+  never: "Buildmates workflows will not ask your connected host to read this source.",
   ask_each_time:
-    "Codex asks before using this source. Unattended runs skip it.",
+    "Your connected host asks before using this source. Unattended runs skip it.",
   allow_approved_work_signals:
-    "Codex may submit concise summaries for your review. Raw source content is not sent.",
+    "Your connected host may submit concise summaries for your review. Raw source content is not sent.",
   actions_only:
-    "Choose this only when Codex confirms the source supports an action. Buildmates does not use its context for matching.",
+    "Choose this only when your connected host confirms the source supports an action. Buildmates does not use its context for matching.",
 };

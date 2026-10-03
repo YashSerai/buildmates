@@ -1,9 +1,9 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createD1Repositories, type RepositoryD1 } from "@buildmates/database";
 import { DESIGN_POLICY_ACTIVATED_AT, DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, seedDesignPolicy } from "@buildmates/surfaces";
 import { ensureRuntimeDesignPolicy, resetRuntimeDesignPolicyForTest } from "../../apps/web/src/platform/ensure-design-policy";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("D1 design policy seed", () => {
   let miniflare: Miniflare;
@@ -12,10 +12,7 @@ describe("D1 design policy seed", () => {
   beforeEach(async () => {
     miniflare = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     d1 = (await miniflare.getD1Database("DB")) as D1Database;
-    for (const migration of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((item) => item.trim()).filter(Boolean)) await d1.prepare(statement).run();
-    }
+    await applyD1Migrations(d1);
   }, 30_000);
   afterEach(async () => miniflare.dispose());
 

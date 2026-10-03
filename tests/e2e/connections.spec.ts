@@ -28,7 +28,7 @@ test("authenticated user can approve a one-time Codex link without layout overfl
   }));
   expect(layout.scrollWidth - layout.clientWidth).toBeLessThanOrEqual(1);
 
-  await page.screenshot({ path: test.info().outputPath("connections-issued.png"), fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("connections-issued.png"), fullPage: true, caret: "initial" });
 });
 
 test("connection approval has a visible keyboard focus state and honors reduced motion", async ({ page }, testInfo) => {

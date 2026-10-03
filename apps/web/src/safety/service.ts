@@ -2,12 +2,18 @@ import { consumeWebRateLimit } from "../security/rate-limit";
 
 export type BlockedBuilder = { userId: string; displayName: string; createdAt: number };
 
-export async function listBlockedBuilders(DB: D1Database, actorId: string): Promise<BlockedBuilder[]> {
-  const rows = await DB.prepare(`SELECT b.blocked_user_id AS userId,COALESCE(p.display_name,'Builder') AS displayName,b.created_at AS createdAt
+export async function listBlockedBuilders(DB: D1Database, actorId: string): Promise<BlockedBuilder[]> { return (await listBlockedBuildersPage(DB,actorId,null,200)).items; }
+
+export async function listBlockedBuildersPage(DB: D1Database, actorId: string, after: string|null, limit=50): Promise<{items:BlockedBuilder[];nextCursor:string|null}> {
+  const bounded=Math.max(1,Math.min(100,limit)),cursor=parseBlockedCursor(after);
+  const rows=await DB.prepare(`SELECT b.blocked_user_id AS userId,COALESCE(p.display_name,'Builder') AS displayName,b.created_at AS createdAt
     FROM blocks b LEFT JOIN profiles p ON p.user_id=b.blocked_user_id
-    WHERE b.blocker_user_id=? AND b.revoked_at IS NULL ORDER BY b.created_at DESC LIMIT 200`).bind(actorId).all<BlockedBuilder>();
-  return rows.results;
+    WHERE b.blocker_user_id=? AND b.revoked_at IS NULL AND (b.created_at<? OR (b.created_at=? AND b.blocked_user_id<?))
+    ORDER BY b.created_at DESC,b.blocked_user_id DESC LIMIT ?`).bind(actorId,cursor.at,cursor.at,cursor.id,bounded+1).all<BlockedBuilder>();
+  const items=rows.results.slice(0,bounded);
+  return {items,nextCursor:rows.results.length>bounded&&items.length?`b:${items[items.length-1]!.createdAt}:${encodeURIComponent(items[items.length-1]!.userId)}`:null};
 }
+function parseBlockedCursor(value:string|null){if(!value)return{at:Number.MAX_SAFE_INTEGER,id:"~"};if(!value.startsWith("b:"))throw new Error("invalid_blocked_cursor");const parts=value.split(":");const at=Number(parts[1]);if(!Number.isSafeInteger(at)||at<0||!parts[2])throw new Error("invalid_blocked_cursor");let id="";try{id=decodeURIComponent(parts.slice(2).join(":"))}catch{throw new Error("invalid_blocked_cursor")}if(!id)throw new Error("invalid_blocked_cursor");return{at,id}}
 
 export async function blockBuilder(DB: D1Database, input: { actorId: string; targetUserId: string; now: number }) {
   await consumeWebRateLimit(DB, "block", input.actorId, 30, 60 * 60 * 1000, input.now);

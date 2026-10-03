@@ -47,7 +47,14 @@ test("profile design workspace distinguishes private previews from published ver
   assert.match(component, /Published · Version \$\{revision\.revisionNumber\}/);
   assert.match(component, /Current private preview · Version \$\{revision\.revisionNumber\}/);
   assert.match(component, /You review every version\s+before it goes live\./);
-  assert.match(component, /otherwise use Hallmark/);
+  assert.match(component, /design guidance available in this ChatGPT or Codex conversation/);
+  assert.doesNotMatch(component, /otherwise use Hallmark/);
+  assert.match(component, /Ask ChatGPT or Codex/);
+  assert.match(component, /promptCopyBlocked/);
+  assert.match(component, /readOnly/);
+  assert.match(component, /Select the prompt and copy it manually\./);
+  assert.match(component, /codex:\/\/open\?prompt=/);
+  assert.doesNotMatch(component, /Copy was blocked\. Use Design with Codex instead\./);
   assert.match(component, /first direction/);
   assert.match(component, /complete rethink/);
   assert.doesNotMatch(component, /cannot expose private fields/);

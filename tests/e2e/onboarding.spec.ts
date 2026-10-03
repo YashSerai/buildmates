@@ -10,11 +10,11 @@ test("website directs first run to Codex without impersonating an identity link"
   );
   await page.goto("/onboarding");
   await expect(
-    page.getByRole("heading", { name: "Build your profile with Codex" }),
+    page.getByRole("heading", { name: "Build your profile with your AI host" }),
   ).toBeVisible();
-  await expect(page.getByText("Connect Codex once")).toBeVisible();
+  await expect(page.getByText("Connect Buildmates once")).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Continue setup in Codex" }),
+    page.getByRole("link", { name: "Continue in ChatGPT or Codex" }),
   ).toBeVisible();
   await expect(page.getByText("0 of 10", { exact: true })).toBeVisible();
   await expect(
@@ -30,9 +30,9 @@ test("sparse-context builder completes the mandatory first run and resumes", asy
   await expect(page.locator("[data-hydrated=true]")).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page).toHaveTitle(/Manual setup/);
+  await expect(page).toHaveTitle("Set up on the web | Buildmates");
   await expect(
-    page.getByRole("heading", { name: "Continue setup without Codex" }),
+    page.getByRole("heading", { name: "You choose what Buildmates learns" }),
   ).toBeVisible();
 
   await page.getByRole("button", { name: "I understand the boundary" }).click();
@@ -58,29 +58,29 @@ test("sparse-context builder completes the mandatory first run and resumes", asy
   await page.getByLabel("Handle").fill(handle);
   await page.getByLabel("Display name").fill("Avery Builder");
   await page.getByRole("button", { name: "Confirm profile" }).click();
-  await expect(page.getByText(`@${handle}`)).toBeVisible();
-  await page
-    .getByRole("button", { name: "Continue with this profile" })
-    .click();
+  await expect(
+    page.getByRole("heading", { name: "Choose whether to publish a profile page" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Continue without a public page" }).click();
   await page.getByRole("button", { name: "Save Networking Pulse" }).click();
   await page.getByText("Full Autopilot", { exact: true }).click();
   await page.getByRole("button", { name: "Save acceptance mode" }).click();
-  await page.getByLabel(/local repositories and device-bound sources/).check();
+  await page.getByLabel(/local and device-bound sources/).check();
   await page.getByRole("button", { name: "Save Work Pulse preferences" }).click();
 
   await expect(
     page.getByRole("heading", { name: "Your Buildmates profile is ready" }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "View your public profile" })).toHaveAttribute("href", `/builders/${handle}`);
-  await expect(page.getByRole("link", { name: "Redesign your page with Codex" })).toHaveAttribute("href", "/profile/design");
+  await expect(page.getByRole("link", { name: "View your public profile" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Redesign your page with your AI host" })).toHaveAttribute("href", "/profile/design");
   await expect(page.getByRole("link", { name: "Create a personal link to invite builders you know" })).toHaveAttribute("href", "/invite");
   await page.reload();
   await expect(page.getByText("10 of 10")).toBeVisible();
-  await expect(page.getByText("Codex connected")).toBeVisible();
+  await expect(page.getByText("Buildmates connected", { exact: true })).toBeVisible();
   await assertNoOverflow(page);
   await page.screenshot({
     path: test.info().outputPath("onboarding-complete.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });
 
@@ -95,7 +95,7 @@ test("source policy language is individual, non-exhaustive, and keyboard operabl
   await expect(page.locator("[data-hydrated=true]")).toBeVisible();
   await page.getByRole("button", { name: "I understand the boundary" }).click();
   await expect(
-    page.getByText(/connected sources it can identify/i),
+    page.getByText(/Only the connected apps and information you allow/i),
   ).toBeVisible();
   await page.getByRole("button", { name: "Add a named source" }).click();
   await page.getByLabel("Source name").fill("Google Calendar");
@@ -103,7 +103,7 @@ test("source policy language is individual, non-exhaustive, and keyboard operabl
     .getByLabel("Buildmates source-use policy")
     .selectOption("actions_only");
   await expect(
-    page.getByText(/Codex confirms the source supports an action/),
+    page.getByText(/Choose this only when your connected host confirms the source supports an action/),
   ).toBeVisible();
   const save = page.getByRole("button", { name: "Save policies and continue" });
   await save.focus();

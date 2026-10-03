@@ -62,6 +62,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return Response.json(result);
   } catch (error) {
     const code = error instanceof Error ? error.message : "circle_command_failed";
-    return Response.json({ error: code }, { status: code === "forbidden" ? 403 : code.includes("not_found") || code.includes("unavailable") ? 404 : 409 });
+    const rateLimited = code === "rate_limited" || code.endsWith("_rate_limited");
+    return Response.json({ error: code }, { status: rateLimited ? 429 : code === "forbidden" ? 403 : code.includes("not_found") || code.includes("unavailable") ? 404 : 409 });
   }
 }

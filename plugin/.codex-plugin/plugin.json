@@ -1,7 +1,7 @@
 {
   "name": "buildmates",
-  "version": "0.3.0+codex.20260721090100",
-  "description": "Meet builders through what you are working on now, with explicit privacy controls and reciprocal matching.",
+  "version": "0.4.0",
+  "description": "Use approved work context to meet builders, review introductions, and collaborate in shared rooms.",
   "author": {
     "name": "Yash Serai",
     "url": "https://github.com/YashSerai"
@@ -12,15 +12,15 @@
   "keywords": [
     "builders",
     "networking",
-    "codex",
+    "collaboration",
     "matching"
   ],
   "skills": "./skills/",
-  "apps": "./.app.json",
+  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Buildmates",
-    "shortDescription": "Meet people through what you build",
-    "longDescription": "Buildmates turns user-approved summaries of current work into a living builder profile, relevant introductions, and lightweight shared rooms.",
+    "shortDescription": "Meet builders through work",
+    "longDescription": "Buildmates turns user-approved summaries of current work into a builder profile, relevant introductions, and shared rooms. The current workflow keeps introductions reviewed and consent-based: users control what is shared, how matching works, and when to act.",
     "developerName": "Yash Serai",
     "category": "Productivity",
     "capabilities": [
@@ -28,13 +28,16 @@
       "Write"
     ],
     "websiteURL": "https://buildmates.yashns.chatgpt.site",
+    "supportURL": "https://buildmates.yashns.chatgpt.site/support",
     "privacyPolicyURL": "https://buildmates.yashns.chatgpt.site/privacy",
     "termsOfServiceURL": "https://buildmates.yashns.chatgpt.site/terms",
     "defaultPrompt": [
-      "Set up Buildmates and guide me through the complete first run.",
-      "Refresh my Work Pulse and find relevant builders.",
-      "Show my Buildmates connections and rooms."
+      "Set up Buildmates and create my profile.",
+      "Find builders relevant to my current work.",
+      "Show my Buildmates connections and shared rooms."
     ],
-    "brandColor": "#17594A"
+    "brandColor": "#17594A",
+    "composerIcon": "./assets/buildmates-mark.svg",
+    "logo": "./assets/buildmates-mark.svg"
   }
 }

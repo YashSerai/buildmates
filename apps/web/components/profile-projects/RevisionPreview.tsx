@@ -38,6 +38,7 @@ export function RevisionPreview() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadError, setLoadError] = useState(false);
+  const [promptCopyBlocked, setPromptCopyBlocked] = useState(false);
   const [qualityIssues, setQualityIssues] = useState<RenderedSurfaceIssue[] | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const load = useCallback(async () => {
@@ -87,14 +88,16 @@ export function RevisionPreview() {
   }
 
   const designPrompt = data
-    ? `${data.surface.publishedRevisionId ? "Revise" : "Design"} my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. ${data.surface.publishedRevisionId ? "Start from the complete current published HTML and CSS. Ask what I want changed; for a small request edit only the targeted source and preserve everything else." : "Use my preferred local design skill if I have named one; otherwise use Hallmark. Privately study person-specific references, tell me the direction you are leaning toward and why, then author a complete custom HTML/CSS profile."} Do not compose a Buildmates component template. Use only approved public content and approved R2 media returned by Buildmates. Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a direction I can shape and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
+    ? `${data.surface.publishedRevisionId ? "Revise" : "Design"} my Buildmates profile using the Buildmates profile-design workflow for design ${data.surface.id}. ${data.surface.publishedRevisionId ? "Start from the complete current published HTML and CSS. Ask what I want changed; for a small request edit only the targeted source and preserve everything else." : "Use my preferred local design skill if I have named one; otherwise use the design guidance available in this ChatGPT or Codex conversation. Privately study person-specific references, tell me the direction you are leaning toward and why, then author a complete custom HTML/CSS profile."} Do not compose a Buildmates component template. Use only approved public content and approved R2 media returned by Buildmates. Before showing it, render the complete page at desktop and phone widths and repair weak hierarchy, filler or repeated content, unrelated decoration, dead space, overflow, clipping, contrast, legibility, and broken responsive behavior. Treat the result as a direction I can shape and invite honest feedback or a complete rethink. Do not publish without my explicit approval.`
     : "";
   async function copyDesignPrompt() {
+    setPromptCopyBlocked(false);
     try {
       await navigator.clipboard.writeText(designPrompt);
-      setMessage("Codex design prompt copied.");
+      setMessage("Design prompt copied.");
     } catch {
-      setMessage("Copy was blocked. Use Design with Codex instead.");
+      setPromptCopyBlocked(true);
+      setMessage("Copy was blocked. Select the prompt below and copy it manually.");
     }
   }
 
@@ -144,13 +147,13 @@ export function RevisionPreview() {
             <p className={styles.eyebrow}>Profile design</p>
             <h1>Make your page feel like you.</h1>
             <p>
-              Ask Codex to turn your approved profile into a page with its own
+              Ask ChatGPT or Codex to turn your approved profile into a page with its own
               layout, typography, color, and rhythm. You review every version
               before it goes live.
             </p>
             <p className={styles.designQualityNote}>
-              Codex checks the complete page on desktop and phone before you
-              see it. The first direction is yours to shape: keep what feels
+              Review the complete page on desktop and phone before publishing.
+              The first direction is yours to shape: keep what feels
               right, change what does not, or ask for a complete rethink.
             </p>
           </div>
@@ -168,6 +171,20 @@ export function RevisionPreview() {
               <button className={styles.quietAction} type="button" onClick={copyDesignPrompt}>
                 Copy prompt
               </button>
+            </div>
+          ) : null}
+          {promptCopyBlocked ? (
+            <div className={styles.promptFallback}>
+              <label htmlFor="profile-design-prompt">Design prompt</label>
+              <textarea
+                id="profile-design-prompt"
+                readOnly
+                rows={7}
+                value={designPrompt}
+                onFocus={(event) => event.currentTarget.select()}
+                aria-describedby="profile-design-prompt-note"
+              />
+              <p id="profile-design-prompt-note">Select the prompt and copy it manually.</p>
             </div>
           ) : null}
         </header>
@@ -205,7 +222,7 @@ export function RevisionPreview() {
                 </div>
               ) : (
                 <div className={styles.emptyPreview}>
-                  <p>Codex will propose a direction from your approved profile, then build a private version here. You can refine it conversationally until it feels right.</p>
+                  <p>ChatGPT or Codex will propose a direction from your approved profile, then build a private version here. You can refine it conversationally until it feels right.</p>
                 </div>
               )}
 

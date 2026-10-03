@@ -1,7 +1,7 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { establishGithubSession } from "../../apps/web/src/auth/github-oauth";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("suspended appeal authentication boundary", () => {
   let mf: Miniflare;
@@ -10,10 +10,7 @@ describe("suspended appeal authentication boundary", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default {fetch(){return new Response('ok')}}", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    for (const file of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
   }, 30_000);
   afterEach(async () => mf.dispose());
 

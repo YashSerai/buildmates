@@ -57,7 +57,7 @@ export function OnboardingClient({
     initialSnapshot.profile?.acceptanceMode ?? "manual",
   );
   const [cadence, setCadence] = useState<Cadence>(
-    initialSnapshot.automation?.cadence ?? "twice_weekly",
+    initialSnapshot.automation?.cadence ?? "manual",
   );
   const hydrated = useSyncExternalStore(
     emptySubscribe,
@@ -188,30 +188,30 @@ export function OnboardingClient({
         <div className={styles.resumeLine}>
           <span>
             {snapshot.setup.complete
-              ? "Codex setup complete"
+              ? "Buildmates setup complete"
               : step === "identity_link"
                 ? "Website preparation saved"
                 : "Profile setup in progress"}
           </span>
           <span>
             {snapshot.codexConnected
-              ? "Codex connected"
-              : "Connect Codex to continue"}
+              ? "Buildmates connected"
+              : "Connect Buildmates to continue"}
           </span>
         </div>
         {step === "identity_link" && (
           <Step
-            title="Connect Buildmates in Codex"
-            description="Your website account is ready. The guided first run begins after Codex confirms the secure account link."
+            title="Connect Buildmates to your AI host"
+            description="Your website account is ready. The guided first run begins after ChatGPT or Codex confirms the secure account link."
           >
             <div className={styles.completion}>
               <strong>Connection required</strong>
               <p>
                 Generate a single-use linking code, then complete the Buildmates
-                connection from Codex. This website cannot mark the connection
-                complete on its own.
-              </p>
-              <a href="/settings/connections">Open Codex connection settings</a>
+                 connection from your AI host. This website cannot mark the connection
+                 complete on its own.
+               </p>
+               <a href="/settings/connections">Open connection settings</a>
             </div>
           </Step>
         )}
@@ -219,7 +219,7 @@ export function OnboardingClient({
           <Step title="You choose what Buildmates learns">
             <div className={styles.boundaryGrid}>
               <div>
-                <strong>Codex may read</strong>
+                 <strong>Your AI host may read</strong>
                 <p>Only the connected apps and information you allow.</p>
               </div>
               <div>
@@ -249,14 +249,9 @@ export function OnboardingClient({
         )}
         {step === "source_selection" && (
           <Step
-            title="Choose how Codex understands your work"
-            description="Recommended: continue in Codex and choose Use my Codex workspace. Codex reviews only the tasks, project folders, and local context you approve, then sends Buildmates only the profile you review."
+            title="Choose how Buildmates understands your work"
+            description="Choose specific sources, links, or a description. Buildmates uses only the context you review, then saves only the profile details you approve."
           >
-            <div className={styles.inlineNote}>
-              <strong>Use your Codex workspace</strong>
-              <p>Return to the guided Codex setup for the most complete profile, or choose individual connected sources below.</p>
-              <a href="/onboarding">Continue in Codex</a>
-            </div>
             <div className={styles.stack}>
               {sources.map((source, index) => (
                 <AppPermissionRow
@@ -308,12 +303,12 @@ export function OnboardingClient({
         )}
         {step === "context_collection" && (
           <Step
-            title={
-              snapshot.sources.length
-                ? "Fill the gaps Codex could not confirm"
-                : "Start with what you know"
-            }
-            description="A basic profile is useful even when connected context is sparse."
+              title={
+                snapshot.sources.length
+                  ? "Fill the gaps your selected sources could not confirm"
+                  : "Start with what you know"
+              }
+              description="A basic profile is useful when the context you selected is sparse."
           >
             <SparseContextInput value={context} onChange={setContext} />
             <button
@@ -369,13 +364,13 @@ export function OnboardingClient({
         )}
         {step === "page_preview" && (
           <Step
-            title="Review your private profile design"
-            description="Codex creates the page itself, not a generic profile card. Only a valid private design can be published."
+            title="Choose whether to publish a profile page"
+            description="A public page is optional. If matching is on, Buildmates may share your reviewed display name and builder description with suggested builders; other profile fields and Work Signals keep their own audience settings."
           >
             <div className={styles.previewGate}>
-              <strong>{snapshot.profilePreview ? `Private design ${snapshot.profilePreview.revisionNumber} is ready` : "Your page still needs a private design"}</strong>
-              <p>{snapshot.profilePreview ? "Open the full-page preview, check the content and layout, then return here to publish this exact revision." : "Ask Codex to design the page, or open the design workspace and use its Codex prompt. A basic summary card cannot complete this step."}</p>
-              <a href="/profile/design">{snapshot.profilePreview ? "Review private preview" : "Design profile with Codex"}</a>
+              <strong>{snapshot.profilePreview ? `Private design ${snapshot.profilePreview.revisionNumber} is ready` : "A public page is optional"}</strong>
+              <p>{snapshot.profilePreview ? "Open the full-page preview, check the content and layout, then return here to publish this exact revision." : "Continue without a public page, or ask your agent to create one from the profile you approved."}</p>
+               <a href="/profile/design">{snapshot.profilePreview ? "Review private preview" : "Design profile with your AI host"}</a>
             </div>
             {snapshot.profilePreview ? (
               <button
@@ -387,6 +382,9 @@ export function OnboardingClient({
                 Publish this design and continue
               </button>
             ) : null}
+            <button onClick={() => onboarding({ action: "skip_preview" })} disabled={busy}>
+              Continue without a public page
+            </button>
           </Step>
         )}
         {step === "networking_pulse" && (
@@ -400,7 +398,7 @@ export function OnboardingClient({
         {step === "acceptance_mode" && (
           <Step
             title="Choose your acceptance mode"
-            description="Review introductions yourself, or let Full Autopilot accept strong matches using the preferences you set."
+            description="Review introductions yourself, or allow automatic acceptance only when the required host capability and both sides' settings permit it."
           >
             <AcceptanceMode value={mode} onChange={setMode} />
             <button
@@ -414,13 +412,13 @@ export function OnboardingClient({
         {step === "automation" && (
           <Step
             title="Set up your Work Pulse"
-            description="Recommended: Tuesdays and Fridays. This saves your preferred Work Pulse. In Codex, confirm the recurring task that refreshes only approved sources, checks a small relevant-builder shortlist and your relevance watch, then posts a concise update here."
+            description="Choose a cadence only when your current host exposes a reviewed background task. Manual refresh is the safe default and never claims that a schedule is running."
           >
             <AutomationCadence value={cadence} onChange={setCadence} />
             <label className={styles.checkLabel}>
-              <input id="liveness" type="checkbox" /> I understand that local
-              repositories and device-bound sources refresh only when my
-              computer and Codex desktop are available.
+               <input id="liveness" type="checkbox" /> I understand that local
+               and device-bound sources refresh only when the approved host
+               context is available.
             </label>
             <button
               onClick={() => {
@@ -440,7 +438,7 @@ export function OnboardingClient({
           </Step>
         )}
         {!step && (
-          <CompletionStep handle={snapshot.profile?.handle} />
+          <CompletionStep handle={snapshot.profile?.publishedAt ? snapshot.profile.handle : null} />
         )}
         <p className={styles.liveMessage} role="status" aria-live="polite">
           {busy ? "Saving…" : message}
@@ -539,7 +537,7 @@ function ProfileStep({
               setForm({ ...form, allowMatching: event.target.checked })
             }
           />{" "}
-          Use confirmed profile fields for matching
+          Let Buildmates suggest me using my reviewed name and builder description
         </label>
       </div>
       <button
@@ -694,7 +692,7 @@ function NetworkingStep({
         </div>
         <label>
           Reconfirm on
-          <span>Codex will ask whether this temporary intent still fits. Your profile is not deleted.</span>
+           <span>Your AI host will ask whether this temporary intent still fits. Your profile is not deleted.</span>
           <input
             type="date"
             value={form.expiresAt.slice(0, 10)}
@@ -779,14 +777,14 @@ function CompletionStep({ handle }: { handle?: string | null }) {
   return (
     <Step
       title="Your Buildmates profile is ready"
-      description="Your profile is published. Confirm the recurring Work Pulse in Codex to keep approved context and networking intent current, and return there any time you want to redesign your page or change how Buildmates represents your work."
+      description="Your reviewed profile and introduction preferences are saved. Ask ChatGPT or Codex to find builders, update your work, open a conversation, or design your profile page."
     >
       <div className={styles.completion}>
         <strong>Choose where to go next</strong>
         {handle ? <a href={`/builders/${handle}`}>View your public profile</a> : null}
         <a href="/profile/edit">Edit your profile details</a>
-        <a href="/profile/design">Redesign your page with Codex</a>
-        <a href="/settings/automation">Review your Tuesday and Friday Work Pulse</a>
+        <a href="/profile/design">Redesign your page with your AI host</a>
+        <a href="/settings/automation">Review your Work Pulse settings</a>
         <a href="/invite">Create a personal link to invite builders you know</a>
       </div>
     </Step>

@@ -109,6 +109,41 @@
   border-left: 3px solid #8d6f18;
   background: #f7f8f2;
 }
+.promptFallback {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: .45rem;
+  max-width: 780px;
+  margin-top: .25rem;
+  padding: 1rem;
+  border: 1px solid #bfc6bb;
+  background: #f7f8f2;
+}
+.promptFallback label {
+  color: #274c39;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.promptFallback textarea {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 10rem;
+  padding: .75rem;
+  border: 1px solid #8f9a8d;
+  border-radius: 2px;
+  color: #191918;
+  background: #fff;
+  font: .9rem/1.5 ui-monospace, SFMono-Regular, Consolas, monospace;
+  resize: vertical;
+}
+.promptFallback textarea:focus-visible {
+  outline: 3px solid #8a3518;
+  outline-offset: 2px;
+}
+.promptFallback p {
+  margin: 0;
+  font-size: .85rem;
+}
 .previewWorkspace {
   max-width: none !important;
   padding: 0 !important;

@@ -2,10 +2,11 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { signInTestUser } from "./helpers/auth";
+import { qaEvidencePath } from "./helpers/evidence-path";
 
 test.setTimeout(120_000);
 
-const evidenceRoot = path.resolve("docs/qa/evidence/2026-07-18/pages");
+const evidenceRoot = qaEvidencePath("2026-07-18", "pages");
 const manifestPath = path.join(evidenceRoot, "manifest.csv");
 const header = "run_date,route_key,route,state,access,fixture_id,viewer_id,dynamic_values,viewport,screenshot_file,console_errors,page_errors,failed_requests,horizontal_overflow_px,reduced_motion_checked,keyboard_checked,touch_targets_checked,status,notes\n";
 
@@ -52,7 +53,7 @@ test("captures public and signed-out page catalog", async ({ page }, testInfo) =
   await capture(page, testInfo, { key: "001", route: "/", state: "setup-prompt-dialog", access: "public" });
 
   await page.goto("/install");
-  await page.getByRole("button", { name: /Set up with Codex/ }).click();
+  await page.getByRole("button", { name: "Copy setup prompt" }).click();
   await expect(page.getByRole("dialog", { name: "Buildmates setup prompt" })).toBeVisible();
   await capture(page, testInfo, { key: "003", route: "/install", state: "setup-prompt-dialog", access: "public" });
 });
@@ -232,7 +233,7 @@ async function capture(page: Page, testInfo: TestInfo, input: CaptureInput) {
   const viewport = testInfo.project.name.includes("phone") ? "phone" : "desktop";
   const filename = `${input.key}-${slug(input.state)}.png`;
   const relative = `${viewport}/${filename}`;
-  await page.screenshot({ path: path.join(evidenceRoot, relative), fullPage: true });
+  await page.screenshot({ path: path.join(evidenceRoot, relative), fullPage: true, caret: "initial" });
   page.off("console", onConsole);
   page.off("pageerror", onPageError);
   page.off("requestfailed", onRequestFailed);

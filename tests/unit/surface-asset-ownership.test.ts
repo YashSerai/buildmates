@@ -8,7 +8,7 @@ describe("Surface revision asset ownership", () => {
     const repositories = createMemoryRepositories();
     const alice = asUserId("surface_asset_alice");
     const bob = asUserId("surface_asset_bob");
-    const now = new Date("2026-07-18T13:00:00Z");
+    const now = new Date("2026-10-02T13:00:00Z");
     await repositories.users.create({ id: alice, status: "active", operatorRole: "none", createdAt: now });
     await repositories.users.create({ id: bob, status: "active", operatorRole: "none", createdAt: now });
     await repositories.profiles.create({ actorId: bob, id: "profile_surface_asset_bob" as ProfileId, userId: bob, handle: "asset-bob", displayName: "Bob", summary: "Bob's profile", audience: "public", cohortScopeId: null, allowMatching: true, acceptanceMode: "manual" });

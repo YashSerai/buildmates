@@ -2,10 +2,9 @@ import { expect, test } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { signInTestUser } from "./helpers/auth";
+import { qaEvidencePath } from "./helpers/evidence-path";
 
-const evidencePath = path.resolve(
-  "docs/qa/evidence/2026-07-19/local-codex-candidate-shortlist.json",
-);
+const evidencePath = qaEvidencePath("2026-07-19", "local-codex-candidate-shortlist.json");
 
 test("export the guarded local shortlist for visible Codex QA", async ({ page }) => {
   await signInTestUser(page, "local-codex-match-evidence");

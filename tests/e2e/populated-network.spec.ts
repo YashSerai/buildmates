@@ -62,7 +62,7 @@ test("signed-in network surfaces render realistic populated states", async ({ pa
 
   await page.goto("/circles");
   await expect(page.getByRole("heading", { name: "Invitations" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Active Circles" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Joined Circles" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "RAG Field Notes" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Reliable Agents Lab" })).toBeVisible();
   await expectTouchTarget(page.getByRole("link", { name: "Review invitation" }));
@@ -152,5 +152,5 @@ async function verifyReportDialog(page: Page, trigger: string, heading: string) 
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
-  await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath(`${name}.png`), fullPage: true, caret: "initial" });
 }

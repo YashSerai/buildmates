@@ -1,8 +1,8 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { listLocationGroups } from "../../apps/web/src/discovery/service";
 import { getMapStatistics } from "../../apps/web/src/discovery/map-statistics";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("aggregate city map", () => {
   let miniflare: Miniflare;
@@ -17,17 +17,12 @@ describe("aggregate city map", () => {
       compatibilityDate: "2026-05-22",
     });
     DB = await miniflare.getD1Database("DB") as D1Database;
-    for (const file of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) {
-        await DB.prepare(statement).run();
-      }
-    }
+    await applyD1Migrations(DB);
   });
 
   afterEach(async () => miniflare.dispose());
 
-  it("shows anonymous city totals from the first participating builder regardless of profile audience", async () => {
+  it("shows anonymous city totals only for published public profiles that opt into the map", async () => {
     const eligible = [
       ["map-1", "Vancouver"],
       ["map-2", "Vancouver, BC"],
@@ -44,12 +39,14 @@ describe("aggregate city map", () => {
     for (const [userId, location] of eligible.slice(0, 4)) await insertProfile(DB, { userId, location, audience: "public", optIn: 1, now });
     for (const [userId, location, audience, optIn] of excluded) await insertProfile(DB, { userId, location, audience, optIn, now });
 
-    expect(await listLocationGroups(DB, null)).toEqual([expect.objectContaining({cityId:"vancouver-ca",builderCount:5})]);
+    expect(await listLocationGroups(DB, null)).toEqual([expect.objectContaining({cityId:"vancouver-ca",builderCount:4})]);
     await insertProfile(DB, { userId: eligible[4][0], location: eligible[4][1], audience: "public", optIn: 1, now });
     await insertProfile(DB, { userId: "map-hidden-city", location: "Toronto", audience: "public", optIn: 1, now });
 
     await DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES ('map-project-1','map-1','map-one','Map One','Public mapped work','public',1,'active','prototype',1,?,?,?),('map-project-2','map-2','map-two','Map Two','More public mapped work','public',1,'active','prototype',1,?,?,?),('map-project-private','map-3','map-private','Map Private','Private mapped work','private',1,'active','prototype',0,?,?,?),('map-project-optout','map-optout','map-optout','Map Optout','Public but not mapped','public',1,'active','prototype',1,?,?,?)")
       .bind(now, now, now, now, now, now, now, now, now, now, now, now).run();
+    await DB.prepare("INSERT INTO project_taxonomy_items(project_id,kind,taxonomy_item_id,created_at) VALUES ('map-project-1','topic','ai',?)").bind(now).run();
+    await DB.prepare("INSERT INTO profile_topic_contributions(user_id,topic_id,updated_at) VALUES ('map-1','privacy',?)").bind(now).run();
 
     await DB.prepare("INSERT INTO match_pairs(id,user_a_id,user_b_id,created_at) VALUES ('map-pair','map-1','map-2',?),('map-ended-pair','map-3','map-4',?)").bind(now, now).run();
     await DB.prepare("INSERT INTO match_proposals(id,match_pair_id,attempt_number,evidence_version_a,evidence_version_b,acceptance_mode_a,acceptance_mode_b,explanation_a_json,explanation_b_json,state,expires_at,terminal_at,created_at) VALUES ('map-proposal','map-pair',1,1,1,'manual','manual','{}','{}','matched',?,?,?),('map-ended-proposal','map-ended-pair',1,1,1,'manual','manual','{}','{}','matched',?,?,?)").bind(now + 60_000, now, now, now + 60_000, now, now).run();
@@ -63,8 +60,8 @@ describe("aggregate city map", () => {
       label: "Vancouver, Canada",
       latitude: 49.2827,
       longitude: -123.1207,
-      builderCount: 6,
-      projectCount: 3,
+      builderCount: 5,
+      projectCount: 2,
       connectionCount: 1,
     },{
       cityId:"toronto-ca",
@@ -76,7 +73,7 @@ describe("aggregate city map", () => {
       connectionCount:0,
     }]);
     expect(Object.keys(result[0]).sort()).toEqual(["builderCount", "cityId", "connectionCount", "label", "latitude", "longitude", "projectCount"]);
-    expect(await getMapStatistics(DB,result)).toMatchObject({mappedBuilderCount:7,qualifyingCityCount:2});
+    expect(await getMapStatistics(DB,result)).toMatchObject({publishedBuilderCount:8,mappedBuilderCount:6,qualifyingCityCount:2,publicProjectCount:3,publicTopicCount:1,connectionCount:1});
   });
 }, 30_000);
 

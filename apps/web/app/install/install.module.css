@@ -38,6 +38,54 @@
   font-weight: 680;
   text-underline-offset: 3px;
 }
+.connectionFallback {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 1rem;
+  max-width: 48rem;
+}
+.connectionLabel {
+  color: #20231d;
+  font-weight: 720;
+}
+.connectionRow {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+}
+.connectionInput {
+  min-width: 0;
+  flex: 1 1 auto;
+  border: 1px solid #a9afa3;
+  background: #fffdf7;
+  color: #20231d;
+  font: 0.9rem/1.3 ui-monospace, SFMono-Regular, Consolas, monospace;
+  padding: 0.72rem 0.8rem;
+}
+.connectionInput:focus-visible,
+.connectionButton:focus-visible {
+  outline: 3px solid #da682b;
+  outline-offset: 2px;
+}
+.connectionButton {
+  flex: 0 0 auto;
+  border: 0;
+  background: #20231d;
+  color: #f0f2e9;
+  font: inherit;
+  font-weight: 720;
+  cursor: pointer;
+  padding: 0.72rem 0.9rem;
+}
+.connectionButton:hover {
+  background: #394036;
+}
+.connectionStatus {
+  min-height: 1.25rem;
+  margin: 0;
+  color: #656b61;
+  font-size: 0.9rem;
+}
 @media (max-width: 520px) {
   .actions {
     width: 100%;
@@ -45,5 +93,11 @@
   .actions button {
     width: 100%;
     justify-content: space-between;
+  }
+  .connectionRow {
+    display: grid;
+  }
+  .connectionButton {
+    width: 100%;
   }
 }

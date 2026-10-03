@@ -5,11 +5,10 @@ export function SparseContextInput({ value, onChange }: { value: ContextDraft; o
   return (
     <div className={styles.stack}>
       <div className={styles.inlineNote}>
-        <strong>Recommended: let Codex review your workspace</strong>
-        <p>With your permission, Codex can review selected recent tasks, project folders, and local Buildmates context. That research stays in Codex. Buildmates receives only the profile you review.</p>
-        <a href="/onboarding">Continue in Codex</a>
+        <strong>Use only context you approve</strong>
+        <p>Your AI host may review only the tasks, projects, links, or context you name and approve. Buildmates receives only the profile details you review.</p>
       </div>
-      <label>If you prefer to continue on this page
+      <label>Choose a context method
         <select value={value.method} onChange={(event) => onChange({ ...value, method: event.target.value })}>
           <option value="manual_profile">Answer focused profile questions</option>
           <option value="repository">Use one repository</option>
@@ -28,7 +27,7 @@ export function SparseContextInput({ value, onChange }: { value: ContextDraft; o
       <label>Portfolio, GitHub, LinkedIn, or project links <span className={styles.optional}>Optional, one HTTPS link per line</span>
         <textarea value={value.links} onChange={(event) => onChange({ ...value, links: event.target.value })} rows={3} placeholder="https://github.com/you/project" />
       </label>
-      <p className={styles.inlineNote}>A few details are enough for a manual start. Codex can fill gaps and redesign your page later.</p>
+      <p className={styles.inlineNote}>A few details are enough for a manual start. You can add context or redesign your page later.</p>
     </div>
   );
 }

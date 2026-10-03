@@ -18,7 +18,7 @@ export function WorkSignalReview({
     return (
       <div className={styles.emptyState}>
         <strong>Nothing to review yet</strong>
-        <p>You can finish your profile now. Codex can suggest updates as it learns more about your work.</p>
+        <p>You can finish your profile now. Approved sources can suggest updates after you choose to review them.</p>
       </div>
     );
   return (
@@ -58,7 +58,7 @@ function SignalEditor({
         </time>
       </div>
       <label>
-        What Codex understood
+         What Buildmates understood from this approved source
         <textarea
           value={draft.summary}
           rows={3}

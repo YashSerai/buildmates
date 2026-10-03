@@ -53,15 +53,35 @@ async function register(request: Request, runtime: ExternalMcpRuntime): Promise<
 async function authorize(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
   const url = new URL(request.url);
   const auth = validateAuthorizationRequest(Object.fromEntries(url.searchParams), runtime.oauth);
-  const identity = await runtime.resolveAuthorizationIdentity(request);
-  if (!identity) return runtime.beginAuthorizationHandoff ? runtime.beginAuthorizationHandoff(request) : json({ error: "login_required" }, 401);
-  const code = await runtime.store.issueAuthorizationCode({
-    webIdentity: identity, clientId: auth.client_id, redirectUri: auth.redirect_uri, codeChallenge: auth.code_challenge,
-    audience: auth.resource, scopes: auth.scopes, expiresAt: Date.now() + 5 * 60 * 1000,
-  });
+  let identity: AuthorizedWebIdentity | null;
+  try {
+    identity = await runtime.resolveAuthorizationIdentity(request);
+  } catch {
+    return authorizationErrorRedirect(auth.redirect_uri, auth.state, runtime.oauth.issuer, "server_error");
+  }
+  if (!identity) {
+    if (runtime.beginAuthorizationHandoff) {
+      try {
+        return await runtime.beginAuthorizationHandoff(request);
+      } catch {
+        return authorizationErrorRedirect(auth.redirect_uri, auth.state, runtime.oauth.issuer, "server_error");
+      }
+    }
+    return authorizationErrorRedirect(auth.redirect_uri, auth.state, runtime.oauth.issuer, "login_required");
+  }
+  let code: string;
+  try {
+    code = await runtime.store.issueAuthorizationCode({
+      webIdentity: identity, clientId: auth.client_id, redirectUri: auth.redirect_uri, codeChallenge: auth.code_challenge,
+      audience: auth.resource, scopes: auth.scopes, expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+  } catch {
+    return authorizationErrorRedirect(auth.redirect_uri, auth.state, runtime.oauth.issuer, "server_error");
+  }
   const redirect = new URL(auth.redirect_uri);
   redirect.searchParams.set("code", code);
   redirect.searchParams.set("state", auth.state);
+  redirect.searchParams.set("iss", runtime.oauth.issuer);
   return redirectNoStore(redirect.toString());
 }
 
@@ -123,6 +143,14 @@ const noStoreHeaders = { "cache-control": "no-store", pragma: "no-cache" } as co
 
 function redirectNoStore(location: string): Response {
   return new Response(null, { status: 302, headers: { location, "cache-control": "no-store", pragma: "no-cache", "referrer-policy": "no-referrer" } });
+}
+
+function authorizationErrorRedirect(redirectUri: string, state: string, issuer: string, error: "login_required" | "server_error"): Response {
+  const redirect = new URL(redirectUri);
+  redirect.searchParams.set("error", error);
+  redirect.searchParams.set("state", state);
+  redirect.searchParams.set("iss", issuer);
+  return redirectNoStore(redirect.toString());
 }
 
 function oauthError(error: unknown): { code: "invalid_request" | "server_error"; status: 400 | 500 } {

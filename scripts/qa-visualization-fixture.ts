@@ -38,9 +38,13 @@ async function main() {
     }
   }
 
-  const cities = await listLocationGroups(DB, null);
-  const statistics = await getMapStatistics(DB, cities);
-  const graph = await getBuildGraph(DB, null);
+  const previewScope = { scope: "qa_fixture_preview" as const };
+  const publicCities = await listLocationGroups(DB, null);
+  const publicStatistics = await getMapStatistics(DB, publicCities);
+  const publicGraph = await getBuildGraph(DB, null);
+  const cities = await listLocationGroups(DB, null, previewScope);
+  const statistics = await getMapStatistics(DB, cities, previewScope);
+  const graph = await getBuildGraph(DB, null, previewScope);
   const privacy = await DB.prepare(`SELECT
     sum(CASE WHEN audience <> 'private' THEN 1 ELSE 0 END) AS visible,
     sum(CASE WHEN indexable <> 0 THEN 1 ELSE 0 END) AS indexed,
@@ -48,6 +52,21 @@ async function main() {
     sum(CASE WHEN published_at IS NOT NULL THEN 1 ELSE 0 END) AS published
     FROM profiles WHERE id LIKE 'qa_visual_profile_%'`).first<Record<string, number>>();
   const handles = await DB.prepare("SELECT count(*) AS count FROM handles WHERE user_id LIKE 'qa_visual_user_%'").first<{ count: number }>();
+
+  // The density fixture remains available to this explicitly labelled local
+  // preview, while the public aggregate path must stay empty until real
+  // published builders contribute.
+  assert.equal(publicCities.length, 0);
+  assert.deepEqual(publicStatistics, {
+    publishedBuilderCount: 0,
+    mappedBuilderCount: 0,
+    qualifyingCityCount: 0,
+    publicProjectCount: 0,
+    publicTopicCount: 0,
+    connectionCount: 0,
+  });
+  assert.equal(publicGraph.topics.length, 0);
+  assert.equal(publicGraph.totalBuilderCount, 0);
 
   const cityCounts = new Map(cities.map((city) => [city.cityId, city.builderCount]));
   assert.equal(cityCounts.get("vancouver-ca"), 16);

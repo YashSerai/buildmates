@@ -17,7 +17,7 @@ describe("platform capability gate", () => {
     const manifest = JSON.parse(await readFile(resolve("apps/web/.openai/hosting.json"), "utf8"));
     expect(manifest).toMatchObject({ project_id: expect.stringMatching(/^appgprj_/), d1: "DB", r2: "ASSETS" });
     expect(BUILD_MATES_MCP_TOOLS.slice(0, 2)).toEqual(["get_link_url", "complete_identity_link"]);
-    expect(BUILD_MATES_MCP_TOOLS).toHaveLength(42);
+    expect(BUILD_MATES_MCP_TOOLS).toHaveLength(54);
     expect(BUILD_MATES_MCP_TOOLS).toContain("create_surface_asset_upload_grant");
     expect(BUILD_MATES_MCP_TOOLS).toContain("attach_profile_project_media");
     expect(BUILD_MATES_MCP_TOOLS).toContain("validate_surface_spec");

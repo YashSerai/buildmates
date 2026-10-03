@@ -31,7 +31,7 @@ test("introductions provides honest cold-start actions without horizontal overfl
   expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
   await page.screenshot({
     path: test.info().outputPath("introductions-cold-start.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });
 
@@ -56,7 +56,7 @@ test("inbox exposes loading and truthful empty activity states", async ({
   expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
   await page.screenshot({
     path: test.info().outputPath("activity-cold-start.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });
 
@@ -79,7 +79,7 @@ test("connections preserves a useful cold-start state", async ({ page }) => {
   expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
   await page.screenshot({
     path: test.info().outputPath("connections-cold-start.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });
 
@@ -94,7 +94,7 @@ test("circles separates the active collection and preserves its cold-start state
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Active Circles" }),
+    page.getByRole("region", { name: "Joined Circles" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "No Circles yet" }),
@@ -106,6 +106,6 @@ test("circles separates the active collection and preserves its cold-start state
   expect(dimensions.scroll - dimensions.client).toBeLessThanOrEqual(1);
   await page.screenshot({
     path: test.info().outputPath("circles-cold-start.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });

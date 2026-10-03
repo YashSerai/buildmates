@@ -74,7 +74,7 @@ test("privacy and error copy stay aligned with the product boundaries", async ()
   assert.doesNotMatch(profileDesign, /SurfaceSpec|generation brief|<pre>/i);
   assert.match(profileDesign, /Design with Codex/);
   assert.match(profileDesign, /Edit profile details/);
-  assert.match(onboarding, /Recommended: Tuesdays and Fridays/);
+  assert.match(onboarding, /initialSnapshot\.automation\?\.cadence \?\? "manual"/);
   assert.match(onboarding, /Save Work Pulse preferences/);
   assert.doesNotMatch(onboarding, /Topic to watch/);
 });
@@ -118,7 +118,8 @@ test("public builder pages are canonical surfaces and keep design controls priva
   assert.match(profile, /if \(profile\?\.handle\) redirect\("\/profile\/design"\)/);
   assert.match(profileReview, /router\.push\("\/profile\/design"\)/);
   assert.match(profileReview, /Save and continue to design/);
-  assert.match(builder, /profile\.fields\s*\.filter\(\(field\) => field\.key !== "projects"\)/);
+  assert.match(builder, /publicFields\.results\s*\.filter\(\(field\) => field\.key !== "projects"\)/);
+  assert.match(builder, /source_status='confirmed' AND cohort_scope_id IS NULL/);
   assert.match(builder, /field\.key === "current_work"[\s\S]*currentWorkProjectsValue/);
   assert.match(builder, /profile\.surfaceProjects\.map/);
   assert.match(nextConfig, /async redirects\(\)/);

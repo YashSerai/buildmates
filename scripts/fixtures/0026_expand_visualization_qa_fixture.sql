@@ -46,8 +46,8 @@ WITH RECURSIVE fixture(n) AS (
   UNION ALL
   SELECT n + 1 FROM fixture WHERE n < 253
 )
-INSERT INTO `users` (`id`,`status`,`operator_role`,`created_at`,`updated_at`,`deleted_at`)
-SELECT printf('qa_visual_user_%03d',n),'active','none',1784332800000 + n,1784332800000 + n,NULL FROM fixture;
+INSERT INTO `users` (`id`,`status`,`operator_role`,`data_origin`,`created_at`,`updated_at`,`deleted_at`)
+SELECT printf('qa_visual_user_%03d',n),'active','none','qa_fixture',1784332800000 + n,1784332800000 + n,NULL FROM fixture;
 --> statement-breakpoint
 WITH RECURSIVE fixture(n) AS (
   SELECT 37

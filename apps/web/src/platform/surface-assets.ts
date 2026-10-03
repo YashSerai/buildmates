@@ -22,6 +22,16 @@ export type ApprovedProfileMedia = {
 
 export type ApprovedProfileProject = { key: string; title: string };
 
+export type SurfacePreviewAsset = {
+  contentType: "image/png" | "image/jpeg" | "image/webp" | "image/avif" | "image/gif";
+  base64: string;
+};
+
+const SURFACE_PREVIEW_SOURCE = /^\/api\/surface-assets\/([a-z0-9_-]+)\/([a-f0-9]{64}\.(?:avif|gif|jpe?g|png|webp))$/;
+const SURFACE_PREVIEW_TYPES = new Set<SurfacePreviewAsset["contentType"]>(["image/png", "image/jpeg", "image/webp", "image/avif", "image/gif"]);
+const MAX_SURFACE_PREVIEW_ASSET_BYTES = 1_000_000;
+const MAX_SURFACE_PREVIEW_TOTAL_BYTES = 2_000_000;
+
 export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Like; actorId: string; bytes: ArrayBuffer; claimedContentType: string; at?: Date }) {
   if (input.bytes.byteLength < 1 || input.bytes.byteLength > MAX_SURFACE_ASSET_BYTES) throw new Error("surface_asset_size_invalid");
   const user = await input.DB.prepare("SELECT id FROM users WHERE id=? AND status='active'").bind(input.actorId).first<{ id: string }>();
@@ -80,6 +90,79 @@ export async function uploadSurfaceAsset(input: { DB: RepositoryD1; bucket: R2Li
   return { id, src: `/api/surface-assets/${input.actorId}/${sha256}.${EXTENSION[contentType]}`, contentType, byteSize: bytes.byteLength, sha256, sanitization: "container_metadata_stripped" as const };
 }
 
+/**
+ * Load already-authorized surface media for the trusted generated-surface
+ * renderer. The caller validates the surface revision and approved asset list;
+ * this boundary validates the path, D1 metadata, byte limits, and the actual
+ * object bytes before returning an in-band resource.
+ */
+export async function loadSurfacePreviewAssets(input: {
+  DB: RepositoryD1;
+  bucket: R2Like;
+  userId: string;
+  surfaceId: string;
+  sources: string[];
+}): Promise<Record<string, SurfacePreviewAsset>> {
+  if (!Array.isArray(input.sources) || input.sources.length > 24) throw new Error("surface_preview_media_invalid");
+  const parsed = input.sources.map((source) => {
+    if (typeof source !== "string") throw new Error("surface_preview_media_invalid");
+    const match = SURFACE_PREVIEW_SOURCE.exec(source);
+    if (!match) throw new Error("surface_preview_media_invalid");
+    return { source, ownerId: match[1]!, filename: match[2]!, objectKey: `surface-assets/${match[1]}/${match[2]}` };
+  });
+  const unique = [...new Map(parsed.map((asset) => [asset.source, asset])).values()];
+  if (!unique.length) return {};
+  const placeholders = unique.map(() => "?").join(",");
+  const rows = (await input.DB.prepare(`SELECT id,owner_user_id AS ownerId,object_key AS objectKey,content_type AS contentType,byte_size AS byteSize FROM surface_assets WHERE deleted_at IS NULL AND object_key IN (${placeholders})`).bind(...unique.map((asset) => asset.objectKey)).all<{ id: string; ownerId: string; objectKey: string; contentType: string; byteSize: number }>()).results;
+  const byKey = new Map(rows.map((row) => [row.objectKey, row]));
+  let totalBytes = 0;
+  for (const asset of unique) {
+    const row = byKey.get(asset.objectKey);
+    if (!row || row.ownerId !== asset.ownerId || !SURFACE_PREVIEW_TYPES.has(row.contentType as SurfacePreviewAsset["contentType"])) throw new Error("surface_preview_media_invalid");
+    const byteSize = Number(row.byteSize);
+    if (!Number.isSafeInteger(byteSize) || byteSize < 1 || byteSize > MAX_SURFACE_PREVIEW_ASSET_BYTES) throw new Error("surface_preview_media_too_large");
+    totalBytes += byteSize;
+    if (totalBytes > MAX_SURFACE_PREVIEW_TOTAL_BYTES) throw new Error("surface_preview_media_too_large");
+  }
+  const output: Record<string, SurfacePreviewAsset> = {};
+  for (const asset of unique) {
+    const row = byKey.get(asset.objectKey)!;
+    const object = await input.bucket.get(asset.objectKey).catch(() => null);
+    let bytes: Uint8Array | null = null;
+    if (object?.arrayBuffer) bytes = new Uint8Array(await object.arrayBuffer());
+    if (!bytes) {
+      const fallback = await input.DB.prepare("SELECT bytes FROM surface_asset_blobs WHERE asset_id=?").bind(row.id).first<{ bytes: ArrayBuffer | Uint8Array }>();
+      if (fallback?.bytes) bytes = fallback.bytes instanceof Uint8Array ? fallback.bytes : new Uint8Array(fallback.bytes);
+    }
+    if (!bytes || bytes.byteLength !== Number(row.byteSize)) throw new Error("surface_preview_media_unavailable");
+    output[asset.source] = { contentType: row.contentType as SurfacePreviewAsset["contentType"], base64: bytesToBase64(bytes) };
+  }
+  return output;
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  const chunkSize = 0x8000;
+  let binary = "";
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) binary += String.fromCharCode(...bytes.subarray(offset, Math.min(offset + chunkSize, bytes.length)));
+  if (typeof btoa === "function") return btoa(binary);
+  // Keep this worker-safe. Cloudflare runtimes do not expose Node's Buffer,
+  // and the preview contract must still work in a test/runtime without btoa.
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let encoded = "";
+  for (let offset = 0; offset < bytes.length; offset += 3) {
+    const first = bytes[offset]!;
+    const hasSecond = offset + 1 < bytes.length;
+    const hasThird = offset + 2 < bytes.length;
+    const second = hasSecond ? bytes[offset + 1]! : 0;
+    const third = hasThird ? bytes[offset + 2]! : 0;
+    encoded += alphabet[first >> 2];
+    encoded += alphabet[((first & 0x03) << 4) | (second >> 4)];
+    encoded += hasSecond ? alphabet[((second & 0x0f) << 2) | (third >> 6)] : "=";
+    encoded += hasThird ? alphabet[third & 0x3f] : "=";
+  }
+  return encoded;
+}
+
 export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorId: string; limit?: number }): Promise<ApprovedProfileMedia[]> {
   const limit = Math.min(Math.max(Math.trunc(input.limit ?? 24), 1), 24);
   const [projectRows, profileRows] = await Promise.all([
@@ -90,7 +173,7 @@ export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorI
     JOIN projects project ON project.id=media.project_id
     JOIN surface_assets asset ON asset.id=media.asset_id
     WHERE project.owner_user_id=? AND project.status='active' AND project.audience='public'
-      AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
+      AND project.published_at IS NOT NULL AND project.deleted_at IS NULL AND project.cohort_scope_id IS NULL
       AND asset.owner_user_id=? AND asset.deleted_at IS NULL
     ORDER BY project.updated_at DESC,media.position,media.id LIMIT ?`)
       .bind(input.actorId, input.actorId, limit).all<ProfileMediaRow>(),
@@ -101,7 +184,7 @@ export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorI
       JOIN profiles profile ON profile.id=media.profile_id
       JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects'
       JOIN surface_assets asset ON asset.id=media.asset_id
-      WHERE profile.user_id=? AND field.audience='public'
+      WHERE profile.user_id=? AND field.audience='public' AND field.source_status='confirmed' AND field.cohort_scope_id IS NULL
         AND asset.owner_user_id=? AND asset.deleted_at IS NULL
       ORDER BY media.updated_at DESC LIMIT ?`)
       .bind(input.actorId, input.actorId, limit).all<ProfileMediaRow & { projectsJson: string }>(),
@@ -134,7 +217,7 @@ export async function listApprovedProfileMedia(input: { DB: RepositoryD1; actorI
 export async function listApprovedProfileProjects(input: { DB: RepositoryD1; actorId: string }): Promise<ApprovedProfileProject[]> {
   const row = await input.DB.prepare(`SELECT field.value_json AS projectsJson
     FROM profiles profile JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects'
-    WHERE profile.user_id=? AND field.audience='public' LIMIT 1`)
+    WHERE profile.user_id=? AND field.audience='public' AND field.source_status='confirmed' AND field.cohort_scope_id IS NULL LIMIT 1`)
     .bind(input.actorId).first<{ projectsJson: string }>();
   return row ? parseApprovedProfileProjects(row.projectsJson) : [];
 }

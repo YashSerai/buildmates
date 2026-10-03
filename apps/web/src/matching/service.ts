@@ -15,27 +15,36 @@ export type CandidateRow = {
 };
 export type MatchInboxRow = { proposalId:string; candidateUserId:string; candidateName:string; candidateSummary:string; state:string; expiresAt:number; myEvaluation:string|null; theirEvaluation:string|null; myResponse:string|null; myAcceptanceMode:AcceptanceMode; canAutopilot:boolean };
 
-export async function listMatchInbox(DB:D1,viewerId:string,now:number):Promise<MatchInboxRow[]>{
-  const capability=await automationCapability(DB,viewerId);
-  const rows=await DB.prepare(`SELECT p.id AS proposalId,p.state,p.expires_at AS expiresAt,
+export async function listMatchInbox(DB:D1,viewerId:string,now:number):Promise<MatchInboxRow[]>{return (await listMatchInboxPage(DB,viewerId,now,null,50)).items}
+export async function listMatchInboxPage(DB:D1,viewerId:string,now:number,after:string|null,limit=50):Promise<{items:MatchInboxRow[];nextCursor:string|null}>{
+  const bounded=Math.max(1,Math.min(100,limit)),cursor=parseMatchInboxCursor(after),capability=await automationCapability(DB,viewerId);
+  const rows=await DB.prepare(`SELECT p.id AS proposalId,p.state,p.expires_at AS expiresAt,p.created_at AS createdAt,
     CASE WHEN mp.user_a_id=? THEN mp.user_b_id ELSE mp.user_a_id END AS candidateUserId,
     other.display_name AS candidateName,other.summary AS candidateSummary,
     mine.decision AS myEvaluation,theirs.decision AS theirEvaluation,response.response AS myResponse,
     me.acceptance_mode AS myAcceptanceMode
     FROM match_proposals p JOIN match_pairs mp ON mp.id=p.match_pair_id
     JOIN profiles me ON me.user_id=?
-    JOIN profiles other ON other.user_id=CASE WHEN mp.user_a_id=? THEN mp.user_b_id ELSE mp.user_a_id END AND other.published_at IS NOT NULL
+    JOIN profiles other ON other.user_id=CASE WHEN mp.user_a_id=? THEN mp.user_b_id ELSE mp.user_a_id END
+      AND other.allow_matching=1
+      AND (other.matching_reviewed_at IS NOT NULL OR (other.published_at IS NOT NULL AND other.audience IN ('public','signed_in','suggested_connections')))
     LEFT JOIN codex_evaluations mine ON mine.proposal_id=p.id AND mine.user_id=?
-    LEFT JOIN codex_evaluations theirs ON theirs.proposal_id=p.id AND theirs.user_id<>?
+    LEFT JOIN codex_evaluations theirs ON theirs.proposal_id=p.id AND theirs.user_id=CASE WHEN mp.user_a_id=me.user_id THEN mp.user_b_id ELSE mp.user_a_id END
     LEFT JOIN human_responses response ON response.proposal_id=p.id AND response.user_id=?
     WHERE (mp.user_a_id=? OR mp.user_b_id=?) AND (p.state='pending' OR p.terminal_at>?)
       AND NOT EXISTS (SELECT 1 FROM blocks block WHERE block.revoked_at IS NULL AND ((block.blocker_user_id=? AND block.blocked_user_id=other.user_id) OR (block.blocker_user_id=other.user_id AND block.blocked_user_id=?)))
       AND (p.state<>'pending' OR (p.expires_at>? AND other.allow_matching=1 AND p.evidence_version_a=(SELECT version FROM builder_match_index WHERE user_id=mp.user_a_id) AND p.evidence_version_b=(SELECT version FROM builder_match_index WHERE user_id=mp.user_b_id)))
-    ORDER BY CASE p.state WHEN 'matched' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,p.created_at DESC LIMIT 50`)
-    .bind(viewerId,viewerId,viewerId,viewerId,viewerId,viewerId,viewerId,viewerId,now-30*86_400_000,viewerId,viewerId,now)
-    .all<Omit<MatchInboxRow,"canAutopilot">>();
-  return rows.results.map((row)=>({...row,canAutopilot:row.myAcceptanceMode==="full_autopilot"&&capability==="available"}));
+      AND (CASE p.state WHEN 'matched' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END>?
+        OR (CASE p.state WHEN 'matched' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END=?
+          AND (p.created_at<? OR (p.created_at=? AND p.id<?))))
+    ORDER BY CASE p.state WHEN 'matched' THEN 0 WHEN 'pending' THEN 1 ELSE 2 END,p.created_at DESC,p.id DESC LIMIT ?`)
+    .bind(viewerId,viewerId,viewerId,viewerId,viewerId,viewerId,viewerId,now-30*86_400_000,viewerId,viewerId,now,cursor.rank,cursor.rank,cursor.at,cursor.at,cursor.id,bounded+1)
+    .all<Omit<MatchInboxRow,"canAutopilot"> & {createdAt:number}>();
+  const page=rows.results.slice(0,bounded),items=page.map((row):MatchInboxRow=>({proposalId:row.proposalId,candidateUserId:row.candidateUserId,candidateName:row.candidateName,candidateSummary:row.candidateSummary,state:row.state,expiresAt:row.expiresAt,myEvaluation:row.myEvaluation,theirEvaluation:row.theirEvaluation,myResponse:row.myResponse,myAcceptanceMode:row.myAcceptanceMode,canAutopilot:row.myAcceptanceMode==="full_autopilot"&&capability==="available"}));
+  return {items,nextCursor:rows.results.length>bounded&&page.length?`mi:${matchRank(page[page.length-1]!.state)}:${page[page.length-1]!.createdAt}:${encodeURIComponent(page[page.length-1]!.proposalId)}`:null};
 }
+function matchRank(state:string){return state==="matched"?0:state==="pending"?1:2}
+function parseMatchInboxCursor(value:string|null){if(!value)return{rank:-1,at:Number.MAX_SAFE_INTEGER,id:"~"};if(!value.startsWith("mi:"))throw new Error("invalid_introduction_cursor");const parts=value.split(":");const rank=Number(parts[1]),at=Number(parts[2]);if(!Number.isInteger(rank)||rank<0||rank>2||!Number.isSafeInteger(at)||at<0||!parts[3])throw new Error("invalid_introduction_cursor");let id="";try{id=decodeURIComponent(parts.slice(3).join(":"))}catch{throw new Error("invalid_introduction_cursor")}if(!id)throw new Error("invalid_introduction_cursor");return{rank,at,id}}
 
 export async function listCandidateRows(DB: D1, viewerId: string, now: number, limit = 30): Promise<CandidateRow[]> {
   const boundedLimit = Math.max(1, Math.min(30, limit));
@@ -50,9 +59,15 @@ export async function listCandidateRows(DB: D1, viewerId: string, now: number, l
     FROM pair_scores ps
     JOIN builder_match_index self ON self.user_id=?
     JOIN taxonomy_versions self_taxonomy ON self_taxonomy.id=self.taxonomy_version_id AND self_taxonomy.status='active'
+    JOIN profiles self_profile ON self_profile.user_id=?
+      AND self_profile.allow_matching=1
+      AND (self_profile.matching_reviewed_at IS NOT NULL OR (self_profile.published_at IS NOT NULL AND self_profile.audience IN ('public','signed_in','suggested_connections')))
+    JOIN users self_user ON self_user.id=self_profile.user_id AND self_user.status='active'
     JOIN builder_match_index b ON b.user_id=CASE WHEN ps.user_a_id=? THEN ps.user_b_id ELSE ps.user_a_id END
     JOIN taxonomy_versions candidate_taxonomy ON candidate_taxonomy.id=b.taxonomy_version_id
-    JOIN profiles p ON p.user_id=b.user_id AND p.allow_matching=1 AND p.published_at IS NOT NULL AND p.audience IN ('public','signed_in','suggested_connections')
+    JOIN profiles p ON p.user_id=b.user_id AND p.allow_matching=1
+      AND (p.matching_reviewed_at IS NOT NULL OR (p.published_at IS NOT NULL AND p.audience IN ('public','signed_in','suggested_connections')))
+    JOIN users candidate_user ON candidate_user.id=b.user_id AND candidate_user.status='active'
     WHERE (ps.user_a_id=? OR ps.user_b_id=?) AND ps.expires_at>?
       AND ps.taxonomy_version=self_taxonomy.version AND ps.weight_version=?
       AND ps.taxonomy_version=candidate_taxonomy.version
@@ -63,7 +78,7 @@ export async function listCandidateRows(DB: D1, viewerId: string, now: number, l
       AND (p.cohort_scope_id IS NULL OR EXISTS (SELECT 1 FROM cohort_memberships membership WHERE membership.cohort_id=p.cohort_scope_id AND membership.user_id=? AND membership.status='active'))
       AND NOT EXISTS (SELECT 1 FROM connections c JOIN match_pairs mp ON mp.id=c.match_pair_id WHERE c.state='active' AND ((mp.user_a_id=? AND mp.user_b_id=b.user_id) OR (mp.user_b_id=? AND mp.user_a_id=b.user_id)))
     ORDER BY ps.total_basis_points DESC,b.user_id ASC LIMIT ?`)
-    .bind(viewerId, viewerId, viewerId, viewerId, viewerId, now, MATCH_WEIGHT_VERSION, viewerId, viewerId, viewerId, viewerId, viewerId, viewerId, viewerId,viewerId, boundedLimit)
+    .bind(viewerId, viewerId, viewerId, viewerId, viewerId, viewerId, now, MATCH_WEIGHT_VERSION, viewerId, viewerId, viewerId, viewerId, viewerId, viewerId, viewerId, viewerId, boundedLimit)
     .all<{ userId: string; displayName: string; summary: string; indexVersion: number; taxonomyVersion: number; scoreBasisPoints: number; componentsJson: string; evidenceIdsJson: string; audienceDecisionsJson: string }>();
   const projected = rows.results.map((row) => ({
     userId: row.userId, displayName: row.displayName, summary: row.summary, indexVersion: row.indexVersion,
@@ -98,7 +113,7 @@ export async function evaluateCandidate(DB: D1, input: { actorId: string; evalua
     WHERE ps.user_a_id=? AND ps.user_b_id=? AND ps.index_version_a=a.version AND ps.index_version_b=b.version AND ps.taxonomy_version=taxonomy.version AND ps.weight_version=? AND ps.expires_at>? ORDER BY ps.total_basis_points DESC LIMIT 1`)
     .bind(userAId, userBId,MATCH_WEIGHT_VERSION,input.now).first<{ indexVersionA: number; indexVersionB: number; taxonomyVersion:number;weightVersion:number;expiresAt: number; evidenceIdsJson: string; audienceDecisionsJson: string }>();
   if (!score || input.indexVersion !== (input.actorId === userAId ? score.indexVersionA : score.indexVersionB)) throw new Error("candidate_stale");
-  const profiles = await DB.prepare("SELECT user_id AS userId,acceptance_mode AS acceptanceMode FROM profiles WHERE user_id IN (?,?) AND allow_matching=1 AND published_at IS NOT NULL")
+  const profiles = await DB.prepare("SELECT p.user_id AS userId,p.acceptance_mode AS acceptanceMode FROM profiles p JOIN users u ON u.id=p.user_id AND u.status='active' WHERE p.user_id IN (?,?) AND p.allow_matching=1 AND (p.matching_reviewed_at IS NOT NULL OR (p.published_at IS NOT NULL AND p.audience IN ('public','signed_in','suggested_connections')))")
     .bind(userAId, userBId).all<{ userId: string; acceptanceMode: AcceptanceMode }>();
   if (profiles.results.length !== 2) throw new Error("candidate_unavailable");
   const pairId = await stableId("pair", `${userAId}\0${userBId}`);
@@ -158,16 +173,16 @@ export async function tryOpenProposal(DB: D1, proposalId: string, now: number) {
         SELECT 1 FROM match_pairs pair
         JOIN builder_match_index ia ON ia.user_id=pair.user_a_id JOIN builder_match_index ib ON ib.user_id=pair.user_b_id
         JOIN taxonomy_versions taxonomy ON taxonomy.id=ia.taxonomy_version_id AND taxonomy.id=ib.taxonomy_version_id AND taxonomy.status='active'
-        JOIN profiles pa ON pa.user_id=pair.user_a_id AND pa.allow_matching=1 AND pa.published_at IS NOT NULL
-        JOIN profiles pb ON pb.user_id=pair.user_b_id AND pb.allow_matching=1 AND pb.published_at IS NOT NULL
+        JOIN profiles pa ON pa.user_id=pair.user_a_id AND pa.allow_matching=1 AND (pa.matching_reviewed_at IS NOT NULL OR (pa.published_at IS NOT NULL AND pa.audience IN ('public','signed_in','suggested_connections')))
+        JOIN profiles pb ON pb.user_id=pair.user_b_id AND pb.allow_matching=1 AND (pb.matching_reviewed_at IS NOT NULL OR (pb.published_at IS NOT NULL AND pb.audience IN ('public','signed_in','suggested_connections')))
         JOIN users ua ON ua.id=pair.user_a_id AND ua.status='active' JOIN users ub ON ub.id=pair.user_b_id AND ub.status='active'
         WHERE pair.id=match_proposals.match_pair_id AND ia.version=match_proposals.evidence_version_a AND ib.version=match_proposals.evidence_version_b
           AND taxonomy.version=match_proposals.taxonomy_version
           AND EXISTS (SELECT 1 FROM pair_scores score WHERE score.user_a_id=pair.user_a_id AND score.user_b_id=pair.user_b_id AND score.index_version_a=ia.version AND score.index_version_b=ib.version AND score.taxonomy_version=taxonomy.version AND score.weight_version=match_proposals.weight_version AND score.expires_at>?)
           AND EXISTS (SELECT 1 FROM codex_evaluations evaluation WHERE evaluation.proposal_id=match_proposals.id AND evaluation.user_id=pair.user_a_id AND evaluation.decision='approve' AND evaluation.index_version=ia.version)
           AND EXISTS (SELECT 1 FROM codex_evaluations evaluation WHERE evaluation.proposal_id=match_proposals.id AND evaluation.user_id=pair.user_b_id AND evaluation.decision='approve' AND evaluation.index_version=ib.version)
-          AND (EXISTS (SELECT 1 FROM human_responses response WHERE response.proposal_id=match_proposals.id AND response.user_id=pair.user_a_id AND response.response='interested') OR (pa.acceptance_mode='full_autopilot' AND EXISTS (SELECT 1 FROM automation_checkpoints checkpoint WHERE checkpoint.user_id=pair.user_a_id AND checkpoint.kind='buildmates' AND json_extract(checkpoint.state_json,'$.capability')='available' AND json_extract(checkpoint.state_json,'$.proofSource')='mcp_delegated_probe' AND json_extract(checkpoint.state_json,'$.checkedAt') BETWEEN ? AND ?)))
-          AND (EXISTS (SELECT 1 FROM human_responses response WHERE response.proposal_id=match_proposals.id AND response.user_id=pair.user_b_id AND response.response='interested') OR (pb.acceptance_mode='full_autopilot' AND EXISTS (SELECT 1 FROM automation_checkpoints checkpoint WHERE checkpoint.user_id=pair.user_b_id AND checkpoint.kind='buildmates' AND json_extract(checkpoint.state_json,'$.capability')='available' AND json_extract(checkpoint.state_json,'$.proofSource')='mcp_delegated_probe' AND json_extract(checkpoint.state_json,'$.checkedAt') BETWEEN ? AND ?)))
+          AND (EXISTS (SELECT 1 FROM human_responses response WHERE response.proposal_id=match_proposals.id AND response.user_id=pair.user_a_id AND response.response='interested') OR (pa.acceptance_mode='full_autopilot' AND EXISTS (SELECT 1 FROM automation_checkpoints checkpoint WHERE checkpoint.user_id=pair.user_a_id AND checkpoint.kind='buildmates' AND json_extract(checkpoint.state_json,'$.capability')='available' AND json_extract(checkpoint.state_json,'$.proofSource')='verified_host_event' AND json_extract(checkpoint.state_json,'$.checkedAt') BETWEEN ? AND ?)))
+          AND (EXISTS (SELECT 1 FROM human_responses response WHERE response.proposal_id=match_proposals.id AND response.user_id=pair.user_b_id AND response.response='interested') OR (pb.acceptance_mode='full_autopilot' AND EXISTS (SELECT 1 FROM automation_checkpoints checkpoint WHERE checkpoint.user_id=pair.user_b_id AND checkpoint.kind='buildmates' AND json_extract(checkpoint.state_json,'$.capability')='available' AND json_extract(checkpoint.state_json,'$.proofSource')='verified_host_event' AND json_extract(checkpoint.state_json,'$.checkedAt') BETWEEN ? AND ?)))
           AND NOT EXISTS (SELECT 1 FROM blocks block WHERE block.revoked_at IS NULL AND ((block.blocker_user_id=pair.user_a_id AND block.blocked_user_id=pair.user_b_id) OR (block.blocker_user_id=pair.user_b_id AND block.blocked_user_id=pair.user_a_id)))
           AND NOT EXISTS (SELECT 1 FROM matching_snoozes snooze WHERE snooze.user_id IN (pair.user_a_id,pair.user_b_id) AND snooze.starts_at<=? AND snooze.ends_at>?)
           AND NOT EXISTS (SELECT 1 FROM matching_exclusions exclusion WHERE exclusion.kind='user' AND ((exclusion.user_id=pair.user_a_id AND exclusion.normalized_value=pair.user_b_id) OR (exclusion.user_id=pair.user_b_id AND exclusion.normalized_value=pair.user_a_id)))
@@ -224,7 +239,7 @@ async function connectionPresentation(DB:D1,input:{proposalId:string;userA:strin
 async function automationCapability(DB:D1,userId:string):Promise<Capability>{
   const row=await DB.prepare("SELECT state_json AS stateJson FROM automation_checkpoints WHERE user_id=? AND kind='buildmates' LIMIT 1").bind(userId).first<{stateJson:string}>();
   const state=safeObject(row?.stateJson??"{}");const value=state.capability;
-  if(value==="available"){const checkedAt=Date.parse(String(state.checkedAt??""));if(state.proofSource!=="mcp_delegated_probe"||!Number.isFinite(checkedAt)||checkedAt<Date.now()-AUTOMATION_CAPABILITY_TTL_MS||checkedAt>Date.now()+5*60_000)return "approval_required";}
+  if(value==="available"){const checkedAt=Date.parse(String(state.checkedAt??""));if(state.proofSource!=="verified_host_event"||!Number.isFinite(checkedAt)||checkedAt<Date.now()-AUTOMATION_CAPABILITY_TTL_MS||checkedAt>Date.now()+5*60_000)return "approval_required";}
   return value==="available"||value==="approval_required"||value==="automation_unavailable"?value:"approval_required";
 }
 

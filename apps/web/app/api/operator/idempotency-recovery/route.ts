@@ -1,4 +1,4 @@
-import { inspectIdempotencyRecovery, recoverIdempotencyOperation, type RecoveryDisposition } from "@buildmates/mcp-core";
+import { GROUP_RECOVERY_ERROR, inspectIdempotencyRecovery, recoverIdempotencyOperation, recoveryErrorMessage, type RecoveryDisposition } from "@buildmates/mcp-core";
 import { internalUserKey, requireApiIdentity } from "@/src/platform/identity";
 import { getPlatformBindings } from "@/src/platform/bindings";
 import { requireSameOriginMutation } from "@/src/platform/same-origin";
@@ -20,6 +20,8 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || !validId(body.id) || !validHash(body.requestHash) || typeof body.reason !== "string" || body.reason.trim().length < 12 || !["no_effect", "completed_effect"].includes(String(body.disposition))) return json({ error: "invalid_request" }, 400);
   const disposition = body.disposition as RecoveryDisposition;
+  const inspection = await inspectIdempotencyRecovery(access.DB, String(body.id));
+  if (inspection?.recovery.mode === "manual_only") return json({ error: GROUP_RECOVERY_ERROR, message: inspection.recovery.message }, 409);
   const effect = body.effectLocator as Record<string, unknown> | undefined;
   const effectLocator = effect && validToken(effect.kind) && validId(effect.id) ? { kind: String(effect.kind), id: String(effect.id) } : undefined;
   if ((disposition === "completed_effect") !== Boolean(effectLocator)) return json({ error: disposition === "completed_effect" ? "effect_locator_required" : "effect_locator_not_allowed" }, 400);
@@ -31,7 +33,8 @@ export async function POST(request: Request) {
     return recovered ? json({ recovered: true }) : json({ error: "recovery_conflict" }, 409);
   } catch (error) {
     const message = error instanceof Error ? error.message : "recovery_failed";
-    return json({ error: ["effect_locator_not_verifiable", "effect_locator_required", "effect_locator_not_allowed", "recovery_metadata_invalid"].includes(message) ? message : "recovery_failed" }, 400);
+    const known = ["effect_locator_not_verifiable", "effect_locator_required", "effect_locator_not_allowed", "recovery_metadata_invalid", GROUP_RECOVERY_ERROR].includes(message);
+    return json({ error: known ? message : "recovery_failed", ...(known ? { message: recoveryErrorMessage(message) } : {}) }, message === GROUP_RECOVERY_ERROR ? 409 : 400);
   }
 }
 

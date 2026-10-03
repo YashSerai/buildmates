@@ -1,9 +1,9 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runPrivacyCommand } from "../../apps/web/src/platform/onboarding-data";
 import type { R2Like } from "../../apps/web/src/platform/r2";
-import { resumeAccountDeletion } from "../../apps/web/src/privacy/account-deletion";
+import { beginAccountDeletion, hashIdempotencyKey, resumeAccountDeletion } from "../../apps/web/src/privacy/account-deletion";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("account deletion", () => {
   let mf: Miniflare;
@@ -12,11 +12,7 @@ describe("account deletion", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    const migrations = (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort();
-    for (const migration of migrations) {
-      const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
   });
 
   afterEach(async () => { await mf.dispose(); });
@@ -31,6 +27,7 @@ describe("account deletion", () => {
     };
     await DB.batch([
       DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES ('delete-me','active','none',?,?)").bind(now,now),
+      DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES ('other-user','active','none',?,?)").bind(now,now),
       DB.prepare("INSERT INTO profiles(id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,location_map_opt_in,created_at,updated_at,published_at) VALUES ('profile-delete','delete-me','Alex','Private context','A project','[]','public',1,'full_autopilot',1,0,?,?,?)").bind(now,now,now),
       DB.prepare("INSERT INTO handles(user_id,handle,normalized_handle,created_at) VALUES ('delete-me','alex','alex',?)").bind(now),
       DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,created_at,updated_at,published_at) VALUES ('project-delete','delete-me','alex-project','Alex project','Secret summary','public',1,'active','building',1,?,?,?)").bind(now,now,now),
@@ -47,11 +44,15 @@ describe("account deletion", () => {
       DB.prepare("INSERT INTO surface_revisions(id,surface_id,revision_number,base_revision_number,author_user_id,design_policy_id,design_policy_version,visibility,spec_json,status,created_at) VALUES ('revision-delete','surface-delete',1,NULL,'delete-me','policy-delete','test-delete','private_preview','{\"sentinel\":\"private generated profile\"}','published',?)").bind(now),
       DB.prepare("UPDATE surfaces SET published_revision_id='revision-delete' WHERE id='surface-delete'"),
       DB.prepare("INSERT INTO personal_surface_views(id,surface_id,user_id,revision_id,created_at,updated_at) VALUES ('personal-view-delete','surface-delete','delete-me','revision-delete',?,?)").bind(now,now),
+      DB.prepare("INSERT INTO surface_asset_attachments(id,surface_id,asset_id,attached_by_user_id,binding_key,alt_text,created_at) VALUES ('attachment-delete','surface-delete','asset-delete','delete-me','avatar','Avatar',?)").bind(now),
+      DB.prepare("INSERT INTO surface_asset_blobs(asset_id,bytes) VALUES ('asset-delete',?)").bind(new Uint8Array([1,2,3])),
+      DB.prepare("INSERT INTO notifications(id,user_id,kind,delivery,payload_json,created_at) VALUES ('notice-other-project','other-user','project_collaboration_invite','immediate',?,?)").bind(JSON.stringify({ projectId: 'project-delete', projectTitle: 'Secret project title' }), now),
       DB.prepare("INSERT INTO idempotency_keys(id,actor_user_id,operation,key_hash,request_hash,response_json,status,expires_at,created_at,updated_at) VALUES ('idem-delete','delete-me','profile.update','key','request','{\"private\":true}','completed',?,?,?)").bind(now+60_000,now,now),
       DB.prepare("INSERT INTO audit_events(id,actor_user_id,action,object_kind,object_id,metadata_json,idempotency_key,created_at) VALUES ('audit-delete','delete-me','profile.updated','profile','alex-private-profile','{\"method\":\"private\"}','private-audit-key',?)").bind(now),
     ]);
 
-    const result = await runPrivacyCommand(DB,"delete-me",{command:"request_deletion",confirmation:"DELETE BUILDMATES"},assets);
+    let result = await runPrivacyCommand(DB,"delete-me",{command:"request_deletion",confirmation:"DELETE BUILDMATES"},assets);
+    while (result.status === "deleting") result = await resumeAccountDeletion(DB, assets, result.jobId);
     expect(result.jobId).toMatch(/^deletion_/);
     expect(await DB.prepare("SELECT status,deleted_at AS deletedAt FROM users WHERE id='delete-me'").first()).toMatchObject({status:"deleted"});
     expect(await DB.prepare("SELECT display_name AS displayName,audience,allow_matching AS allowMatching,published_at AS publishedAt FROM profiles WHERE user_id='delete-me'").first()).toMatchObject({displayName:"Deleted builder",audience:"private",allowMatching:0,publishedAt:null});
@@ -64,9 +65,12 @@ describe("account deletion", () => {
     expect(await DB.prepare("SELECT revoked_at AS revokedAt FROM identity_links WHERE id='link-delete'").first<{revokedAt:number|null}>()).toMatchObject({revokedAt:expect.any(Number)});
     expect(await DB.prepare("SELECT provider_subject AS subject FROM identity_links WHERE id='link-delete'").first()).toEqual({subject:"deleted:link-delete"});
     expect(await DB.prepare("SELECT subject FROM identity_principals WHERE id='principal-delete'").first()).toEqual({subject:"deleted:principal-delete"});
-    expect(await DB.prepare("SELECT COUNT(*) AS count FROM idempotency_keys WHERE actor_user_id='delete-me'").first()).toEqual({count:0});
+    expect((await DB.prepare("SELECT id,status FROM idempotency_keys WHERE actor_user_id='delete-me'").all()).results).toEqual([]);
     expect(await DB.prepare("SELECT object_id AS objectId,metadata_json AS metadata,idempotency_key AS idempotencyKey FROM audit_events WHERE id='audit-delete'").first()).toEqual({objectId:"deleted",metadata:"{}",idempotencyKey:null});
     expect(await DB.prepare("SELECT deleted_at AS deletedAt FROM surface_assets WHERE id='asset-delete'").first<{deletedAt:number|null}>()).toMatchObject({deletedAt:expect.any(Number)});
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM surface_asset_blobs WHERE asset_id='asset-delete'").first()).toEqual({count:0});
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM surface_asset_attachments WHERE id='attachment-delete'").first()).toEqual({count:0});
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM notifications WHERE id='notice-other-project'").first()).toEqual({count:0});
     expect(storedObjects.has("profiles/delete-me/avatar.png")).toBe(false);
     expect(await DB.prepare("SELECT status FROM deletion_jobs WHERE id=?").bind(result.jobId).first()).toMatchObject({status:"complete"});
   }, 30_000);
@@ -96,5 +100,46 @@ describe("account deletion", () => {
     expect(await DB.prepare("SELECT status FROM users WHERE id='delete-pending'").first()).toEqual({status:"deleted"});
     expect(await DB.prepare("SELECT status FROM deletion_jobs WHERE id=?").bind(result.jobId).first()).toEqual({status:"complete"});
     expect(await DB.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE action='deletion.completed' AND object_id=?").bind(result.jobId).first()).toEqual({count:1});
-  },30_000);
+  }, 30_000);
+
+  it("preserves only the outer deletion lease for the MCP wrapper", async () => {
+    const now = Date.now();
+    const key = "delete-lease-key";
+    const keyHash = await hashIdempotencyKey(key);
+    await DB.batch([
+      DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES ('delete-lease','active','none',?,?)").bind(now,now),
+      DB.prepare("INSERT INTO idempotency_keys(id,actor_user_id,operation,key_hash,request_hash,response_json,status,expires_at,created_at,updated_at) VALUES ('lease-keep','delete-lease','perform_buildmates_action',?, 'request-keep',NULL,'processing',?,?,?)").bind(keyHash,now+60_000,now,now),
+      DB.prepare("INSERT INTO idempotency_keys(id,actor_user_id,operation,key_hash,request_hash,response_json,status,expires_at,created_at,updated_at) VALUES ('lease-drop','delete-lease','save_profile','other-key','request-drop','{\"private\":true}','complete',?,?,?)").bind(now+60_000,now,now),
+    ]);
+    const assets: R2Like = { async put() {}, async get() { return null; }, async delete() {} };
+    const result = await beginAccountDeletion(DB, "delete-lease", assets, { operation: "perform_buildmates_action", key });
+    expect(result.status).toBe("complete");
+    expect((await DB.prepare("SELECT id,status FROM idempotency_keys WHERE actor_user_id='delete-lease'").all()).results).toEqual([{ id: "lease-keep", status: "processing" }]);
+  }, 30_000);
+
+  it("cleans every owned asset beyond the old one-thousand row cap", async () => {
+    const now = Date.now();
+    const assetCount = 1_005;
+    await DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at) VALUES ('delete-many','active','none',?,?)").bind(now,now).run();
+    for (let offset = 0; offset < assetCount; offset += 100) {
+      const statements = [];
+      for (let index = offset; index < Math.min(assetCount, offset + 100); index += 1) {
+        const suffix = String(index).padStart(4, "0");
+        statements.push(DB.prepare("INSERT INTO surface_assets(id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) VALUES (?,?,?,?,?,?,?)").bind(`asset-many-${suffix}`, "delete-many", `profiles/delete-many/${suffix}.png`, "image/png", 8, `sha-many-${suffix}`, now));
+      }
+      await DB.batch(statements);
+    }
+    let deleted = 0;
+    const assets: R2Like = {
+      async put() {},
+      async get() { return null; },
+      async delete() { deleted += 1; },
+    };
+
+    let result = await runPrivacyCommand(DB, "delete-many", { command: "request_deletion", confirmation: "DELETE BUILDMATES" }, assets);
+    while (result.status === "deleting") result = await resumeAccountDeletion(DB, assets, result.jobId);
+    expect(result.status).toBe("complete");
+    expect(deleted).toBe(assetCount);
+    expect(await DB.prepare("SELECT COUNT(*) AS count FROM surface_assets WHERE owner_user_id='delete-many' AND deleted_at IS NOT NULL AND object_purged_at IS NOT NULL").first()).toEqual({ count: assetCount });
+  }, 120_000);
 });

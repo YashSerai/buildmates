@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export const authorizationRequestSchema = z.object({
   response_type: z.literal("code"), client_id: z.string().min(1), redirect_uri: z.string().url(),
-  code_challenge: z.string().min(43).max(128), code_challenge_method: z.literal("S256"),
+  code_challenge: z.string().regex(/^[A-Za-z0-9_-]{43,128}$/), code_challenge_method: z.literal("S256"),
   scope: z.string().min(1), state: z.string().min(8), resource: z.string().url(),
 });
 
@@ -51,6 +51,8 @@ export function oauthDiscovery(config: OAuth21Config) {
     authorization_endpoint: `${config.issuer}/oauth/authorize`, token_endpoint: `${config.issuer}/oauth/token`,
     revocation_endpoint: `${config.issuer}/oauth/revoke`, response_types_supported: ["code"],
     grant_types_supported: ["authorization_code", "refresh_token"], code_challenge_methods_supported: ["S256"],
+    authorization_response_iss_parameter_supported: true,
+    client_id_metadata_document_supported: true,
     scopes_supported: [...config.allowedScopes], token_endpoint_auth_methods_supported: ["none"],
     ...(config.dynamicClientRegistrationSecret ? { registration_endpoint: `${config.issuer}/oauth/register` } : {}),
   } as const;
@@ -96,6 +98,7 @@ export function registerDynamicClient(input: unknown, config: OAuth21Config) {
 
 export function isRegisteredRedirect(config: OAuth21Config, clientId: string, redirectUri: string): boolean {
   if ((config.registeredRedirectUris.get(clientId) ?? []).includes(redirectUri)) return true;
+  if (isRegisteredChatGptRedirect(clientId, redirectUri)) return true;
   const secret = config.dynamicClientRegistrationSecret;
   if (!secret || !clientId.startsWith("bm.")) return false;
   const parts = clientId.split(".");
@@ -141,7 +144,10 @@ export function normalizeScopes(value: string, allowed: ReadonlySet<string>): st
 }
 
 export function verifyPkceS256(verifier: string, challenge: string): boolean {
-  return verifier.length >= 43 && verifier.length <= 128 && createHash("sha256").update(verifier).digest("base64url") === challenge;
+  if (!/^[A-Za-z0-9._~-]{43,128}$/.test(verifier) || !/^[A-Za-z0-9_-]{43,128}$/.test(challenge)) return false;
+  const expected = Buffer.from(createHash("sha256").update(verifier).digest("base64url"));
+  const actual = Buffer.from(challenge);
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
 export function hashOAuthSecret(secret: string): string {
@@ -153,6 +159,41 @@ export const oauthIssuerCapability = {
   endpointsImplemented: true,
   durableStoreImplemented: true,
   streamableHttpImplemented: true,
+  issuerIdentificationImplemented: true,
+  cimdClientValidationImplemented: true,
   productionIssuerLive: false,
   missing: ["production deployment verification", "live identity-provider consent verification", "production key and secret rotation verification"],
 } as const;
+
+/**
+ * ChatGPT now prefers a stable client identity supplied as a Client ID
+ * Metadata Document (CIMD). Keep the trust boundary narrow: only the exact
+ * ChatGPT origin and its documented callback shapes are accepted. This is a
+ * pinned first-party client integration, so it does not fetch arbitrary
+ * user-supplied metadata URLs. Codex's public client still uses the signed
+ * loopback registration path above.
+ */
+export function isRegisteredChatGptRedirect(clientId: string, redirectUri: string): boolean {
+  const client = parseChatGptClientId(clientId);
+  if (!client) return false;
+  try {
+    const redirect = new URL(redirectUri);
+    if (redirect.origin !== "https://chatgpt.com" || redirect.username || redirect.password || redirect.hash || redirect.search) return false;
+    if (client.kind === "stable") return redirect.href === "https://chatgpt.com/connector_platform_oauth_redirect";
+    return redirect.pathname === `/connector/oauth/${client.callbackId}` && redirect.href === `https://chatgpt.com/connector/oauth/${client.callbackId}`;
+  } catch {
+    return false;
+  }
+}
+
+function parseChatGptClientId(value: string): { kind: "stable" } | { kind: "callback"; callbackId: string } | null {
+  try {
+    const client = new URL(value);
+    if (client.origin !== "https://chatgpt.com" || client.username || client.password || client.search || client.hash) return null;
+    if (client.pathname === "/oauth/client.json") return { kind: "stable" };
+    const match = client.pathname.match(/^\/oauth\/([A-Za-z0-9_-]+)\/client\.json$/);
+    return match ? { kind: "callback", callbackId: match[1] } : null;
+  } catch {
+    return null;
+  }
+}

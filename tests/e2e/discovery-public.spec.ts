@@ -34,7 +34,7 @@ test("landing explains the real product and exposes only current network surface
   await expect(page.getByRole("link", { name: "Cohorts" })).toHaveCount(0);
   await page.screenshot({
     path: testInfo.outputPath("landing.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
   await page.keyboard.press("Escape");
   await expect(setupToast).toBeHidden();
@@ -49,7 +49,7 @@ test("landing explains the real product and exposes only current network surface
 test("public map and graph retain honest empty states", async ({ page }) => {
   for (const [path, heading] of [
     ["/map", "See where builders are gathering."],
-    ["/graph", "See what builders are working on."],
+    ["/graph", "The graph starts with the first topic."],
   ] as const) {
     await page.goto(path);
     await expect(page.getByRole("heading", { name: heading })).toBeVisible();
@@ -88,38 +88,29 @@ test("sitemap and robots expose no discovery or cohort URLs", async ({
   expect(robots).not.toContain("/cohorts");
 });
 
-test("Codex can read the public setup contract", async ({ request }) => {
+test("ChatGPT and Codex can read the public setup contract", async ({ request }) => {
   const response = await request.get("/llms.txt");
   expect(response.status()).toBe(200);
   const instructions = await response.text();
   expect(instructions).toContain("Canonical setup guide: https://buildmates.yashns.chatgpt.site/install");
-  expect(instructions).toContain("Fetch this file directly as public text");
-  expect(instructions).toContain("host's native plugin-install confirmation");
+  expect(instructions).toContain("Read this file as public text");
+  expect(instructions).toContain("current host's native plugin installation surface");
   expect(instructions).toContain("A plugin installed during a task does not hot-load its skills and MCP tools");
-  expect(instructions).toContain("Buildmates is installed. May I open a fresh Codex task to activate it and continue setup?");
-  expect(instructions).toContain("Buildmates setup - continue here");
-  expect(instructions).toContain("Buildmates installation - complete");
-  expect(instructions).toContain("Never fork when native task creation is available");
-  expect(instructions).toContain("If task creation or title/archive controls are unavailable");
-  expect(instructions).toContain("Never spawn recursive `codex exec` helpers or use a child Codex process");
-  expect(instructions).toContain("Call `get_setup_state` immediately");
-  expect(instructions).toContain("Never infer progress from old tasks");
+  expect(instructions).toContain("get_buildmates_workspace");
+  expect(instructions).toContain("perform_buildmates_action");
+  expect(instructions).toContain("a new ChatGPT chat or Codex task");
+  expect(instructions).toContain("If the host reports that a fresh chat or task is needed");
+  expect(instructions).toContain("Never spawn recursive `codex exec` helpers or use a child process");
+  expect(instructions).toContain("Call `get_setup_state` first");
+  expect(instructions).toContain("Do not infer progress from old tasks");
   expect(instructions).toContain("show up to three concrete next actions");
-  expect(instructions).toContain("Use my Codex workspace");
-  expect(instructions).toContain("every accessible task without filtering to the current directory");
-  expect(instructions).toContain("limit: 50");
-  expect(instructions).toContain("Never collapse product roots");
-  expect(instructions).toContain("exact absolute normalized root(s)");
-  expect(instructions).toContain("never submit `codex_workspace` as a source ID");
-  expect(instructions).toContain("every project and every task in the approved inventory");
-  expect(instructions).toContain("only the current project is represented");
-  expect(instructions).toContain("Skip workspace review");
-  expect(instructions).toContain("without asking for permission again");
-  expect(instructions).toContain("published profile is public");
-  expect(instructions).toContain("anonymous aggregate bubble");
-  expect(instructions).toContain("Do not compress these settings into one unexplained approval sentence");
-  expect(instructions).toContain("Do not treat GitHub website sign-in as repository permission");
-  expect(instructions).toContain("submit only reviewed structured profile fields");
+  expect(instructions).toContain("No complete history, whole-workspace inventory");
+  expect(instructions).toContain("show the exact roots or tasks");
+  expect(instructions).toContain("Never send it in `sourceIds`");
+  expect(instructions).toContain("A public page and background Work Pulse are optional");
+  expect(instructions).toContain("Give a public URL only when the service returns a published page");
+  expect(instructions).toContain("Keep installation, provider consent, source reading");
+  expect(instructions).toContain("Buildmates stores reviewed profile fields, approved matching summaries");
 });
 
 test("product, privacy, install, and account paths are complete", async ({
@@ -128,7 +119,7 @@ test("product, privacy, install, and account paths are complete", async ({
   for (const [path, heading] of [
     ["/product", "Networking that starts with the work."],
     ["/privacy", "Your work stays yours."],
-    ["/install", "Give Codex one link."],
+    ["/install", "Connect Buildmates to your host."],
     ["/account", "Sign in to Buildmates."],
   ] as const) {
     await page.goto(path);
@@ -136,18 +127,18 @@ test("product, privacy, install, and account paths are complete", async ({
   }
 
   await page.goto("/install");
-  await page.getByRole("button", { name: /Set up with Codex/ }).click();
+  await page.getByRole("button", { name: "Copy setup prompt" }).click();
   const installDialog = page.getByRole("dialog", { name: "Buildmates setup prompt" });
   await expect(installDialog).toBeVisible();
   await expect(page.getByLabel("Copied Buildmates setup prompt")).toHaveValue(
-    "Set up Buildmates for me using the official Codex instructions: https://buildmates.yashns.chatgpt.site/llms.txt",
+    "Set up Buildmates for me in this chat. If it is not connected, use the host's native Buildmates installation flow. Read the current setup state and continue one reviewed choice at a time. Use the official Buildmates instructions: https://buildmates.yashns.chatgpt.site/llms.txt",
   );
-  await expect(page.getByText(/handles the Buildmates connection inside Codex/i)).toBeVisible();
+  await expect(page.getByText(/Your host handles the Buildmates connection/i)).toBeVisible();
   await expect(page.getByText(/continue an unfinished setup/i)).toBeVisible();
-  await expect(page.getByText(/Use my Codex workspace/i)).toBeVisible();
-  await expect(page.getByText(/research stays in Codex/i)).toBeVisible();
+  await expect(page.getByText(/Choose a specific project/i)).toBeVisible();
+  await expect(page.getByText(/structured profile and summaries/i)).toBeVisible();
   await expect(page.getByText("Testing before publication")).toHaveCount(0);
-  await expect(page.getByText(/buildmates-mcp\.yashserai1/i)).toHaveCount(0);
+  await expect(page.getByLabel("Direct MCP connection URL")).toHaveValue("https://buildmates-mcp.yashserai1.workers.dev/mcp");
   await page.screenshot({
     path: testInfo.outputPath("install-dialog.png"),
   });
@@ -158,6 +149,6 @@ test("product, privacy, install, and account paths are complete", async ({
   expect(overflow, "/install has no horizontal overflow").toBe(false);
   await page.screenshot({
     path: testInfo.outputPath("install.png"),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });

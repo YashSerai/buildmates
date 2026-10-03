@@ -1,6 +1,7 @@
 import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { applyD1MigrationSql } from "../helpers/migrate-d1";
 const HISTORICAL_BACKFILL_VERSION = "2026-07-14.1";
 
 describe("surface revision policy-version migration", () => {
@@ -37,6 +38,6 @@ describe("surface revision policy-version migration", () => {
   }, 20_000);
 
   async function applySql(sql: string) {
-    for (const statement of sql.split("--> statement-breakpoint").map((item) => item.trim()).filter(Boolean)) await db.prepare(statement).run();
+    await applyD1MigrationSql(db, sql);
   }
 });

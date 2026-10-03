@@ -1,16 +1,16 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createD1Repositories } from "@buildmates/database";
 import { createD1McpProductRepository, createMemoryMcpProductRepository, executeBuildmatesTool, inspectIdempotencyRecovery, pruneExpiredAssertionReplays, pruneExpiredMcpRateLimits, recoverIdempotencyOperation, type BuildmatesToolServices } from "@buildmates/mcp-core";
 import { seedDesignPolicy } from "@buildmates/surfaces";
-import { fieldNotesRoomSpec, workshopProfileSpec } from "../../apps/web/app/surface-lab/fixtures";
+import { fieldNotesRoomSpec } from "../../apps/web/app/surface-lab/fixtures";
+import { applyD1Migrations, applyD1Statements, readD1Migrations } from "../helpers/migrate-d1";
 
 const ALICE_SUB = "mcp_subject_alice_canonical";
 const BOB_SUB = "mcp_subject_bob_canonical__";
 const CAROL_SUB = "mcp_subject_carol_canonical";
 const at = Date.parse("2026-07-15T12:00:00.000Z");
-const toolNow = Date.parse("2026-07-18T12:00:00.000Z");
+const toolNow = Date.parse("2026-07-22T12:00:00.000Z");
 
 describe("canonical MCP D1 execution", () => {
   let mf: Miniflare;
@@ -20,10 +20,7 @@ describe("canonical MCP D1 execution", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    for (const file of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
     await DB.prepare("INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('user_alice','active','none',?,?),('user_bob','active','none',?,?),('user_carol','active','none',?,?)").bind(at, at, at, at, at, at).run();
     await DB.prepare("INSERT INTO taxonomy_versions (id,version,status,created_at,activated_at) VALUES ('taxonomy-v1',1,'active',?,?)").bind(at, at).run();
     await DB.prepare("INSERT INTO topics (id,taxonomy_version_id,slug,label) VALUES ('topic-matching','taxonomy-v1','matching','Matching')").run();
@@ -94,7 +91,10 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT completed_steps_json AS steps FROM setup_states WHERE user_id='user_alice'").first<{ steps: string }>()).resolves.toSatisfy((row) => JSON.parse(row!.steps).includes("basic_profile"));
 
     await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "caller-checkpoint", cursor: null, state: "configured", lastOutcome: "Configured", nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "automation-write-01" });
-    await expect(DB.prepare("SELECT state_json AS state FROM automation_checkpoints WHERE user_id='user_alice' AND kind='buildmates'").first<{ state: string }>()).resolves.toSatisfy((row) => JSON.parse(row!.state).configured === true);
+    await expect(DB.prepare("SELECT state_json AS state FROM automation_checkpoints WHERE user_id='user_alice' AND kind='buildmates'").first<{ state: string }>()).resolves.toSatisfy((row) => {
+      const state = JSON.parse(row!.state) as Record<string, unknown>;
+      return state.configured === false && state.state === "requested" && state.reportedState === "configured" && state.hostTaskConfirmed === false && state.backgroundExecutionVerified === false;
+    });
   }, 60_000);
 
   it("round-trips one canonical automation checkpoint without erasing capability proof", async () => {
@@ -102,8 +102,31 @@ describe("canonical MCP D1 execution", () => {
       .bind(JSON.stringify({ capability: "available", checkedAt: "2026-07-15T12:00:00.000Z", proofSource: "mcp_delegated_probe" }), at)
       .run();
     await call(ALICE_SUB, "update_automation_checkpoint", { checkpointId: "canonical-automation", cursor: "cursor-1", state: "succeeded", lastOutcome: "No relevant changes", enabled: true, cadence: "automatic", sourceLivenessReviewed: true, nextRunAt: "2026-07-16T12:00:00.000Z", idempotencyKey: "canonical-automation-01" });
-    await expect(call(ALICE_SUB, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { kind: "buildmates", cursor: "cursor-1", state: "succeeded", cadence: "automatic", sourceLivenessReviewed: true, capability: "available", proofSource: "mcp_delegated_probe" } });
+    await expect(call(ALICE_SUB, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { kind: "buildmates", cursor: "cursor-1", state: "requested", reportedState: "succeeded", configured: false, cadence: "automatic", sourceLivenessReviewed: true, capability: "approval_required", proofSource: "mcp_delegated_probe", hostTaskConfirmed: false, backgroundExecutionVerified: false } });
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM automation_checkpoints WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
+  }, 60_000);
+
+  it("records private matching review consent and clears it when matching is disabled", async () => {
+    const save = (allowMatching: boolean, idempotencyKey: string) => call(ALICE_SUB, "update_profile_model", { profile: {
+      profileId: "private-signup-profile",
+      handle: "private_signup",
+      displayName: "Private Signup",
+      builderSummary: "Building careful collaboration tools",
+      projectOrInterest: "Privacy-first builder matching",
+      portfolioLinks: [],
+      allowMatching,
+      acceptanceMode: "manual",
+      fields: [],
+      idempotencyKey,
+    } });
+
+    const first = await save(true, "private-signup-review-01") as MutationResult;
+    await expect(DB.prepare("SELECT audience,allow_matching AS allowMatching,matching_reviewed_at AS matchingReviewedAt,published_at AS publishedAt FROM profiles WHERE id=?").bind(first.result.id).first()).resolves.toEqual({ audience: "private", allowMatching: 1, matchingReviewedAt: toolNow, publishedAt: null });
+    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ matchingReviewedAt: new Date(toolNow).toISOString(), allowMatching: true, publishedAt: null }] });
+
+    await save(false, "private-signup-disable-01");
+    await expect(DB.prepare("SELECT audience,allow_matching AS allowMatching,matching_reviewed_at AS matchingReviewedAt,published_at AS publishedAt FROM profiles WHERE id=?").bind(first.result.id).first()).resolves.toEqual({ audience: "private", allowMatching: 0, matchingReviewedAt: null, publishedAt: null });
+    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ matchingReviewedAt: null, allowMatching: false, publishedAt: null }] });
   }, 60_000);
 
   it("persists every supported Connection update field and never reactivates an ended Connection", async () => {
@@ -233,6 +256,28 @@ describe("canonical MCP D1 execution", () => {
     await expect(DB.prepare("SELECT status,response_json AS response FROM idempotency_keys WHERE id=?").bind(completed.id).first<{ status: string; response: string }>()).resolves.toSatisfy((row) => row?.status === "complete" && JSON.parse(row.response).effectLocator.id === "owned-profile");
   }, 60_000);
 
+  it("keeps grouped chat leases manual-only when no canonical recovery predicate exists", async () => {
+    await DB.prepare("INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('user_admin','active','admin',?,?)").bind(at, at).run();
+    const requestHash = "c".repeat(64);
+    const operations = [
+      "perform_buildmates_action",
+      "perform_buildmates_project_action",
+      "perform_buildmates_relationship_action",
+      "perform_buildmates_circle_action",
+    ];
+    for (const [index, operation] of operations.entries()) {
+      const id = `idempotency_grouped_${index}`;
+      await DB.prepare("INSERT INTO idempotency_keys (id,actor_user_id,operation,key_hash,request_hash,status,expires_at,created_at,updated_at) VALUES (?,?,?,?,?,'processing',?,?,?)")
+        .bind(id, "user_alice", operation, `group-key-${index}`, requestHash, at - 1, at - 60_000, at - 60_000).run();
+      await expect(inspectIdempotencyRecovery(DB, id, at)).resolves.toMatchObject({ recovery: { mode: "manual_only", allowedDispositions: [] } });
+      const input = { id, requestHash, operatorUserId: "user_admin", reason: "Canonical effect requires manual investigation", disposition: "no_effect" as const, at: new Date(at), auditId: `audit-grouped-no-effect-${index}` };
+      await expect(recoverIdempotencyOperation(DB, input)).rejects.toThrow("group_recovery_requires_manual_investigation");
+      await expect(recoverIdempotencyOperation(DB, { ...input, disposition: "completed_effect", effectLocator: { kind: "circle", id: "unknown-effect" }, auditId: `audit-grouped-completed-${index}` })).rejects.toThrow("group_recovery_requires_manual_investigation");
+      await expect(DB.prepare("SELECT status FROM idempotency_keys WHERE id=?").bind(id).first()).resolves.toEqual({ status: "processing" });
+      await expect(DB.prepare("SELECT COUNT(*) AS count FROM audit_events WHERE object_id=?").bind(id).first()).resolves.toEqual({ count: 0 });
+    }
+  }, 60_000);
+
   it("prunes expired replay and rate-limit rows in bounded indexed batches", async () => {
     for (let index = 0; index < 5; index += 1) {
       await DB.prepare("INSERT INTO assertion_replays (jti,issuer,subject,action,expires_at,created_at) VALUES (?,?,?,?,?,?)").bind(`expired-${index}`, "issuer", "subject", "action", at - 1, at - 100).run();
@@ -263,7 +308,7 @@ describe("canonical MCP D1 execution", () => {
       fields: [{
         key: "projects",
         value: [{ id: "project-media-brief", title: "Media Brief", summary: "A profile project with approved visual context." }],
-        audience: "suggested_connections",
+        audience: "public",
         allowMatching: true,
         provenance: "codex_summary",
         sourceStatus: "confirmed",
@@ -284,14 +329,55 @@ describe("canonical MCP D1 execution", () => {
     expect(brief.authorizedMedia).toEqual([{ key: "profile.media.asset_media_brief", altKey: "profile.media.asset_media_brief.alt", label: "Media Brief image", approvedAssetIds: ["asset_media_brief"] }]);
     expect(brief.authorizedContent[brief.authorizedMedia[0]!.altKey]).toBe("A warm studio workspace with a prototype on screen");
     expect(brief.approvedAssets).toEqual([{ id: "asset_media_brief", src: `/api/surface-assets/user_alice/${mediaHash}.jpg` }]);
-    expect(brief.customizedExample.approvedAssets).toEqual([]);
+    expect(brief.customizedExample.approvedAssets).toEqual([{ id: "asset_media_brief", src: `/api/surface-assets/user_alice/${mediaHash}.jpg` }]);
+
+    await DB.prepare("UPDATE profile_fields SET source_status='generated' WHERE profile_id=? AND field_key='projects'").bind(profile.result.id).run();
+    const unconfirmedBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId: String((profile.result as Record<string, unknown>).surfaceId) }) as { authorizedMedia: unknown[]; approvedAssets: unknown[]; authorizedContent: Record<string, unknown> };
+    expect(unconfirmedBrief.authorizedMedia).toEqual([]);
+    expect(unconfirmedBrief.approvedAssets).toEqual([]);
+    expect(JSON.stringify(unconfirmedBrief.authorizedContent)).not.toContain("A warm studio workspace");
+  }, 60_000);
+
+  it("keeps non-public and unconfirmed profile content out of a public generation brief", async () => {
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: {
+      profileId: "profile-public-brief-boundary",
+      handle: "public_brief_alice",
+      displayName: "Alice",
+      builderSummary: "PUBLIC_PROFILE_SUMMARY",
+      projectOrInterest: "PUBLIC_PROFILE_PROJECT",
+      portfolioLinks: [],
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [
+        { key: "ambitions", value: "PUBLIC_CONFIRMED_FACT", audience: "public", allowMatching: true, provenance: "self_reported", sourceStatus: "confirmed" },
+        { key: "interests", value: "PUBLIC_UNCONFIRMED_FACT", audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "generated" },
+        { key: "style_preferences", value: "SIGNED_IN_FACT", audience: "signed_in", allowMatching: true, provenance: "self_reported", sourceStatus: "confirmed" },
+        { key: "exploring", value: "SUGGESTED_FACT", audience: "suggested_connections", allowMatching: true, provenance: "self_reported", sourceStatus: "confirmed" },
+        { key: "personality_notes", value: "MUTUAL_FACT", audience: "mutual_connections", allowMatching: true, provenance: "self_reported", sourceStatus: "confirmed" },
+        { key: "projects", value: [{ id: "suggested-project", title: "SUGGESTED_PROJECT", summary: "SUGGESTED_PROJECT_SUMMARY" }], audience: "suggested_connections", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" },
+      ],
+      idempotencyKey: "profile-public-brief-boundary-01",
+    } }) as MutationResult;
+    await seedDesignPolicy(createD1Repositories(DB as never));
+    await DB.batch([
+      DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES ('brief-public-project','user_alice','brief-public-project','PUBLIC_PROJECT','PUBLIC_PROJECT_SUMMARY','public',1,'active','building',1,?,?,?)").bind(at, at, at),
+      DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES ('brief-signed-in-project','user_alice','brief-signed-in-project','SIGNED_IN_PROJECT','SIGNED_IN_PROJECT_SUMMARY','signed_in',1,'active','building',1,?,?,?)").bind(at, at, at),
+      DB.prepare("INSERT INTO projects(id,owner_user_id,slug,title,summary,audience,allow_matching,status,stage,indexable,published_at,created_at,updated_at) VALUES ('brief-suggested-project','user_alice','brief-suggested-project','SUGGESTED_PROJECT_ROW','SUGGESTED_PROJECT_ROW_SUMMARY','suggested_connections',1,'active','building',1,?,?,?)").bind(at, at, at),
+    ]);
+
+    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId: String((profile.result as Record<string, unknown>).surfaceId) }) as { authorizedContent: Record<string, unknown>; requiredBindings: string[] };
+    expect(brief.authorizedContent["profile.facts"]).toEqual([{ label: "Ambitions", value: "PUBLIC_CONFIRMED_FACT" }]);
+    expect(brief.authorizedContent["profile.projects"]).toEqual([{ id: "brief-public-project", title: "PUBLIC_PROJECT", summary: "PUBLIC_PROJECT_SUMMARY", href: "/projects/brief-public-project", tags: [], metrics: [] }]);
+    expect(brief.requiredBindings).toEqual(["profile.displayName", "profile.summary", "profile.facts", "profile.projects"]);
+    const serialized = JSON.stringify(brief);
+    for (const sentinel of ["PUBLIC_UNCONFIRMED_FACT", "SIGNED_IN_FACT", "SUGGESTED_FACT", "MUTUAL_FACT", "SUGGESTED_PROJECT", "SIGNED_IN_PROJECT", "SUGGESTED_PROJECT_ROW"]) expect(serialized).not.toContain(sentinel);
   }, 60_000);
 
   it("routes profile revisions, personal views, approval publication, and rollback through Task 4 governance", async () => {
     await saveSource(ALICE_SUB, "allow_approved_work_signals", "surface-source");
     const profile = await call(ALICE_SUB, "update_profile_model", { profile: { profileId: "profile-surface", handle: "surface_alice", displayName: "Alice", builderSummary: "Builds governed surfaces", projectOrInterest: "Surface safety", portfolioLinks: [], allowMatching: true, acceptanceMode: "manual", fields: [
       { key: "ambitions", value: "Make generative interfaces feel authored", audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" },
-      { key: "projects", value: [{ id: "project-surface-studio", title: "Surface Studio", summary: "A governed system for expressive, privacy-safe profile pages.", tags: ["Generative UI", "Privacy"], metrics: [{ label: "Stage", value: "Private beta" }] }], audience: "suggested_connections", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" },
+      { key: "projects", value: [{ id: "project-surface-studio", title: "Surface Studio", summary: "A governed system for expressive, privacy-safe profile pages.", tags: ["Generative UI", "Privacy"], metrics: [{ label: "Stage", value: "Private beta" }] }], audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" },
       { key: "style_preferences", value: "Editorial and private", audience: "private", allowMatching: false, provenance: "self_reported", sourceStatus: "confirmed" },
     ], idempotencyKey: "surface-profile-01" } }) as MutationResult;
     const repositories = createD1Repositories(DB as never);
@@ -299,7 +385,7 @@ describe("canonical MCP D1 execution", () => {
     const surfaceId = String((profile.result as Record<string, unknown>).surfaceId);
     expect(surfaceId).toBe(`surface_profile_${profile.result.id}`);
     const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { starterSpec: Record<string, unknown>; customizedExample: Record<string, unknown>; generatedSiteReference: { format: string; html: Record<string, unknown>; css: Record<string, unknown> }; authorizedContent: Record<string, unknown> };
-    expect(brief).toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], authorizedContent: { "profile.displayName": "Alice", "profile.summary": "Builds governed surfaces", "profile.facts": [{ label: "Ambitions", value: "Make generative interfaces feel authored" }], "profile.projects": [{ id: "project-surface-studio", title: "Surface Studio" }] }, requiredBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, starterSpec: { kind: "profile" }, customizedExample: { kind: "profile", title: "Generated profile recovery example" }, generatedSiteReference: { format: "GeneratedSiteBundle v3", html: expect.any(Object), css: expect.any(Object) }, referenceResearch: { source: "https://recent.design/websites", privateMethod: expect.stringContaining("four to eight materially different"), selectionRule: expect.stringContaining("design DNA") }, designSkill: { default: "Hallmark", precedence: ["explicit user-preferred local design skill", "Hallmark", "Buildmates internal design contract"] }, mediaWorkflow: { approvedMediaAvailable: false, attachAt: "https://buildmates.example/profile/design", whenMissing: expect.stringContaining("ImageGen") }, visualQa: { requiredBeforeReady: true, viewports: [{ name: "desktop", width: 1440, height: 1000 }, { name: "phone", width: 390, height: 844 }], minimumAxisScore: 3, inspect: expect.arrayContaining(["distinctive full-page composition", "one coherent visual world", "no repeated project content"]) } });
+    expect(brief).toMatchObject({ kind: "profile", allowedModules: ["profile.identity", "profile.current_work", "profile.projects"], authorizedBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], authorizedContent: { "profile.displayName": "Alice", "profile.summary": "Builds governed surfaces", "profile.facts": [{ label: "Ambitions", value: "Make generative interfaces feel authored" }], "profile.projects": [{ id: "project-surface-studio", title: "Surface Studio" }] }, requiredBindings: ["profile.displayName", "profile.summary", "profile.facts", "profile.projects"], governance: { mode: "owner", requiredApproverIds: ["user_alice"] }, starterSpec: { kind: "profile" }, customizedExample: { kind: "profile", title: "Generated profile recovery example" }, generatedSiteReference: { format: "GeneratedSiteBundle v3", html: expect.any(Object), css: expect.any(Object) }, referenceResearch: { source: "https://recent.design/websites", privateMethod: expect.stringContaining("four to eight materially different"), selectionRule: expect.stringContaining("design DNA") }, designSkill: { default: "Hallmark", precedence: expect.arrayContaining(["explicit user-preferred local design skill", "approved visual reference or ImageGen concept", "Hallmark", "Buildmates internal design contract"]) }, mediaWorkflow: { approvedMediaAvailable: false, attachAt: "https://buildmates.example/profile/design", whenMissing: expect.stringContaining("ImageGen") }, visualQa: { requiredBeforeReady: true, viewports: expect.arrayContaining([expect.objectContaining({ width: 1440, height: 1000 }), expect.objectContaining({ width: 390, height: 844 })]), minimumAxisScore: 3, inspect: expect.arrayContaining(["distinctive full-page composition", "one coherent visual world", "no repeated project content"]) } });
     expect(brief.authorizedContent).not.toEqual(expect.objectContaining({ "profile.facts": expect.arrayContaining([expect.objectContaining({ value: "Editorial and private" })]) }));
     const mediaHash = "a".repeat(64);
     await DB.prepare("INSERT INTO surface_assets(id,owner_user_id,object_key,content_type,byte_size,sha256,created_at) VALUES (?,?,?,?,?,?,?)").bind("asset_surface_studio", "user_alice", `surface-assets/user_alice/${mediaHash}.jpg`, "image/jpeg", 128, mediaHash, at).run();
@@ -307,16 +393,16 @@ describe("canonical MCP D1 execution", () => {
     const mediaBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { authorizedContent: Record<string, unknown>; authorizedMedia: Array<{ altKey: string; approvedAssetIds: string[] }>; approvedAssets: Array<{ id: string; src: string }>; mediaWorkflow: { approvedMediaAvailable: boolean }; customizedExample: { bindingManifest: { media: Array<{ approvedAssetIds: string[]; authorization: string }> }; approvedAssets: Array<{ id: string }> } };
     expect(mediaBrief).toMatchObject({ authorizedMedia: [{ approvedAssetIds: ["asset_surface_studio"] }], approvedAssets: [{ id: "asset_surface_studio", src: `/api/surface-assets/user_alice/${mediaHash}.jpg` }], mediaWorkflow: { approvedMediaAvailable: true } });
     expect(mediaBrief.authorizedContent[mediaBrief.authorizedMedia[0]!.altKey]).toBe("A warm studio workspace");
-    expect(mediaBrief.customizedExample).toMatchObject({ bindingManifest: { media: [] }, approvedAssets: [] });
+    expect(mediaBrief.customizedExample).toMatchObject({ bindingManifest: { media: [{ key: `profile.media.asset_surface_studio`, approvedAssetIds: ["asset_surface_studio"], authorization: "surface-approved" }] }, approvedAssets: [{ id: "asset_surface_studio", src: `/api/surface-assets/user_alice/${mediaHash}.jpg` }] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: mediaBrief.customizedExample })).resolves.toEqual({ valid: true, issues: [] });
-    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.starterSpec })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining("approved profile content binding") })]) });
+    await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.starterSpec })).resolves.toEqual({ valid: true, issues: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: brief.customizedExample })).resolves.toEqual({ valid: true, issues: [] });
     const artifactProfile = structuredClone(brief.customizedExample) as Record<string, unknown>;
-    const rewrite = (node: Record<string, unknown>): Record<string, unknown> => {
-      if (node.type === "project-list" || node.type === "featured-project") return { id: node.id, type: "project-artifact", binding: "profile.projects", index: 0, variant: "orbit-map", tone: "secondary", scale: "hero" };
-      return { ...node, ...(Array.isArray(node.children) ? { children: node.children.filter((child) => (child as Record<string, unknown>).type !== "decorative-mark").map((child) => rewrite(child as Record<string, unknown>)) } : {}) };
-    };
-    artifactProfile.root = rewrite(artifactProfile.root as Record<string, unknown>);
+    const artifactDocument = artifactProfile.document as Record<string, unknown>;
+    artifactDocument.html = String(artifactDocument.html).replace(
+      '<main class="page">',
+      '<main class="page"><aside class="project-artifact"><p>{{profile.summary}}</p></aside>',
+    );
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: artifactProfile })).resolves.toEqual({ valid: true, issues: [] });
     await expect(call(ALICE_SUB, "validate_surface_spec", { surfaceId, spec: { kind: "profile" } })).resolves.toMatchObject({ valid: false, issues: expect.arrayContaining([expect.objectContaining({ path: expect.any(String), message: expect.any(String) })]) });
 
@@ -348,11 +434,12 @@ describe("canonical MCP D1 execution", () => {
     const revisionBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { currentRevision: { id: string; spec: Record<string, unknown> }; revisionWorkflow: { targeted: string } };
     expect(revisionBrief).toMatchObject({ currentRevision: { id: revision.result.id, spec: brief.customizedExample }, revisionWorkflow: { targeted: expect.stringContaining("preserve everything else") } });
     const targetedSpec = structuredClone(revisionBrief.currentRevision.spec) as Record<string, unknown>;
-    const targetedTheme = targetedSpec.theme as Record<string, unknown>;
-    targetedTheme.typography = { ...(targetedTheme.typography as Record<string, unknown>), scale: "comfortable" };
-    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "targeted-revision", surfaceId, baseRevisionId: revision.result.id, spec: targetedSpec, visibility: "private_preview", revisionIntent: { mode: "targeted", summary: "Adjust only the type scale", targetNodeIds: [], targetThemeKeys: ["typography"] }, designBriefApproved: true, idempotencyKey: "targeted-revision-01" })).resolves.toMatchObject({ result: { id: expect.stringMatching(/^surface_revision_/) } });
+    const targetedDocument = targetedSpec.document as Record<string, unknown>;
+    targetedDocument.css = `${String(targetedDocument.css)}.page{letter-spacing:normal}`;
+    const targetedIntent = { mode: "targeted" as const, summary: "Adjust only the generated document styling", targetNodeIds: [], targetThemeKeys: [], targetDocumentFields: ["css"] as const };
+    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "targeted-revision", surfaceId, baseRevisionId: revision.result.id, spec: targetedSpec, visibility: "private_preview", revisionIntent: targetedIntent, designBriefApproved: true, idempotencyKey: "targeted-revision-01" })).resolves.toMatchObject({ result: { id: expect.stringMatching(/^surface_revision_/) } });
     const collateralSpec = { ...targetedSpec, title: "Unexpected redesign" };
-    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "targeted-collateral", surfaceId, baseRevisionId: revision.result.id, spec: collateralSpec, visibility: "private_preview", revisionIntent: { mode: "targeted", summary: "Adjust only the type scale", targetNodeIds: [], targetThemeKeys: ["typography"] }, designBriefApproved: true, idempotencyKey: "targeted-collateral-01" })).rejects.toThrow("targeted_revision_scope_violation");
+    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "targeted-collateral", surfaceId, baseRevisionId: revision.result.id, spec: collateralSpec, visibility: "private_preview", revisionIntent: targetedIntent, designBriefApproved: true, idempotencyKey: "targeted-collateral-01" })).rejects.toThrow("targeted_revision_scope_violation");
 
     const setupSignal = await call(ALICE_SUB, "submit_work_signal", { signal: signal("surface-setup-signal", "surface-signal-01") }) as MutationResult;
     const setupPulse = await call(ALICE_SUB, "update_networking_pulse", { pulse: { pulseId: "surface-setup-pulse", intentSummary: "Meet builders working on governed UI", builderSimilarity: "balanced", geography: "global", maximumIntroductionsPerWeek: 3, serendipity: 30, timezone: "America/Vancouver", quietHours: [], snoozedUntil: null, exclusions: [], startsAt: "2026-07-15T12:00:00.000Z", expiresAt: "2026-08-15T12:00:00.000Z", idempotencyKey: "surface-pulse-01" } }) as MutationResult;
@@ -399,7 +486,7 @@ describe("canonical MCP D1 execution", () => {
     const repositories = createD1Repositories(DB as never);
     await seedDesignPolicy(repositories);
     await repositories.surfaces.createSurface({ actorId: "user_alice" as never, id: "room-surface", ownerUserId: "user_alice" as never, kind: "room", subjectId: "governed-room", at: new Date(at) });
-    await expect(call(BOB_SUB, "get_surface_generation_brief", { surfaceId: "room-surface" })).resolves.toMatchObject({ kind: "room", allowedModules: ["room.introduction", "room.chat"], authorizedBindings: expect.arrayContaining(["room.connectionContext"]), governance: { mode: "unanimous_members", memberUserIds: ["user_alice", "user_bob"], requiredApprovals: 2 } });
+    await expect(call(BOB_SUB, "get_surface_generation_brief", { surfaceId: "room-surface" })).resolves.toMatchObject({ kind: "room", allowedModules: ["room.introduction", "room.chat"], authorizedBindings: expect.arrayContaining(["room.title", "room.whyTitle", "room.whyBody", "room.sharedFacts", "room.privacyNote"]), governance: { mode: "unanimous_members", memberUserIds: ["user_alice", "user_bob"], requiredApprovals: 2 } });
 
     await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "bad-base-revision", surfaceId: "room-surface", baseRevisionId: "missing-revision", spec: fieldNotesRoomSpec, visibility: "private_preview", idempotencyKey: "bad-base-revision-01" })).rejects.toThrow("surface_base_not_found");
     const revision = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "room-revision", surfaceId: "room-surface", baseRevisionId: null, spec: fieldNotesRoomSpec, visibility: "private_preview", idempotencyKey: "room-revision-01" }) as MutationResult;
@@ -458,7 +545,8 @@ describe("canonical MCP D1 execution", () => {
     await repositories.circles.setMembership({ actorId: "user_alice" as never, circleId: "vote-circle" as never, userId: "user_bob" as never, role: "member", status: "active" });
     await repositories.surfaces.createSurface({ actorId: "user_alice" as never, id: "circle-surface", ownerUserId: "user_alice" as never, kind: "circle", subjectId: "vote-circle", at: new Date(at) });
     await expect(call(BOB_SUB, "get_surface_generation_brief", { surfaceId: "circle-surface" })).resolves.toMatchObject({ kind: "circle", governance: { mode: "circle_vote", eligibleVoterIds: ["user_alice", "user_bob"], approvalRule: "strict_majority" }, authorizedBindings: expect.arrayContaining(["circle.members", "circle.metrics"]) });
-    const original = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "circle-original", surfaceId: "circle-surface", baseRevisionId: null, spec: circleSpec(), visibility: "private_preview", idempotencyKey: "circle-original-01" }) as MutationResult;
+    const circleBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId: "circle-surface" }) as { customizedExample: Record<string, unknown> };
+    const original = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "circle-original", surfaceId: "circle-surface", baseRevisionId: null, spec: circleBrief.customizedExample, visibility: "private_preview", idempotencyKey: "circle-original-01" }) as MutationResult;
     await call(ALICE_SUB, "decide_surface_revision", { revisionId: original.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "circle-original-alice-01" });
     await call(BOB_SUB, "decide_surface_revision", { revisionId: original.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "circle-original-bob-01" });
     await expect(DB.prepare("SELECT published_revision_id AS revision FROM surfaces WHERE id='circle-surface'").first()).resolves.toEqual({ revision: original.result.id });
@@ -473,7 +561,8 @@ describe("canonical MCP D1 execution", () => {
     await repositories.circles.setMembership({ actorId: "user_alice" as never, circleId: "admin-circle" as never, userId: "user_bob" as never, role: "member", status: "active" });
     await repositories.surfaces.createSurface({ actorId: "user_alice" as never, id: "admin-circle-surface", ownerUserId: "user_alice" as never, kind: "circle", subjectId: "admin-circle", at: new Date(at) });
     await expect(call(BOB_SUB, "get_surface_generation_brief", { surfaceId: "admin-circle-surface" })).resolves.toMatchObject({ kind: "circle", governance: { mode: "circle_admin", publisherUserIds: ["user_alice"], memberUserIds: ["user_alice", "user_bob"] } });
-    const adminOriginal = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "admin-circle-original", surfaceId: "admin-circle-surface", baseRevisionId: null, spec: circleSpec(), visibility: "private_preview", idempotencyKey: "admin-circle-original-01" }) as MutationResult;
+    const adminCircleBrief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId: "admin-circle-surface" }) as { customizedExample: Record<string, unknown> };
+    const adminOriginal = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "admin-circle-original", surfaceId: "admin-circle-surface", baseRevisionId: null, spec: adminCircleBrief.customizedExample, visibility: "private_preview", idempotencyKey: "admin-circle-original-01" }) as MutationResult;
     await call(ALICE_SUB, "decide_surface_revision", { revisionId: adminOriginal.result.id, decision: "approved", confirmation: "confirmed", idempotencyKey: "admin-circle-publish-01" });
     const pendingAdmin = await call(BOB_SUB, "rollback_surface", { surfaceId: "admin-circle-surface", revisionId: adminOriginal.result.id, expectedSurfaceVersion: 1, confirmation: "confirmed", idempotencyKey: "admin-circle-rollback-01" }) as { result: { revisionId: string; publicationStatus: string } };
     expect(pendingAdmin.result).toMatchObject({ revisionId: expect.stringMatching(/^surface_revision_/), publicationStatus: "pending_admin" });
@@ -520,17 +609,6 @@ describe("canonical MCP D1 execution", () => {
     return call(subject, "save_source_preference", { sourceId: "github", displayName: "GitHub", category: "projects_code", policy, supportsActions, approveNextWorkSignal, sourceOrigin: "current_conversation", idempotencyKey });
   }
 
-  function circleSpec() {
-    return {
-      ...workshopProfileSpec,
-      kind: "circle",
-      title: "Retrieval builders Circle",
-      root: { id: "circle-root", type: "section", tone: "canvas", layout: "cover", padding: "xl", bleed: true, minHeight: "viewport", background: "paper-rule", backgroundMediaBinding: null, backgroundMediaOpacity: "subtle", backgroundMediaFocalPoint: "center", children: [{ id: "circle-title", type: "heading", level: 1, binding: "surface.title", fallback: "Circle", size: "hero", align: "start", width: "balanced", weight: "black", lineHeight: "tight", tracking: "tight" }] },
-      bindingManifest: { content: [{ key: "surface.title", type: "text" }], media: [] },
-      decorativeRegions: [],
-      accessibility: { label: "Retrieval builders Circle", primaryHeadingNodeId: "circle-title", reducedMotion: "required" },
-    };
-  }
 });
 
 describe("memory MCP isolation and idempotency", () => {
@@ -568,15 +646,14 @@ describe("MCP compatibility migration", () => {
     const mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     try {
       const DB = await mf.getD1Database("DB") as D1Database;
-      const files = (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort();
-      for (const file of files.filter((name) => name < "0010_")) {
-        const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-        for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-      }
+      const migrations = await readD1Migrations();
+      for (const migration of migrations.filter(({ name }) => name < "0010_")) await applyD1Statements(DB, migration.statements);
       await DB.prepare("INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('legacy-user','active','none',?,?)").bind(at, at).run();
       await DB.prepare("INSERT INTO connected_app_preferences (id,user_id,app_id,display_name,category,access_mode,last_reviewed_at) VALUES ('legacy-pref','legacy-user','github','GitHub','projects_code','approved_summaries',?)").bind(at).run();
-      const sql = await readFile("apps/web/drizzle/0010_purple_boomer.sql", "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
+      const migration = migrations.find(({ name }) => name === "0010_purple_boomer.sql");
+      expect(migration?.name).toBe("0010_purple_boomer.sql");
+      if (!migration) throw new Error("0010_purple_boomer.sql is missing");
+      await applyD1Statements(DB, migration.statements);
       await expect(DB.prepare("SELECT access_mode AS mode FROM connected_app_preferences WHERE id='legacy-pref'").first()).resolves.toEqual({ mode: "allow_approved_work_signals" });
       await expect(DB.prepare("UPDATE connected_app_preferences SET access_mode='approved_summaries' WHERE id='legacy-pref'").run()).rejects.toThrow();
     } finally { await mf.dispose(); }

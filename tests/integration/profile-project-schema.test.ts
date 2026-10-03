@@ -1,6 +1,6 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("profile and project product schema", () => {
   let mf: Miniflare;
@@ -9,10 +9,7 @@ describe("profile and project product schema", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     db = await mf.getD1Database("DB") as D1Database;
-    for (const migration of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await db.prepare(statement).run();
-    }
+    await applyD1Migrations(db);
   });
   afterEach(async () => mf.dispose());
 

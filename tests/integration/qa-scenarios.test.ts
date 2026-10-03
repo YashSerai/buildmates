@@ -1,8 +1,8 @@
-import { readFile, readdir } from "node:fs/promises";
 import { createD1McpProductRepository } from "@buildmates/mcp-core";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applyQaScenario, resetQaScenarios } from "../../apps/web/src/testing/qa-scenarios";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("Work Pulse QA scenarios", () => {
   let mf: Miniflare;
@@ -18,12 +18,7 @@ describe("Work Pulse QA scenarios", () => {
       compatibilityDate: "2026-05-22",
     });
     DB = (await mf.getD1Database("DB")) as D1Database;
-    for (const name of (await readdir("apps/web/drizzle")).filter((item) => item.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${name}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((item) => item.trim()).filter(Boolean)) {
-        await DB.prepare(statement).run();
-      }
-    }
+    await applyD1Migrations(DB);
     await DB.prepare("INSERT INTO users(id,status,operator_role,created_at,updated_at)VALUES(?,'active','none',?,?)")
       .bind(viewerUserId, now, now).run();
   }, 30_000);

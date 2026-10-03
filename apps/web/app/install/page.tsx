@@ -6,11 +6,11 @@ import {
 } from "../../components/discovery/ProductHeader";
 import { getCurrentUser } from "../../src/auth/require-user";
 import styles from "../info.module.css";
-import { CodexInstallActions } from "./CodexInstallActions";
+import { CodexInstallActions, DirectMcpConnection } from "./CodexInstallActions";
 
 export const metadata: Metadata = {
-  title: "Install",
-  description: "Connect Buildmates in Codex and complete the guided first run.",
+  title: "Connect Buildmates",
+  description: "Connect the Buildmates developer preview in ChatGPT or Codex, then complete the guided first run.",
 };
 
 export default async function InstallPage() {
@@ -19,46 +19,66 @@ export default async function InstallPage() {
     <main className={styles.page}>
       <ProductHeader signedIn={Boolean(user)} />
       <article className={styles.article}>
-        <h1>Give Codex one link.</h1>
+        <h1>Connect Buildmates to your host.</h1>
         <p className={styles.lead}>
-          Codex connects Buildmates, then guides you through a profile and
-          networking preferences you have reviewed.
+          Install Buildmates in ChatGPT or Codex, then connect your account.
+          Buildmates guides you through a reviewed profile, matching
+          preferences, and optional collaboration.
         </p>
         <section>
-          <h2>Start in Codex</h2>
+          <h2>Start from ChatGPT or Codex</h2>
           <div>
             <p>
-              Copy one short prompt into a new Codex task. Codex reads the
-              current instructions and handles the connection from there.
+              Use your host&apos;s native developer-preview or plugin-install
+              control. Once connected, copy the prompt into a new ChatGPT chat
+              or Codex task. A new chat or task may be required before the
+              tools appear.
             </p>
             <CodexInstallActions />
+          </div>
+        </section>
+        <section>
+          <h2>Developer preview paths</h2>
+          <div>
+            <p>
+              If your host supports direct MCP connections, copy the endpoint
+              into its connection field. Your host will guide you through
+              sign-in and consent.
+            </p>
+            <DirectMcpConnection />
+            <p className={styles.status}>
+              <strong>Developer preview</strong>
+              Availability and connection status are shown by your host.
+            </p>
           </div>
         </section>
         <section>
           <h2>What happens next</h2>
           <div>
             <ol className={styles.steps}>
-              <li>Codex connects Buildmates and checks whether you are starting fresh or returning.</li>
-              <li>With your permission, Codex reviews the workspace sources you choose.</li>
-              <li>You review your profile and the page Codex creates.</li>
+              <li>Your host connects Buildmates and checks whether you are starting fresh or returning.</li>
+              <li>With your permission, the host reviews only the sources you choose.</li>
+              <li>You review your profile and choose whether to create a public page.</li>
               <li>
                 You choose who to meet and how often Buildmates should
                 look.
               </li>
             </ol>
             <p>
-              The recommended path is <strong>Use my Codex workspace</strong>.
-              Codex can review the recent tasks, project folders, GBrain, and
-              local memory sources you approve. That research stays in Codex.
-              Buildmates receives only the profile you review. You can also add
-              an available connected app or answer focused questions.
+              Choose a specific project, connected source, or direct
+              description. Codex can review a named project or workspace scope
+              that you approve. ChatGPT can use connected sources, uploads, and
+              information you provide in the chat. Buildmates receives only the
+              structured profile and summaries you review.
             </p>
             <p>
-              Codex explains what it will use before it starts, then pauses when
-              your profile or another meaningful decision is ready to review.
+              Your host explains what it will use before it starts, then pauses
+              when your profile or another meaningful decision is ready to
+              review. A public page and recurring Work Pulse are optional, so
+              you can finish without a public page and use manual refresh.
             </p>
-            <Link className={styles.secondary} href="/onboarding">
-              {user ? "Use manual setup instead" : "Set up on the website instead"}
+            <Link className={styles.secondary} href="/onboarding/manual">
+              {user ? "Use manual setup instead" : "Set up manually on the website"}
             </Link>
           </div>
         </section>
@@ -66,13 +86,8 @@ export default async function InstallPage() {
           <h2>What opens in your browser</h2>
           <div>
             <p>
-              Codex handles the Buildmates connection inside Codex. Your
-              browser opens only when Buildmates needs you to sign in or approve
-              account access.
-            </p>
-            <p>
-              Codex will not type credentials, retrieve verification codes, or
-              approve consent for you. You stay in control of those steps.
+              Your host handles the Buildmates connection. A browser opens only
+              when Buildmates needs you to sign in or approve account access.
             </p>
           </div>
         </section>
@@ -81,12 +96,12 @@ export default async function InstallPage() {
           <div>
             <p>
               Buildmates checks your account before asking questions. A new
-              Codex task can continue an unfinished setup without relying on an
-              old conversation.
+              ChatGPT chat or Codex task can continue an unfinished setup
+              without relying on an old conversation.
             </p>
             <p>
-              If Codex cannot connect, it explains what needs attention instead
-              of pretending setup is complete.
+              If the current host cannot connect, it explains what needs
+              attention instead of pretending setup is complete.
             </p>
           </div>
         </section>

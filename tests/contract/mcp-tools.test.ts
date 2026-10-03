@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
@@ -15,6 +15,7 @@ import {
 } from "@buildmates/mcp-core";
 import { fieldNotesRoomSpec } from "../../apps/web/app/surface-lab/fixtures";
 import { DEFAULT_MODULE_APPEARANCE } from "@buildmates/surfaces";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 const SUBJECT_A = "mcp_subject_alice_0001";
 const SUBJECT_B = "mcp_subject_bob___0002";
@@ -38,7 +39,7 @@ function fixture() {
     allowAttempt: async () => true,
     resolveLinkedUser: async ({ mcpSubject }) => links.has(mcpSubject) ? { userId: links.get(mcpSubject)! } : null,
     validateTaxonomy: async ({ taxonomyVersion, topicIds }) => taxonomyVersion === "1" && topicIds.every((id) => id === "topic-matching"),
-    recordAutomationCapabilityProof: async ({ now }) => ({ capability: "available", checkedAt: now, expiresAt: new Date(Date.parse(now) + 8 * 86_400_000).toISOString() }),
+    recordAutomationCapabilityProof: async ({ now }) => ({ capability: "approval_required", checkedAt: now, expiresAt: null }),
     getCandidateShortlist: async ({ batchId }) => ({ batchId: batchId ?? "batch-generated", expiresAt: "2026-07-15T12:30:00.000Z", candidates: [{ userId: "user_bob", displayName: "Bob", summary: "Building retrieval tools", indexVersion: 4, taxonomyVersion: 1, visibleReasons: ["Shared retrieval work"], visibleEvidenceIds: ["signal-public"], proposalId: null }] }),
     recordCandidateEvaluation: async ({ evaluationId }) => ({ evaluationId, proposalId: "proposal-generated", state: "pending", connectionId: null, roomId: null }),
     recordManualMatchResponse: async ({ responseId }) => ({ responseId, state: "pending", connectionId: null, roomId: null }),
@@ -58,11 +59,11 @@ async function invoke(services: BuildmatesToolServices, name: string, input: Rec
 }
 
 describe("Buildmates MCP contract", () => {
-  it("records automation capability only through an authenticated linked MCP principal", async () => {
+  it("keeps an authenticated foreground probe approval-required", async () => {
     const { services, links } = fixture();
     await expect(invoke(services,"probe_automation_capability",{probeId:"probe-auth-check"})).rejects.toThrow("identity_link_required");
     links.set(SUBJECT_A,"user_alice");
-    await expect(invoke(services,"probe_automation_capability",{probeId:"probe-auth-check"})).resolves.toEqual({capability:"available",checkedAt:"2026-07-15T12:00:00.000Z",expiresAt:"2026-07-23T12:00:00.000Z"});
+    await expect(invoke(services,"probe_automation_capability",{probeId:"probe-auth-check"})).resolves.toEqual({capability:"approval_required",checkedAt:"2026-07-15T12:00:00.000Z",expiresAt:null});
   });
   it("publishes one SDK registry with accurate annotations", async () => {
     const { services } = fixture();
@@ -118,8 +119,10 @@ describe("Buildmates MCP contract", () => {
     expect(pulseSkill).toContain("Choose at most one module");
     expect(pulseSkill).toContain("every active room member must accept");
     expect(pulseSkill).toContain("If sources, signals, candidates, matches, room activity, feedback state, and watches are unchanged");
-    expect(onboardingSkill).toContain("when privacy-safe metadata shows a meaningful two-way room conversation");
-    expect(publicInstructions).toContain("An unchanged run says nothing changed and never invents updates");
+    expect(onboardingSkill).toContain("After a meaningful two-way conversation it may ask for feedback; save feedback only after the user answers.");
+    expect(onboardingSkill).toContain("Any room module requires the affected members' approval.");
+    expect(publicInstructions).toContain("An unchanged run says that nothing changed.");
+    expect(publicInstructions).toContain("It never reads raw room messages");
   });
 
   it("governs room upgrades through explicit Codex proposals and unanimous acceptance", async () => {
@@ -191,31 +194,23 @@ describe("Buildmates MCP contract", () => {
     }
   });
 
-  it("carries approved workspace scope through context collection without a second consent gate", async () => {
+  it("offers host-appropriate optional context and preserves the approved scope", async () => {
     const { services, links, repository } = fixture();
     links.set(SUBJECT_A, "user_alice");
     await repository.write({ kind: "setup", id: "user_alice", ownerUserId: "user_alice", value: { completedSteps: ["identity_link", "storage_explanation"], updatedAt: "2026-07-17T12:00:00.000Z" }, now: "2026-07-17T12:00:00.000Z" });
 
     const sourceState = await invoke(services, "get_setup_state", {});
     expect(sourceState).toMatchObject({ nextStep: "source_selection" });
-    expect(sourceState.guidance.requiredHostDiscovery).toContain("every returned task");
-    expect(sourceState.guidance.requiredHostResultLimit).toBe(50);
-    expect(sourceState.guidance.requiredHostDiscovery).toContain("limit 50");
-    expect(sourceState.guidance.requiredHostDiscovery).toContain("every product-bearing root");
-    expect(sourceState.guidance.requiredHostDiscovery).toContain("exact absolute normalized root");
-    expect(sourceState.guidance.workspaceOnlySourceIds).toEqual([]);
-    expect(sourceState.guidance.nextAction).toContain("sourceIds: []");
-    expect(sourceState.guidance.completionGate).toContain("current-directory-only");
-    expect(sourceState.guidance.nextAction).toContain("Skip workspace review");
-    expect(sourceState.guidance.nextAction).toContain("without a second permission prompt");
+    expect(sourceState.guidance.nextAction).toContain("sources actually available in this host");
+    expect(sourceState.guidance.nextAction).toContain("No connected source or workspace review is required");
+    expect(sourceState.guidance.nextAction).toContain("sourceIds []");
+    expect(sourceState.guidance.fallback).toContain("other ChatGPT chats");
 
     await invoke(services, "complete_setup_step", { payload: { step: "source_selection", sourceIds: [] }, idempotencyKey: "consent-carry-source" });
     const collectionState = await invoke(services, "get_setup_state", {});
     expect(collectionState).toMatchObject({ nextStep: "context_collection" });
-    expect(collectionState.guidance.requiredCoverage).toContain("every task in every project");
-    expect(collectionState.guidance.completionGate).toContain("only the current project");
-    expect(collectionState.guidance.nextAction).toContain("proceed without asking again");
-    expect(collectionState.guidance.fallback).toContain("workspace review was skipped");
+    expect(collectionState.guidance.nextAction).toContain("only the approved scope");
+    expect(collectionState.guidance.nextAction).toContain("Show the draft before saving");
   });
 
   it("explains profile privacy and networking settings before approval", async () => {
@@ -225,10 +220,10 @@ describe("Buildmates MCP contract", () => {
 
     const state = await invoke(services, "get_setup_state", {});
     expect(state).toMatchObject({ nextStep: "basic_profile" });
-    expect(state.guidance.nextAction).toContain("published profile is public, shareable");
-    expect(state.guidance.nextAction).toContain("anonymous aggregate Map bubble");
-    expect(state.guidance.nextAction).toContain("no precise or live location");
-    expect(state.guidance.nextAction).toContain("not displayed");
+    expect(state.guidance.nextAction).toContain("publication is optional");
+    expect(state.guidance.nextAction).toContain("public and indexable");
+    expect(state.guidance.nextAction).toContain("coarse city");
+    expect(state.guidance.nextAction).toContain("anonymous aggregates unless opted out");
   });
 
   it("requires valid input for every linked mutation", async () => {
@@ -381,10 +376,7 @@ describe("Buildmates MCP contract", () => {
     const mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     try {
       const DB = await mf.getD1Database("DB") as D1Database;
-      for (const file of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-        const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-        for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-      }
+      await applyD1Migrations(DB);
       const timestamp = Date.parse("2026-07-15T12:00:00.000Z");
       await DB.prepare("INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('user_alice','active','none',?,?),('user_bob','active','none',?,?),('user_carol','active','none',?,?)").bind(timestamp, timestamp, timestamp, timestamp, timestamp, timestamp).run();
       const repository = createD1McpProductRepository(DB);
@@ -426,7 +418,7 @@ describe("Buildmates MCP contract", () => {
     await invoke(services, "create_invite_link", { inviteId: `${mode}-invite`, kind: "builder", targetId: `${mode}-profile`, headline: "Find builders working on matching", expiresAt: "2026-08-01T00:00:00.000Z", maximumUses: 20, idempotencyKey: `${mode}-invite-01` });
     await expect(invoke(services, "get_setup_state", {})).resolves.toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
     await expect(invoke(services, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ profileId: `${mode}-profile`, allowMatching: true }] });
-    await expect(invoke(services, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { state: "configured", kind: "buildmates" } });
+    await expect(invoke(services, "get_automation_checkpoint", {})).resolves.toMatchObject({ checkpoint: { state: "requested", kind: "buildmates", hostTaskConfirmed: false, backgroundExecutionVerified: false } });
   });
 
   it("normalizes legacy eleven-step setup rows as complete after automation", async () => {

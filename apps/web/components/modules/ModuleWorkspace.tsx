@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState, type CSSProperties } from "react";
+import { FormEvent, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { parseModuleAppearance, type ModuleAppearance } from "@buildmates/surfaces";
 import styles from "./ModuleWorkspace.module.css";
 
@@ -100,6 +100,7 @@ export function ModuleWorkspace({
   entries,
   viewerUserId,
   canModerate = false,
+  disabled = false,
   onCreate,
   onUpdate,
   onDelete,
@@ -108,6 +109,7 @@ export function ModuleWorkspace({
   entries: Entry[];
   viewerUserId: string;
   canModerate?: boolean;
+  disabled?: boolean;
   onCreate: (
     moduleId: string,
     payload: Record<string, string>,
@@ -120,9 +122,11 @@ export function ModuleWorkspace({
   onDelete: (moduleId: string, entryId: string) => Promise<boolean>;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
+  const hydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const controlsDisabled = !hydrated || disabled;
 
   return (
-    <div className={styles.workspace}>
+    <div className={styles.workspace} data-hydrated={hydrated} aria-busy={controlsDisabled}>
       {modules.map((module) => {
         const definition = MODULE_FIELDS[module.kind];
         if (!definition) return null;
@@ -147,6 +151,7 @@ export function ModuleWorkspace({
                   <div className={styles.entry} key={entry.id}>
                     {editingId === entry.id ? (
                       <EntryForm
+                        disabled={controlsDisabled}
                         definition={definition}
                         initial={entry.payload}
                         submitLabel="Save changes"
@@ -205,6 +210,7 @@ export function ModuleWorkspace({
                           {entry.authorUserId === viewerUserId && (
                             <button
                               type="button"
+                              disabled={controlsDisabled}
                               onClick={() => setEditingId(entry.id)}
                             >
                               Edit
@@ -214,6 +220,7 @@ export function ModuleWorkspace({
                             canModerate) && (
                             <button
                               type="button"
+                              disabled={controlsDisabled}
                               onClick={() => void onDelete(module.id, entry.id)}
                             >
                               Delete
@@ -229,6 +236,7 @@ export function ModuleWorkspace({
               )}
             </div>
             <EntryForm
+              disabled={controlsDisabled}
               definition={definition}
               submitLabel="Add entry"
               onSubmit={(payload) => onCreate(module.id, payload)}
@@ -239,6 +247,8 @@ export function ModuleWorkspace({
     </div>
   );
 }
+
+function emptySubscribe() { return () => {}; }
 
 function appearanceStyle(appearance: ModuleAppearance): CSSProperties {
   return {
@@ -260,12 +270,14 @@ function EntryForm({
   submitLabel,
   onSubmit,
   onCancel,
+  disabled,
 }: {
   definition: { primary: string; fields: readonly Field[] };
   initial?: Record<string, unknown>;
   submitLabel: string;
   onSubmit: (payload: Record<string, string>) => Promise<boolean>;
   onCancel?: () => void;
+  disabled: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
@@ -288,12 +300,13 @@ function EntryForm({
       );
   }
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <form method="post" className={styles.form} onSubmit={handleSubmit}>
       {definition.fields.map((field) => (
         <label key={field.key}>
           {field.label}
           {field.type === "textarea" ? (
             <textarea
+              disabled={disabled}
               value={values[field.key] ?? ""}
               onChange={(event) =>
                 setValues((current) => ({
@@ -304,6 +317,7 @@ function EntryForm({
             />
           ) : field.type === "select" ? (
             <select
+              disabled={disabled}
               value={values[field.key] ?? ""}
               onChange={(event) =>
                 setValues((current) => ({
@@ -321,6 +335,7 @@ function EntryForm({
             </select>
           ) : (
             <input
+              disabled={disabled}
               type={field.type ?? "text"}
               value={values[field.key] ?? ""}
               onChange={(event) =>
@@ -334,11 +349,11 @@ function EntryForm({
           )}
         </label>
       ))}
-      <button type="submit" disabled={!values[definition.primary]?.trim()}>
+      <button type="submit" disabled={disabled || !values[definition.primary]?.trim()}>
         {submitLabel}
       </button>
       {onCancel && (
-        <button type="button" onClick={onCancel}>
+        <button type="button" disabled={disabled} onClick={onCancel}>
           Cancel
         </button>
       )}

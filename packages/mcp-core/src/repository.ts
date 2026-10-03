@@ -26,10 +26,11 @@ export type IdempotentMutation<T> = {
   key: string;
   requestHash: string;
   now: string;
+  preserveLeaseOnError?: boolean;
   execute(): Promise<T>;
 };
 
-export type McpPageOptions = { cursor?: string; limit: number; filter?: { connectionId?: string } };
+export type McpPageOptions = { cursor?: string; limit: number; filter?: { connectionId?: string; surfaceId?: string } };
 export type McpRecordPage<T = unknown> = { records: McpRecord<T>[]; nextCursor: string | null };
 
 export interface McpProductRepository {
@@ -47,7 +48,7 @@ export function canonicalFollowWatchId(relation: string, targetKind: string, tar
 
 export function createMemoryMcpProductRepository(): McpProductRepository {
   const records = new Map<string, McpRecord>();
-  const idempotency = new Map<string, { requestHash: string; promise: Promise<unknown> }>();
+  const idempotency = new Map<string, { requestHash: string; promise: Promise<unknown>; uncertain?: boolean }>();
   const sourceApprovals = new Map<string, { ownerUserId: string; sourceId: string; expiresAt: number; consumed: boolean }>();
   const key = (kind: string, owner: string, id: string) => `${kind}\u0000${owner}\u0000${id}`;
   const clone = <T>(value: T): T => structuredClone(value);
@@ -67,6 +68,7 @@ export function createMemoryMcpProductRepository(): McpProductRepository {
       const values = [...records.values()]
         .filter((record) => record.kind === kind && (record.ownerUserId === actorUserId || record.memberUserIds.includes(actorUserId)))
         .filter((record) => !options.filter?.connectionId || (record.value as Record<string, unknown>).connectionId === options.filter.connectionId || (record.value as Record<string, unknown>).connection_id === options.filter.connectionId)
+        .filter((record) => !options.filter?.surfaceId || (record.value as Record<string, unknown>).surfaceId === options.filter.surfaceId || (record.value as Record<string, unknown>).surface_id === options.filter.surfaceId)
         .sort((a, b) => a.id.localeCompare(b.id))
         .filter((record) => !options.cursor || record.id > options.cursor);
       const page = values.slice(0, options.limit + 1);
@@ -153,15 +155,17 @@ export function createMemoryMcpProductRepository(): McpProductRepository {
       const previous = idempotency.get(idempotencyKey);
       if (previous) {
         if (previous.requestHash !== input.requestHash) throw new Error("idempotency_conflict");
+        if (previous.uncertain) throw new Error("idempotency_in_progress");
         return { replayed: true, value: clone(await previous.promise as T) };
       }
-      const promise = input.execute();
+      const promise = Promise.resolve().then(() => input.execute());
       idempotency.set(idempotencyKey, { requestHash: input.requestHash, promise });
       try {
         const value = await promise;
         return { replayed: false, value };
       } catch (error) {
-        idempotency.delete(idempotencyKey);
+        if (input.preserveLeaseOnError) idempotency.get(idempotencyKey)!.uncertain = true;
+        else idempotency.delete(idempotencyKey);
         throw error;
       }
     },

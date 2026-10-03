@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { parseSurfaceSpecJson } from "@buildmates/surfaces";
 import { SurfaceRenderer } from "@/components/surfaces/SurfaceRenderer";
@@ -102,7 +103,7 @@ export default async function CirclePage({
       <ProductHeader signedIn />
       <main className={styles.page}>
         <nav className={styles.contextNav} aria-label="Circle context">
-          <a href="/circles">Back to Circles</a>
+          <Link href="/circles">Back to Circles</Link>
           <span>{circle.name}</span>
         </nav>
         {surfaceSpec ? (

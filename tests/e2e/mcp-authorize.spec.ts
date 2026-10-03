@@ -19,7 +19,7 @@ test("Codex authorization is clear, actionable, and responsive", async ({ page }
     scrollWidth: element.scrollWidth,
   }));
   expect(layout.scrollWidth - layout.clientWidth).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: testInfo.outputPath("mcp-authorize.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("mcp-authorize.png"), fullPage: true, caret: "initial" });
 });
 
 test("expired authorization links explain recovery without a dead button", async ({ page }) => {

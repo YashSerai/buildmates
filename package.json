@@ -27,7 +27,10 @@
     "verify": "npm run lint && npm run typecheck && npm test && npm run build",
     "db:generate": "npm run db:generate --workspace @buildmates/web",
     "db:migrate:local": "npm run db:migrate:local --workspace @buildmates/web",
-    "smoke:production": "tsx scripts/production-smoke.ts"
+    "smoke:production": "tsx scripts/production-smoke.ts",
+    "plugin:sync": "node plugin/scripts/package-plugin.mjs --sync",
+    "plugin:check": "node plugin/scripts/package-plugin.mjs --check",
+    "plugin:package": "node plugin/scripts/package-plugin.mjs --package"
   },
   "devDependencies": {
     "@playwright/test": "1.61.1",

@@ -22,7 +22,7 @@ export default async function ManualOnboardingPage() {
       <section className={styles.intro}>
         <p className={styles.eyebrow}>Web setup</p>
         <h1>Continue setting up Buildmates</h1>
-        <p>Review the same profile, privacy choices, and networking preferences that Buildmates uses in Codex.</p>
+        <p>Review the same profile, privacy choices, and networking preferences that Buildmates uses in ChatGPT or Codex.</p>
       </section>
       <OnboardingClient initialSnapshot={snapshot} defaultDisplayName={user.identity.displayName ?? "Builder"} />
     </main></>

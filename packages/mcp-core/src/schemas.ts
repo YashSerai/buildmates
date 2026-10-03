@@ -19,10 +19,13 @@ export const setupPayloadSchema = z.discriminatedUnion("step", [
   z.object({ step: z.literal("context_collection"), method: z.enum(["codex_workspace", "connected_context", "manual_profile", "repository", "project", "pasted_description", "portfolio_links"]), summary: profileContextSummarySchema, links: z.array(z.string().url().max(500)).max(30).default([]) }).strict(),
   z.object({ step: z.literal("signal_privacy_review"), reviewedSignalIds: z.array(idSchema).max(100), acknowledged: z.literal(true) }).strict(),
   z.object({ step: z.literal("basic_profile"), profileId: idSchema, handle: z.string().trim().min(3).max(32).regex(/^[a-z0-9_]+$/), approved: z.literal(true) }).strict(),
-  z.object({ step: z.literal("page_preview"), surfaceRevisionId: idSchema, approved: z.literal(true) }).strict(),
+  z.object({ step: z.literal("page_preview"), choice: z.enum(["publish", "later"]).default("publish"), surfaceRevisionId: idSchema.optional(), approved: z.literal(true).optional() }).strict().superRefine((value, context) => {
+    if (value.choice === "publish" && (!value.surfaceRevisionId || value.approved !== true)) context.addIssue({ code: "custom", message: "Publishing requires an approved generated page revision" });
+    if (value.choice === "later" && (value.surfaceRevisionId || value.approved)) context.addIssue({ code: "custom", message: "Continuing privately does not approve or publish a page" });
+  }),
   z.object({ step: z.literal("networking_pulse"), pulseId: idSchema }).strict(),
   z.object({ step: z.literal("acceptance_mode"), mode: z.enum(["manual", "full_autopilot"]) }).strict(),
-  z.object({ step: z.literal("automation"), enabled: z.boolean(), cadence: z.enum(["automatic", "manual", "daily", "twice_weekly", "weekly"]), sourceLivenessReviewed: z.boolean() }).strict(),
+  z.object({ step: z.literal("automation"), enabled: z.boolean(), cadence: z.enum(["automatic", "manual", "daily", "twice_weekly", "weekly"]), sourceLivenessReviewed: z.literal(true) }).strict().refine((value) => value.enabled ? value.cadence !== "manual" : value.cadence === "manual", "Choose a supported recurring schedule or continue without background tasks"),
 ]);
 
 export const setupStepSchema = z.enum(SETUP_STEPS);

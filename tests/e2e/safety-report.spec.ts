@@ -43,5 +43,5 @@ test("Circle reports require a reason, accept context, and appear in Safety", as
   await page.goto("/settings/safety");
   await expect(page.getByText("Privacy concern", { exact: true })).toBeVisible();
   await expect(page.getByText(/Circle · submitted/)).toBeVisible();
-  await page.screenshot({ path: test.info().outputPath("safety-settings.png"), fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("safety-settings.png"), fullPage: true, caret: "initial" });
 });

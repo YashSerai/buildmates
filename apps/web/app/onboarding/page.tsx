@@ -7,7 +7,7 @@ import { CodexSetupActions } from "./CodexSetupActions";
 import { ProductHeader } from "@/components/discovery/ProductHeader";
 import styles from "./onboarding.module.css";
 
-export const metadata: Metadata = { title: "Set up Buildmates", description: "Continue the guided Buildmates first run in Codex.", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Set up Buildmates", description: "Continue the guided Buildmates first run in ChatGPT or Codex.", robots: { index: false, follow: false } };
 export default async function OnboardingPage() {
   const user = await requireUser("/onboarding");
   const { DB } = await getPlatformBindings();
@@ -18,10 +18,10 @@ export default async function OnboardingPage() {
   return <><ProductHeader signedIn/><main className={styles.page}>
     <section className={styles.intro}>
       <p className={styles.eyebrow}>{snapshot.setup.complete ? "Setup complete" : "Guided first run"}</p>
-      <h1>{snapshot.setup.complete ? "Your Buildmates profile is ready" : "Build your profile with Codex"}</h1>
-      <p>{snapshot.setup.complete ? "Return to Codex whenever your work changes, or continue to your profile and conversations on Buildmates." : "Tell Codex what you are building and who you would like to meet. It will shape your profile, your page, and your preferences with you."}</p>
+      <h1>{snapshot.setup.complete ? "Your Buildmates profile is ready" : "Build your profile with your AI host"}</h1>
+      <p>{snapshot.setup.complete ? "Return to ChatGPT or Codex whenever your work changes, or continue to your profile and conversations on Buildmates." : "Tell ChatGPT or Codex what you are building and who you would like to meet. Review each profile, page, and preference before it is saved."}</p>
     </section>
-    <section className={styles.handoffWorkspace} aria-labelledby="codex-handoff-title">
+    <section className={styles.handoffWorkspace} aria-labelledby="buildmates-handoff-title">
       <SetupProgress completedSteps={snapshot.setup.completedSteps} nextStep={snapshot.setup.nextStep} />
       <div className={styles.handoffPanel}>
         <div className={styles.handoffStatus}>
@@ -29,16 +29,16 @@ export default async function OnboardingPage() {
           <strong>{snapshot.setup.complete ? "First run complete" : `Next: ${nextLabel}`}</strong>
         </div>
         <div className={styles.handoffContent}>
-          <p className={styles.eyebrow}>Continue in Codex</p>
-          <h2 id="codex-handoff-title">Take the next guided step</h2>
-          <p className={styles.description}>Continue in Codex to finish the next step. You review everything before it is saved.</p>
-          {!snapshot.codexConnected && <div className={styles.inlineNote}><strong>Connect Codex once</strong><p>This lets Codex update your Buildmates profile and find relevant people for you.</p></div>}
+          <p className={styles.eyebrow}>Continue in ChatGPT or Codex</p>
+          <h2 id="buildmates-handoff-title">Take the next guided step</h2>
+          <p className={styles.description}>Continue in your AI host to finish the next step. You review everything before it is saved.</p>
+          {!snapshot.codexConnected && <div className={styles.inlineNote}><strong>Connect Buildmates once</strong><p>This lets your AI host update your Buildmates profile and find relevant people for you.</p></div>}
           <CodexSetupActions
             complete={snapshot.setup.complete}
             hasProgress={snapshot.setup.completedCount > 0}
           />
           <div className={styles.websiteRole}>
-            <strong>The website is your shared space</strong>
+            <strong>Use Buildmates on the web when you want a shared view</strong>
             <p>Publish and share your generated profile, review introductions, chat in private rooms, and manage privacy or account settings here.</p>
           </div>
           <div className={styles.fallbackRow}>

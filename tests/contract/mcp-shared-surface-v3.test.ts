@@ -1,9 +1,9 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createD1Repositories } from "@buildmates/database";
 import { createD1McpProductRepository, executeBuildmatesTool, type BuildmatesToolServices } from "@buildmates/mcp-core";
 import { seedDesignPolicy } from "@buildmates/surfaces";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 const ALICE_SUB = "mcp_subject_alice_shared_v3";
 const BOB_SUB = "mcp_subject_bob_shared_v3__";
@@ -17,10 +17,7 @@ describe("canonical shared GeneratedSiteBundle v3 surfaces", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    for (const file of (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort()) {
-      const sql = await readFile(`apps/web/drizzle/${file}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
     await DB.prepare("INSERT INTO users (id,status,operator_role,created_at,updated_at) VALUES ('user_alice','active','none',?,?),('user_bob','active','none',?,?)").bind(at, at, at, at).run();
     await DB.prepare("INSERT INTO taxonomy_versions (id,version,status,created_at,activated_at) VALUES ('taxonomy-v1',1,'active',?,?)").bind(at, at).run();
     await DB.prepare("INSERT INTO topics (id,taxonomy_version_id,slug,label) VALUES ('topic-rag','taxonomy-v1','rag','RAG')").run();

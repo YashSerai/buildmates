@@ -1,4 +1,3 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createD1Repositories } from "@buildmates/database";
@@ -19,6 +18,7 @@ import {
   updateWorkSignal,
 } from "../../apps/web/src/platform/onboarding-data";
 import { getProfileByHandle, saveProject } from "../../apps/web/src/profile-projects/service";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 describe("onboarding and privacy persistence", () => {
   let mf: Miniflare;
@@ -27,11 +27,7 @@ describe("onboarding and privacy persistence", () => {
   beforeEach(async () => {
     mf = new Miniflare({ modules: true, script: "export default { fetch() { return new Response('ok') } }", d1Databases: ["DB"], compatibilityDate: "2026-05-22" });
     DB = await mf.getD1Database("DB") as D1Database;
-    const migrations = (await readdir("apps/web/drizzle")).filter((name) => name.endsWith(".sql")).sort();
-    for (const migration of migrations) {
-      const sql = await readFile(`apps/web/drizzle/${migration}`, "utf8");
-      for (const statement of sql.split("--> statement-breakpoint").map((part) => part.trim()).filter(Boolean)) await DB.prepare(statement).run();
-    }
+    await applyD1Migrations(DB);
   });
 
   afterEach(async () => { await mf.dispose(); });
@@ -69,12 +65,13 @@ describe("onboarding and privacy persistence", () => {
     const snapshot = await getOnboardingSnapshot(DB, userId, "Avery");
     expect(snapshot.setup).toMatchObject({ complete: true, completedCount: 10, totalSteps: 10, nextStep: null });
     expect(snapshot.profile).toMatchObject({ acceptanceMode: "full_autopilot", allowMatching: true });
-    expect(snapshot.automation).toMatchObject({ enabled: true, cadence: "daily", capability: "approval_required", sourceLivenessReviewed: true });
+    expect(snapshot.automation).toMatchObject({ enabled: true, cadence: "daily", capability: "automation_unavailable", sourceLivenessReviewed: true, hostTaskConfirmed: false, backgroundExecutionVerified: false });
     const automationState = await DB.prepare("SELECT state_json AS stateJson FROM automation_checkpoints WHERE user_id=? AND kind='buildmates'").bind(userId).first<{ stateJson: string }>();
-    expect(JSON.parse(automationState!.stateJson)).toMatchObject({ capability: "approval_required", checkedAt: null });
-    await recordTrustedAutomationCapability(DB,userId,"available");
+    expect(JSON.parse(automationState!.stateJson)).toMatchObject({ capability: "automation_unavailable", checkedAt: null });
+    await expect(recordTrustedAutomationCapability(DB,userId,"available")).rejects.toThrow("foreground connection");
+    await recordTrustedAutomationCapability(DB,userId,"approval_required");
     await mutateOnboarding(DB,userId,"Avery",{action:"save_automation",cadence:"weekly",enabled:true,sourceLivenessReviewed:true,capability:"automation_unavailable"});
-    expect((await getOnboardingSnapshot(DB,userId,"Avery")).automation).toMatchObject({capability:"available",cadence:"weekly"});
+    expect((await getOnboardingSnapshot(DB,userId,"Avery")).automation).toMatchObject({capability:"approval_required",cadence:"weekly"});
     await mutateOnboarding(DB,userId,"Avery",{action:"save_automation",cadence:"weekly",enabled:true,sourceLivenessReviewed:true,requestCapabilityRecheck:true});
     expect((await getOnboardingSnapshot(DB,userId,"Avery")).automation).toMatchObject({capability:"approval_required"});
   }, 30_000);

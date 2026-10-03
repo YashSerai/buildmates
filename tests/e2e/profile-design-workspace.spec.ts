@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { EDITORIAL_RESEARCH_PROFILE } from "@buildmates/surfaces";
+import { DESIGN_POLICY_VERSION } from "@buildmates/surfaces";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { signInTestUser } from "./helpers/auth";
+import { qaEvidencePath } from "./helpers/evidence-path";
 
-const evidenceRoot = path.resolve("docs/qa/evidence/2026-07-18/profile-design-workspace");
+const evidenceRoot = qaEvidencePath("2026-07-18", "profile-design-workspace");
 
 test.beforeAll(async () => {
   await mkdir(evidenceRoot, { recursive: true });
@@ -41,12 +42,25 @@ test("profile design workspace stays aligned and renders real project content", 
   expect(seeded).toBe(true);
 
   const spec = {
-    ...EDITORIAL_RESEARCH_PROFILE,
-    approvedAssets: [],
+    schemaVersion: "3",
+    designPolicyVersion: DESIGN_POLICY_VERSION,
+    kind: "profile",
+    title: "Field Notes profile",
+    document: {
+      html: `<main class="profile-page"><header><p>{{profile.summary}}</p><h1>{{profile.displayName}}</h1></header><section><h2>Selected work</h2><template data-buildmates-repeat="profile.projects"><article><h3>{{item.title}}</h3><p>{{item.summary}}</p></article></template></section></main>`,
+      css: ".profile-page{max-width:72rem;margin:auto;padding:clamp(1.25rem,5vw,5rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.profile-page h1{font-size:clamp(3rem,9vw,8rem);line-height:.9}.profile-page section{display:grid;gap:1rem}.profile-page article{border-top:1px solid #4d5148;padding:1.5rem 0}@media(max-width:720px){.profile-page{padding:1rem}.profile-page h1{font-size:clamp(2.6rem,16vw,5rem)}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms;animation-iteration-count:1;scroll-behavior:auto}}",
+    },
     bindingManifest: {
-      ...EDITORIAL_RESEARCH_PROFILE.bindingManifest,
+      content: [
+        { key: "profile.displayName", type: "text" },
+        { key: "profile.summary", type: "text" },
+        { key: "profile.projects", type: "projects" },
+      ],
       media: [],
     },
+    approvedAssets: [],
+    responsive: { desktopMinHeight: 900, phoneMinHeight: 1000 },
+    accessibility: { label: "Field Notes profile", reducedMotion: "required" },
   };
   const draft = await page.evaluate(async (profileSpec) => {
     const response = await fetch("/api/surfaces/profile", {
@@ -61,7 +75,8 @@ test("profile design workspace stays aligned and renders real project content", 
   await page.goto("/profile/design");
   await expect(page.getByRole("heading", { name: "Make your page feel like you." })).toBeVisible();
   await expect(page.getByRole("heading", { name: "What visitors will see" })).toBeVisible();
-  await expect(page.getByText("Field Notes for Reliable Agents", { exact: true })).toBeVisible();
+  const generatedPreview = page.frameLocator("iframe.surface-generated-site");
+  await expect(generatedPreview.getByText("Field Notes for Reliable Agents", { exact: true })).toBeVisible();
 
   const [inner, header, preview] = await Promise.all([
     page.locator("main > div").first().boundingBox(),
@@ -78,14 +93,15 @@ test("profile design workspace stays aligned and renders real project content", 
   const publish = page.getByRole("button", { name: "Publish this design" });
   await expect(publish).toBeEnabled();
   await publish.click();
-  await expect(page.getByRole("heading", { name: "Your published profile" })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Profile design published.", { timeout: 15_000 });
+  await expect(page.getByRole("heading", { name: "Your published profile" })).toBeVisible({ timeout: 15_000 });
   await page.reload();
   await expect(page.getByRole("heading", { name: "Your published profile" })).toBeVisible();
-  await expect(page.getByText("Field Notes for Reliable Agents", { exact: true })).toBeVisible();
+  await expect(page.frameLocator("iframe.surface-generated-site").getByText("Field Notes for Reliable Agents", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Edit this design" })).toBeVisible();
 
   await page.screenshot({
     path: path.join(evidenceRoot, `${testInfo.project.name}.png`),
-    fullPage: true,
+    fullPage: true, caret: "initial",
   });
 });

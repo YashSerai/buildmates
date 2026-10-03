@@ -60,7 +60,7 @@ export function AutomationClient({
       const payload = (await response.json()) as { error?: string };
       if (!response.ok)
         throw new RequestError(userFacingError(payload.error, "Could not save settings."));
-      setMessage(body.action === "save_automation" ? "Work Pulse preferences saved. The recurring task is not confirmed yet. Continue in Codex to create or update it." : "Networking Pulse saved.");
+      setMessage(body.action === "save_automation" ? "Work Pulse preferences saved. The recurring task is not confirmed yet. Continue in ChatGPT or Codex to create or update it." : "Networking Pulse saved.");
     } catch (error) {
       setMessage(
         error instanceof RequestError ? error.message : "Could not save settings. Check your connection and try again.",
@@ -72,9 +72,9 @@ export function AutomationClient({
   async function copyAutomationPrompt() {
     try {
       await navigator.clipboard.writeText(automationPrompt);
-      setMessage("Automation prompt copied. Paste it into Codex.");
+      setMessage("Automation prompt copied. Paste it into ChatGPT or Codex.");
     } catch {
-      setMessage("Copy was blocked. Open Buildmates in Codex and ask it to create your Work Pulse from the saved preferences.");
+      setMessage("Copy was blocked. Open Buildmates in ChatGPT or Codex and ask it to create your Work Pulse from the saved preferences.");
     }
   }
   return (
@@ -291,7 +291,7 @@ export function AutomationClient({
           >
             Save Work Pulse preferences
           </button>
-          <a className={styles.primaryLink} href={`codex://open?prompt=${encodeURIComponent(automationPrompt)}`}>Continue in Codex</a>
+          <a className={styles.primaryLink} href="/install">Continue in ChatGPT or Codex</a>
           <button className={styles.secondaryButton} type="button" onClick={() => void copyAutomationPrompt()}>Copy prompt</button>
           {initialSnapshot.codexConnected ? (
             <button className={styles.secondaryButton} onClick={()=>save({action:"save_automation",cadence,enabled:cadence!=="manual",sourceLivenessReviewed:liveness,requestCapabilityRecheck:true})} disabled={busy || !liveness}>

@@ -9,6 +9,13 @@ type Statement = BoundStatement & { bind(...values: unknown[]): BoundStatement }
 type Database = { prepare(sql: string): Statement; batch(statements: BoundStatement[]): Promise<unknown[]> };
 type Row = Record<string, unknown>;
 
+// Keep profile writes atomic with account lifecycle changes. The users row is
+// the serialization point: inactive statuses deliberately violate its NOT
+// NULL timestamp constraint, which makes D1 roll back the whole batch.
+function isInactiveActorGuardError(error: unknown) {
+  return error instanceof Error && /users\.updated_at/i.test(error.message);
+}
+
 const OWNED_ID_KINDS = new Set(["work_signal", "networking_pulse", "profile_model", "invite", "candidate_evaluation", "manual_match_response", "connection_private_note", "connection_reminder", "intro_feedback", "surface_revision", "surface_asset_attachment", "calendar_receipt"]);
 
 export function createD1McpProductRepository(database: unknown): McpProductRepository {
@@ -90,7 +97,9 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
       const revision = await domain.surfaces.findRevisionForViewer(id, asUserId(actor));
       if (!revision) return null;
       const surface = await surfaceRecord<Row>(DB, revision.surfaceId, actor);
-      return surface ? record(kind, revision.id, revision.authorUserId, revision.visibility === "personal_view" ? [] : surface.memberUserIds, { surfaceId: revision.surfaceId, revisionNumber: revision.revisionNumber, baseRevisionNumber: revision.baseRevisionNumber, visibility: revision.visibility ?? "private_preview", spec: JSON.parse(revision.specJson), status: "stored" } as T, revision.revisionNumber, revision.createdAt.toISOString()) : null;
+      if (!surface) return null;
+      const metadata = await first(DB, "SELECT r.status,base.id AS baseRevisionId FROM surface_revisions r LEFT JOIN surface_revisions base ON base.surface_id=r.surface_id AND base.revision_number=r.base_revision_number WHERE r.id=?", revision.id);
+      return record(kind, revision.id, revision.authorUserId, revision.visibility === "personal_view" ? [] : surface.memberUserIds, { surfaceId: revision.surfaceId, revisionNumber: revision.revisionNumber, baseRevisionNumber: revision.baseRevisionNumber, baseRevisionId: metadata?.baseRevisionId == null ? null : String(metadata.baseRevisionId), visibility: revision.visibility ?? "private_preview", spec: JSON.parse(revision.specJson), status: String(metadata?.status ?? "stored") } as T, revision.revisionNumber, revision.createdAt.toISOString());
     }
     if (kind === "surface_approval") return ownedRow<T>(DB, kind, requestedId, actor, "surface_approvals", "user_id", rowValue, "revision_id || ':' || user_id");
     if (kind === "calendar_receipt") {
@@ -105,12 +114,50 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
     return null;
   };
 
+  const listSurfaceRevisionPage = async <T>(actor: string, options: McpPageOptions): Promise<McpRecordPage<T>> => {
+    const surfaceId = options.filter?.surfaceId;
+    const limit = Math.min(Math.max(options.limit, 1), 50);
+    const take = limit + 1;
+    const cursor = options.cursor ?? "";
+    const authorized: McpRecord<T>[] = [];
+
+    // Parent surface authorization is checked before this filtered history
+    // read. Keep personal revisions author-bound in SQL, fetch one bounded
+    // candidate window, then run canonical policy and publication checks on
+    // that window before exposing records or a cursor.
+    const rows = surfaceId
+      ? await all(DB, "SELECT r.id,r.surface_id,r.base_revision_number,r.status,base.id AS base_revision_id FROM surface_revisions r LEFT JOIN surface_revisions base ON base.surface_id=r.surface_id AND base.revision_number=r.base_revision_number WHERE r.surface_id=? AND r.id>? AND (r.visibility<>'personal_view' OR r.author_user_id=?) ORDER BY r.id LIMIT ?", surfaceId, cursor, actor, take)
+      : await all(DB, "SELECT r.id,r.surface_id,r.base_revision_number,r.status,base.id AS base_revision_id FROM surface_revisions r JOIN surfaces s ON s.id=r.surface_id LEFT JOIN surface_revisions base ON base.surface_id=r.surface_id AND base.revision_number=r.base_revision_number WHERE r.id>? AND ((r.visibility='personal_view' AND r.author_user_id=?) OR (r.visibility<>'personal_view' AND (s.owner_user_id=? OR (s.kind='room' AND EXISTS (SELECT 1 FROM room_memberships rm WHERE rm.room_id=s.subject_id AND rm.user_id=? AND rm.left_at IS NULL)) OR (s.kind='circle' AND EXISTS (SELECT 1 FROM circle_memberships cm WHERE cm.circle_id=s.subject_id AND cm.user_id=? AND cm.status='active'))))) ORDER BY r.id LIMIT ?", cursor, actor, actor, actor, actor, take);
+    for (const row of rows) {
+      const revisionId = String(row.id);
+      const revision = await readCanonical<T>("surface_revision", revisionId, actor);
+      if (!revision) continue;
+      const value = revision.value as Row;
+      if (surfaceId && String(value.surfaceId ?? value.surface_id) !== surfaceId) continue;
+      authorized.push({
+        ...revision,
+        value: {
+          ...value,
+          status: String(row.status ?? value.status ?? "stored"),
+          baseRevisionId: row.base_revision_id == null ? null : String(row.base_revision_id),
+        } as T,
+      });
+      if (authorized.length > limit) break;
+    }
+
+    const hasMore = authorized.length > limit;
+    const records = authorized.slice(0, limit);
+    return { records, nextCursor: hasMore ? records.at(-1)?.id ?? null : null };
+  };
+
   return {
     readForMember: readCanonical,
     async listForMember<T>(kind: string, actor: string) {
+      if (kind === "surface_revision") return (await listSurfaceRevisionPage<T>(actor, { limit: 50 })).records;
       return (await listCanonicalPage<T>(DB, kind, actor, { limit: 50 })).records;
     },
     async listPageForMember<T>(kind: string, actor: string, options: McpPageOptions) {
+      if (kind === "surface_revision") return listSurfaceRevisionPage<T>(actor, options);
       return listCanonicalPage<T>(DB, kind, actor, options);
     },
     async write<T>(input: McpRecordWrite<T>) {
@@ -180,8 +227,10 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         const existingProfile = await first(DB, "SELECT published_at FROM profiles WHERE user_id=?", actor);
         const publishedAt = existingProfile?.published_at ?? null;
         const profileAudience = publishedAt ? "public" : "private";
+        const matchingReviewedAt = value.allowMatching ? at : null;
         const statements = [
-            DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,coarse_location,location_map_opt_in,timezone,published_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,project_or_interest=excluded.project_or_interest,portfolio_links_json=excluded.portfolio_links_json,audience=excluded.audience,allow_matching=excluded.allow_matching,acceptance_mode=excluded.acceptance_mode,indexable=excluded.indexable,coarse_location=excluded.coarse_location,location_map_opt_in=excluded.location_map_opt_in,timezone=excluded.timezone,published_at=excluded.published_at,updated_at=excluded.updated_at").bind(profileId, actor, value.displayName, value.builderSummary, value.projectOrInterest, JSON.stringify(value.portfolioLinks ?? []), profileAudience, value.allowMatching ? 1 : 0, value.acceptanceMode, publishedAt ? 1 : 0, value.coarseLocation || null, value.locationMapOptIn !== false ? 1 : 0, value.timezone || null, publishedAt, at, at),
+            DB.prepare("UPDATE users SET updated_at=CASE WHEN status='active' THEN updated_at ELSE NULL END WHERE id=?").bind(actor),
+            DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,coarse_location,location_map_opt_in,timezone,published_at,matching_reviewed_at,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET display_name=excluded.display_name,summary=excluded.summary,project_or_interest=excluded.project_or_interest,portfolio_links_json=excluded.portfolio_links_json,audience=excluded.audience,allow_matching=excluded.allow_matching,acceptance_mode=excluded.acceptance_mode,indexable=excluded.indexable,coarse_location=excluded.coarse_location,location_map_opt_in=excluded.location_map_opt_in,timezone=excluded.timezone,published_at=excluded.published_at,matching_reviewed_at=excluded.matching_reviewed_at,updated_at=excluded.updated_at").bind(profileId, actor, value.displayName, value.builderSummary, value.projectOrInterest, JSON.stringify(value.portfolioLinks ?? []), profileAudience, value.allowMatching ? 1 : 0, value.acceptanceMode, publishedAt ? 1 : 0, value.coarseLocation || null, value.locationMapOptIn !== false ? 1 : 0, value.timezone || null, publishedAt, matchingReviewedAt, at, at),
           DB.prepare("INSERT INTO handles (user_id,handle,normalized_handle,created_at) VALUES (?,?,?,?) ON CONFLICT(user_id) DO UPDATE SET handle=excluded.handle,normalized_handle=excluded.normalized_handle").bind(actor, value.handle, String(value.handle).toLowerCase(), at),
           DB.prepare("DELETE FROM profile_fields WHERE profile_id=?").bind(profileId),
           DB.prepare("DELETE FROM profile_topic_contributions WHERE user_id=?").bind(actor),
@@ -192,7 +241,12 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
           statements.push(DB.prepare("DELETE FROM profile_statistics WHERE profile_id=?").bind(profileId));
           for (const statistic of value.statistics as Row[]) statements.push(DB.prepare("INSERT INTO profile_statistics (profile_id,stat_key,label,value,provenance,audience,updated_at) VALUES (?,?,?,?,?,?,?)").bind(profileId, statistic.key, statistic.label, statistic.value, statistic.provenance, statistic.audience, at));
           }
-          await DB.batch(statements);
+          try {
+            await DB.batch(statements);
+          } catch (error) {
+            if (isInactiveActorGuardError(error)) throw new Error("actor_not_active");
+            throw error;
+          }
           const surfaceId = `surface_profile_${profileId}`;
           if (!await first(DB, "SELECT id FROM surfaces WHERE id=?", surfaceId)) {
             await domain.surfaces.createSurface({ actorId: asUserId(actor), id: surfaceId, ownerUserId: asUserId(actor), kind: "profile", subjectId: profileId, at: new Date(at) });
@@ -377,10 +431,14 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
           ...previousState,
           state: value.state,
           lastOutcome: value.lastOutcome,
-          configured: value.state !== "disabled",
+          configured: value.state !== "disabled" && value.state !== "requested",
           enabled: value.enabled ?? value.state !== "disabled",
           cadence: value.cadence ?? previousState.cadence ?? null,
           sourceLivenessReviewed: value.sourceLivenessReviewed ?? previousState.sourceLivenessReviewed ?? false,
+          hostTaskConfirmed: false,
+          backgroundExecutionVerified: false,
+          reportedState: value.reportedState ?? null,
+          requestedNextRunAt: value.requestedNextRunAt ?? null,
         };
         await run(DB, "INSERT INTO automation_checkpoints (id,user_id,kind,cursor,last_success_at,next_run_at,state_json,updated_at) VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(user_id,kind) DO UPDATE SET cursor=excluded.cursor,last_success_at=excluded.last_success_at,next_run_at=excluded.next_run_at,state_json=excluded.state_json,updated_at=excluded.updated_at", canonicalId("automation", actor, kind), actor, kind, value.cursor ?? null, value.state === "succeeded" ? at : null, value.nextRunAt ? Date.parse(String(value.nextRunAt)) : null, JSON.stringify(nextState), at);
         return (await readCanonical<T>(input.kind, `${actor}:${kind}`, actor))!;
@@ -412,12 +470,17 @@ export function createD1McpProductRepository(database: unknown): McpProductRepos
         if (!began.responseJson) throw new Error("idempotency_in_progress");
         return { replayed: true, value: JSON.parse(began.responseJson) as T };
       }
+      let executionReturned = false;
       try {
         const value = await input.execute();
+        executionReturned = true;
         if (!(await domain.idempotency.complete(id, asUserId(input.actorUserId), JSON.stringify(value), new Date(input.now)))) throw new Error("idempotency_completion_failed");
         return { replayed: false, value };
       } catch (error) {
-        await run(DB, "UPDATE idempotency_keys SET status='failed',updated_at=? WHERE id=? AND actor_user_id=? AND status='processing'", at.valueOf(), id, input.actorUserId);
+        // A missing completion receipt does not prove the effect failed. The
+        // grouped services can also throw after a partial write, so retain
+        // their lease until canonical effects have been investigated.
+        if (!executionReturned && !input.preserveLeaseOnError) await run(DB, "UPDATE idempotency_keys SET status='failed',updated_at=? WHERE id=? AND actor_user_id=? AND status='processing'", at.valueOf(), id, input.actorUserId);
         throw error;
       }
     },
@@ -503,10 +566,17 @@ async function surfaceRecord<T>(DB: Database, id: string, actor: string): Promis
     const media = await approvedProfileMedia(DB, actor);
     const profile = await first(DB, "SELECT p.display_name AS displayName,p.summary,h.handle FROM profiles p LEFT JOIN handles h ON h.user_id=p.user_id WHERE p.id=? AND p.user_id=?", base.subject_id, actor);
     if (!profile) return null;
-    const displayableFields = await all(DB, "SELECT field_key AS fieldKey,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience<>'private' ORDER BY field_key", base.subject_id);
+    // A profile surface is eventually public HTML. Only facts and embedded
+    // project entries explicitly marked public, with confirmed provenance and
+    // no cohort restriction, may cross into the generation brief. Direct
+    // project rows also need an active, published, non-deleted public record.
+    // The owner can still preview the base identity fields above while the
+    // profile is private, but audience-scoped fields never get baked into a
+    // revision that can later be published.
+    const displayableFields = await all(DB, "SELECT field_key AS fieldKey,value_json AS valueJson FROM profile_fields WHERE profile_id=? AND audience='public' AND source_status='confirmed' AND cohort_scope_id IS NULL ORDER BY field_key", base.subject_id);
     const facts = displayableFields.flatMap((field) => String(field.fieldKey) === "projects" ? [] : [{ label: profileFieldLabel(String(field.fieldKey)), value: profileFactValue(field.valueJson) }]).filter((fact) => fact.value.length > 0);
     const approvedDraftProjects = displayableFields.flatMap((field) => String(field.fieldKey) === "projects" ? profileProjectsValue(field.valueJson) : []);
-    const projectRows = await all(DB, "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience<>'private' ORDER BY updated_at DESC LIMIT 20", actor);
+    const projectRows = await all(DB, "SELECT id,title,summary,slug FROM projects WHERE owner_user_id=? AND status='active' AND audience='public' AND published_at IS NOT NULL AND deleted_at IS NULL AND cohort_scope_id IS NULL ORDER BY updated_at DESC LIMIT 20", actor);
     const projects = dedupeProfileProjects([...approvedDraftProjects, ...projectRows.map((project) => ({ id: String(project.id), title: String(project.title), summary: String(project.summary), href: `/projects/${String(project.slug)}`, tags: [], metrics: [] }))]);
     const authorizedContent = {
       "profile.displayName": String(profile.displayName),
@@ -641,15 +711,16 @@ async function approvedProfileMedia(DB: Database, actor: string) {
     FROM project_media media
     JOIN projects project ON project.id=media.project_id
     JOIN surface_assets asset ON asset.id=media.asset_id
-    WHERE project.owner_user_id=? AND project.status='active' AND project.audience<>'private'
-      AND project.published_at IS NOT NULL AND project.deleted_at IS NULL
+    WHERE project.owner_user_id=? AND project.status='active' AND project.audience='public'
+      AND project.published_at IS NOT NULL AND project.deleted_at IS NULL AND project.cohort_scope_id IS NULL
       AND asset.owner_user_id=? AND asset.deleted_at IS NULL
     ORDER BY project.updated_at DESC,media.position,media.id LIMIT 24`, actor, actor),
     all(DB, `SELECT media.asset_id AS assetId,media.alt_text AS altText,media.project_key AS projectKey,
       field.value_json AS projectsJson,asset.object_key AS objectKey
     FROM profile_project_media media
     JOIN profiles profile ON profile.id=media.profile_id
-    JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects' AND field.audience<>'private'
+    JOIN profile_fields field ON field.profile_id=profile.id AND field.field_key='projects'
+      AND field.audience='public' AND field.source_status='confirmed' AND field.cohort_scope_id IS NULL
     JOIN surface_assets asset ON asset.id=media.asset_id
     WHERE profile.user_id=? AND asset.owner_user_id=? AND asset.deleted_at IS NULL
     ORDER BY media.updated_at DESC LIMIT 24`, actor, actor),
@@ -785,7 +856,7 @@ async function all(DB: Database, sql: string, ...values: unknown[]) { return (aw
 function rowValue(row: Row) { return row; }
 function workSignalValue(row: Row) { return { signalId: row.id, sourceId: row.source_app_id, taxonomyVersion: row.taxonomy_version_id, summary: row.free_text_summary, canonicalTopicIds: JSON.parse(String(row.canonical_topic_ids_json)), canonicalToolIds: JSON.parse(String(row.canonical_tool_ids_json)), canonicalDomainIds: JSON.parse(String(row.canonical_domain_ids_json)), canonicalStageIds: JSON.parse(String(row.canonical_stage_ids_json ?? "[]")), canonicalCollaborationIntentIds: JSON.parse(String(row.canonical_collaboration_intent_ids_json ?? "[]")), audience: row.audience, allowMatching: Boolean(row.allow_matching), expiresAt: new Date(Number(row.expires_at)).toISOString(), approved: true }; }
 function pulseValue(row: Row) { const controls = JSON.parse(String(row.controls_json ?? "{}")); return { pulseId: row.id, intentSummary: row.intent_summary, builderSimilarity: Number(row.similar_adjacent) < 34 ? "similar" : Number(row.similar_adjacent) > 66 ? "adjacent" : "balanced", geography: Number(row.local_global) < 34 ? "local" : Number(row.local_global) > 66 ? "global" : "balanced", maximumIntroductionsPerWeek: controls.maximumIntroductionsPerWeek, serendipity: row.serendipity, timezone: controls.timezone, quietHours: controls.quietHours ?? [], snoozedUntil: controls.snoozedUntil ?? null, exclusions: controls.exclusions ?? [], startsAt: new Date(Number(row.starts_at)).toISOString(), expiresAt: new Date(Number(row.expires_at)).toISOString() }; }
-function profileValue(row: Row) { return { profileId: row.id, surfaceId: `surface_profile_${row.id}`, handle: row.handle, displayName: row.display_name, builderSummary: row.summary, projectOrInterest: row.project_or_interest, portfolioLinks: JSON.parse(String(row.portfolio_links_json ?? "[]")), publicationStatus: row.published_at ? "published" : "private_draft", allowMatching: Boolean(row.allow_matching), acceptanceMode: row.acceptance_mode, coarseLocation: row.coarse_location ?? undefined, locationMapOptIn: Boolean(row.location_map_opt_in), timezone: row.timezone ?? undefined, canonicalTopicIds: JSON.parse(String(row.canonical_topic_ids_json ?? "[]")), fields: JSON.parse(String(row.fields_json ?? "[]")).map((field: Row) => ({ ...field, allowMatching: Boolean(field.allowMatching) })), statistics: JSON.parse(String(row.statistics_json ?? "[]")), publishedAt: row.published_at ? new Date(Number(row.published_at)).toISOString() : null }; }
+function profileValue(row: Row) { return { profileId: row.id, surfaceId: `surface_profile_${row.id}`, handle: row.handle, displayName: row.display_name, builderSummary: row.summary, projectOrInterest: row.project_or_interest, portfolioLinks: JSON.parse(String(row.portfolio_links_json ?? "[]")), publicationStatus: row.published_at ? "published" : "private_draft", allowMatching: Boolean(row.allow_matching), matchingReviewedAt: row.matching_reviewed_at == null ? null : new Date(Number(row.matching_reviewed_at)).toISOString(), acceptanceMode: row.acceptance_mode, coarseLocation: row.coarse_location ?? undefined, locationMapOptIn: Boolean(row.location_map_opt_in), timezone: row.timezone ?? undefined, canonicalTopicIds: JSON.parse(String(row.canonical_topic_ids_json ?? "[]")), fields: JSON.parse(String(row.fields_json ?? "[]")).map((field: Row) => ({ ...field, allowMatching: Boolean(field.allowMatching) })), statistics: JSON.parse(String(row.statistics_json ?? "[]")), publishedAt: row.published_at ? new Date(Number(row.published_at)).toISOString() : null }; }
 function inviteValue(row: Row) { return { inviteId: row.id, kind: row.kind, headline: row.headline, targetId: row.target_id, maximumUses: row.maximum_uses, uses: row.use_count, expiresAt: new Date(Number(row.expires_at)).toISOString(), status: row.revoked_at ? "revoked" : "active" }; }
 
 async function assertInviteTarget(DB:Database,actor:string,kind:string,targetId:string|null){if(kind==="personal"){if(targetId)throw new Error("invalid_invite_target");return}if(!targetId)throw new Error("invalid_invite_target");const row=kind==="builder"?await first(DB,"SELECT 1 AS ok FROM profiles WHERE id=? AND user_id=?",targetId,actor):kind==="connection_card"?await first(DB,"SELECT 1 AS ok FROM projects WHERE id=? AND owner_user_id=? AND status<>'deleted'",targetId,actor):null;if(!row)throw new Error("object_not_found_or_not_authorized")}

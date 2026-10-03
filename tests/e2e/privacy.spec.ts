@@ -14,13 +14,15 @@ test("privacy center audits source revocation, matching pause, export, and delet
   await page.goto("/settings/privacy");
   await expect(page.locator("[data-hydrated=true]")).toBeVisible();
   await expect(page).toHaveTitle(/Privacy center/);
-  await expect(page.getByRole("heading", { name: "What Buildmates knows about me" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Your profile and privacy" })).toBeVisible();
   await expect(page.getByText("GitHub", { exact: true })).toBeVisible();
   await expect(page.getByText("Privacy Project",{exact:true})).toBeVisible();
 
   page.on("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Revoke" }).click();
+  await page.getByRole("button", { name: "Remove source" }).click();
   await expect(page.getByText("No active source policies")).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("Source revoked and its active signals removed from future matching.");
   await page.getByRole("button", { name: "Pause matching" }).click();
   await expect(page.getByRole("status")).toContainText("Privacy setting updated");
   await expect(page.getByRole("link", { name: "Download my data" })).toHaveAttribute("href", "/api/privacy/export");
@@ -33,11 +35,11 @@ test("privacy center audits source revocation, matching pause, export, and delet
   await expect(deletion).toBeDisabled();
   await page.getByLabel("Type DELETE BUILDMATES").fill("DELETE BUILDMATES");
   await expect(deletion).toBeEnabled();
-  await expect(page.getByText("Connected source removed", { exact: true })).toBeVisible();
   await page.getByRole("button",{name:"Delete project"}).click();
+  await page.getByRole("dialog").getByRole("button",{name:"Delete project"}).click();
   await expect(page.getByText("No active projects")).toBeVisible();
   await assertNoOverflow(page);
-  await page.screenshot({ path: test.info().outputPath("privacy-center.png"), fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("privacy-center.png"), fullPage: true, caret: "initial" });
 });
 
 test("automation settings expose expiring intent, hard budget, quiet hours, liveness, and capability", async ({ page }, testInfo) => {
@@ -54,7 +56,7 @@ test("automation settings expose expiring intent, hard budget, quiet hours, live
   await page.getByRole("button", { name: "Save Work Pulse preferences" }).click();
   await expect(page.getByRole("status")).toContainText("recurring task is not confirmed yet");
   await assertNoOverflow(page);
-  await page.screenshot({ path: test.info().outputPath("work-pulse-settings.png"), fullPage: true });
+  await page.screenshot({ path: test.info().outputPath("work-pulse-settings.png"), fullPage: true, caret: "initial" });
 });
 
 async function useIdentity(page: import("@playwright/test").Page, subject: string) { await signInTestUser(page,subject);await page.evaluate(async()=>{const codeResponse=await fetch("/api/identity/link-code",{method:"POST"});const {code}=await codeResponse.json() as {code:string};const linked=await fetch("/api/testing/complete-link",{method:"POST",headers:{"content-type":"application/json","x-buildmates-e2e":"1"},body:JSON.stringify({code})});if(!linked.ok)throw new Error(`e2e_link_failed:${linked.status}:${await linked.text()}`)}); }

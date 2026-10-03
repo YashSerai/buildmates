@@ -1,4 +1,5 @@
 import { evaluateCandidate, listCandidateRows, respondToProposal, saveCandidateBatch, type CandidateRow } from "./service";
+import { consumeWebRateLimit, WebRateLimitError } from "../security/rate-limit";
 
 type D1 = D1Database;
 
@@ -6,6 +7,12 @@ export type McpCandidate = CandidateRow & { proposalId: string | null };
 
 export async function getMcpCandidateShortlist(DB: D1, input: { userId: string; batchId?: string; limit: number; now: string }) {
   const now = parseNow(input.now);
+  try {
+    await consumeWebRateLimit(DB, "candidate_shortlist", input.userId, 12, 10 * 60 * 1000, now);
+  } catch (error) {
+    if (error instanceof WebRateLimitError) throw new Error("candidate_rate_limited");
+    throw error;
+  }
   const limit = Math.max(1, Math.min(30, input.limit));
   let batchId = input.batchId ?? null;
   let expiresAt: number | null = null;

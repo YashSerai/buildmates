@@ -1,4 +1,3 @@
-import { readFile, readdir } from "node:fs/promises";
 import { Miniflare } from "miniflare";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
@@ -23,7 +22,8 @@ import {
   createD1IdentityLinkStore,
   sha256,
 } from "../../apps/web/src/platform/identity-link-store";
-import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, PROFILE_V2_FIXTURES, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
+import { DESIGN_POLICY_ID, DESIGN_POLICY_SOURCE, DESIGN_POLICY_SOURCE_HASH, DESIGN_POLICY_VERSION, SURFACE_POLICY_REGISTRY, type SurfaceSpec } from "@buildmates/surfaces";
+import { applyD1Migrations } from "../helpers/migrate-d1";
 
 const at = new Date("2026-07-15T00:00:00Z");
 const later = new Date("2099-07-16T00:00:00Z");
@@ -55,17 +55,11 @@ const operator = {
 function surfaceSpecJson(kind: "profile" | "room" | "circle", overrides: Record<string, unknown> = {}): string {
   const requestedPolicyVersion = String(overrides.designPolicyVersion ?? DESIGN_POLICY_VERSION);
   if (requestedPolicyVersion === DESIGN_POLICY_VERSION) {
-    const current = structuredClone(PROFILE_V2_FIXTURES[1]);
     return JSON.stringify({
-      ...current,
-      kind,
-      title: `${kind} surface`,
-      approvedAssets: [],
-      bindingManifest: { ...current.bindingManifest, media: [] },
-      accessibility: {
-        ...current.accessibility,
-        label: `${kind} surface`,
-      },
+      schemaVersion: "3", designPolicyVersion: DESIGN_POLICY_VERSION, kind, title: `${kind} surface`,
+      document: { html: '<main><h1>{{surface.title}}</h1></main>', css: 'main{padding:2rem;color:#111;background:#fff}@media(max-width:600px){main{padding:1rem}}@media(prefers-reduced-motion:reduce){*{animation:none}}' },
+      bindingManifest: { content: [{ key: "surface.title", type: "text" }], media: [] }, approvedAssets: [],
+      responsive: { desktopMinHeight: 800, phoneMinHeight: 900 }, accessibility: { label: `${kind} surface`, reducedMotion: "required" },
       ...overrides,
     });
   }
@@ -2665,16 +2659,7 @@ async function exerciseAllAggregates(r: BuildmatesRepositories) {
 }
 
 async function applyMigrations(DB: D1Database) {
-  for (const file of (await readdir("apps/web/drizzle"))
-    .filter((name) => name.endsWith(".sql"))
-    .sort()) {
-    const migration = await readFile(`apps/web/drizzle/${file}`, "utf8");
-    for (const statement of migration
-      .split("--> statement-breakpoint")
-      .map((part) => part.trim())
-      .filter(Boolean))
-      await DB.prepare(statement).run();
-  }
+  await applyD1Migrations(DB);
 }
 
 async function insertUsers(DB: D1Database) {

@@ -10,6 +10,8 @@ test("two independently authenticated principals complete the relationship journ
   const a = await contextA.newPage();
   const b = await contextB.newPage();
   const outsider = await outsiderContext.newPage();
+  expect(a.viewportSize()).toEqual(testInfo.project.use.viewport);
+  expect(b.viewportSize()).toEqual(testInfo.project.use.viewport);
 
   try {
     const run = `${testInfo.project.name}-${Date.now()}`;
@@ -108,9 +110,23 @@ test("two independently authenticated principals complete the relationship journ
     }) as { status: number; body: { id: string } };
     expect(circleCreated.status).toBe(201);
     const circleId = circleCreated.body.id;
-    await b.goto(`/circles/${circleId}`);
-    await b.getByRole("button", { name: "Join Circle" }).click();
-    await expect(b.getByRole("heading", { name: "Circle chat" })).toBeVisible();
+    let releaseCircleScripts!: () => void;
+    const circleScriptGate = new Promise<void>((resolve) => { releaseCircleScripts = resolve; });
+    const holdCircleScripts = async (route: import("@playwright/test").Route) => {
+      if (route.request().resourceType() === "script") await circleScriptGate;
+      await route.continue();
+    };
+    await b.route("**/*", holdCircleScripts);
+    const joinCircle = b.getByRole("button", { name: "Join Circle" });
+    try {
+      await b.goto(`/circles/${circleId}`, { waitUntil: "commit" });
+      await expect(joinCircle).toBeDisabled();
+    } finally {
+      releaseCircleScripts();
+      await b.unrouteAll({ behavior: "wait" });
+    }
+    await joinCircle.click();
+    await expect(b.getByRole("heading", { name: "Circle chat" })).toBeVisible({ timeout: 15_000 });
     await b.getByLabel("Message the Circle").fill("Blair joined through a separately authenticated browser session.");
     await b.getByRole("button", { name: "Send" }).click();
     await a.goto(`/circles/${circleId}`);
@@ -183,10 +199,41 @@ test("two independently authenticated principals complete the relationship journ
     await expect(a.getByRole("status")).toBeEmpty();
     await a.locator("details").filter({ hasText: "Active shared tools" }).locator("summary").click();
     await expect(a.locator('[data-module-layout="cards"]')).toBeVisible();
-    await a.screenshot({ path: testInfo.outputPath("circle-owner-governance.png"), fullPage: true });
+    const moduleWorkspace = a.locator('[data-module-layout="cards"]');
+    await moduleWorkspace.getByLabel("Experiment", { exact: true }).fill("Compare retrieval overlap");
+    await moduleWorkspace.getByRole("button", { name: "Add entry" }).click();
+    await expect(moduleWorkspace.getByRole("heading", { name: "Compare retrieval overlap" })).toBeVisible();
+
+    let releaseActiveCircleScripts!: () => void;
+    const activeCircleScriptGate = new Promise<void>((resolve) => { releaseActiveCircleScripts = resolve; });
+    await a.route("**/*", async (route) => {
+      if (route.request().resourceType() === "script") await activeCircleScriptGate;
+      await route.continue();
+    });
+    try {
+      await a.goto(`/circles/${circleId}`, { waitUntil: "commit" });
+      await expect(a.getByRole("button", { name: "Copy Codex prompt", includeHidden: true })).toBeDisabled();
+      await expect(a.getByRole("button", { name: "Edit", exact: true, includeHidden: true })).toBeDisabled();
+      await expect(a.getByRole("button", { name: "Delete", exact: true, includeHidden: true })).toBeDisabled();
+      await expect(a.getByRole("button", { name: "Add entry", includeHidden: true })).toBeDisabled();
+    } finally {
+      releaseActiveCircleScripts();
+      await a.unrouteAll({ behavior: "wait" });
+    }
+    await a.waitForLoadState("load", { timeout: 30_000 });
+    await expect(a.locator('[data-hydrated="true"]').first()).toHaveCount(1);
+    await a.getByText("Proposals", { exact: true }).click();
+    await a.locator("details").filter({ hasText: "Active shared tools" }).locator("summary").click();
+    await a.getByRole("button", { name: "Edit", exact: true }).click();
+    await a.getByLabel("Experiment", { exact: true }).first().fill("Compare retrieval overlap after review");
+    await a.getByRole("button", { name: "Save changes" }).click();
+    await expect(a.getByRole("heading", { name: "Compare retrieval overlap after review" })).toBeVisible();
+    await a.getByRole("button", { name: "Delete", exact: true }).click();
+    await expect(a.getByRole("heading", { name: "Compare retrieval overlap after review" })).toHaveCount(0);
+    await a.screenshot({ path: testInfo.outputPath("circle-owner-governance.png"), fullPage: true, caret: "initial" });
     await b.goto(`/circles/${circleId}`);
     await expect(b.getByText("Blair joined through a separately authenticated browser session.", { exact: true })).toBeVisible();
-    await b.screenshot({ path: testInfo.outputPath("circle-member-chat.png"), fullPage: true });
+    await b.screenshot({ path: testInfo.outputPath("circle-member-chat.png"), fullPage: true, caret: "initial" });
 
     const projectSlug = `shared-retrieval-${Date.now()}`;
     const createdProject = await post(a, "/api/projects", {
@@ -231,8 +278,8 @@ test("two independently authenticated principals complete the relationship journ
       `/api/circles/${circleId}`,
     ]) expect((await get(outsider, path)).status, path).toBe(404);
 
-    await a.screenshot({ path: testInfo.outputPath("two-principal-owner.png"), fullPage: true });
-    await b.screenshot({ path: testInfo.outputPath("two-principal-member.png"), fullPage: true });
+    await a.screenshot({ path: testInfo.outputPath("two-principal-owner.png"), fullPage: true, caret: "initial" });
+    await b.screenshot({ path: testInfo.outputPath("two-principal-member.png"), fullPage: true, caret: "initial" });
   } finally {
     await Promise.allSettled(contexts.map((context) => context.close()));
   }

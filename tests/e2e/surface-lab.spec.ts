@@ -20,7 +20,7 @@ test("six v2 profile concepts keep distinct structure without horizontal overflo
   await expect(page.getByRole("heading", { name: "Mira Chen" })).toBeVisible();
   await expect(page.locator("article.surface-v2 .surface-canvas")).toBeVisible();
   expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: testInfo.outputPath("orbital-desktop.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("orbital-desktop.png"), fullPage: true, caret: "initial" });
 
   const concepts = page.getByLabel("Concept");
   for (const [value, marker] of [["editorial", ".surface-projects-editorial"], ["journal", ".surface-gallery-masonry"], ["collage", ".surface-canvas"], ["ledger", ".surface-projects-cards"]] as const) {
@@ -33,13 +33,13 @@ test("six v2 profile concepts keep distinct structure without horizontal overflo
   await expect(page.locator(".surface-project-artifact-orbit-map")).toBeVisible();
   await expect(page.getByText("Safari Gigs", { exact: true }).first()).toBeVisible();
   expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: testInfo.outputPath("working-atlas-desktop.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("working-atlas-desktop.png"), fullPage: true, caret: "initial" });
 
   await concepts.selectOption("atlas");
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Phone" }).click();
   expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
-  await page.screenshot({ path: testInfo.outputPath("working-atlas-phone.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("working-atlas-phone.png"), fullPage: true, caret: "initial" });
   await page.setViewportSize({ width: 320, height: 568 });
   expect(await surfaceOverflow(page)).toBeLessThanOrEqual(1);
   await page.evaluate(() => { document.documentElement.style.zoom = "2"; });
