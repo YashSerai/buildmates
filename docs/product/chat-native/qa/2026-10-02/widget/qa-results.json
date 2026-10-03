@@ -1,0 +1,171 @@
+{
+  "generatedAt": "2026-10-02T22:39:39.822Z",
+  "boundary": "Local Chromium iframe bridge using canonical service-shaped MCP DTOs. No ChatGPT/Codex host or production account claim.",
+  "browser": {
+    "executablePath": "C:\\Users\\yashs\\AppData\\Local\\ms-playwright\\chromium-1234\\chrome-win64\\chrome.exe",
+    "viewportWidths": [
+      390,
+      1440
+    ]
+  },
+  "captures": [
+    {
+      "name": "room-composer-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\room-composer-390.png",
+      "metrics": {
+        "composerCount": 1,
+        "messageCount": 2,
+        "previewCount": 0,
+        "previewSandbox": null,
+        "unavailableText": false,
+        "bodyTextLength": 347,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "name": "room-composer-390",
+        "width": 390,
+        "authorLabels": [
+          "Grace",
+          "You"
+        ],
+        "membersFact": false
+      }
+    },
+    {
+      "name": "room-composer-1440",
+      "width": 1440,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\room-composer-1440.png",
+      "metrics": {
+        "composerCount": 1,
+        "messageCount": 2,
+        "previewCount": 0,
+        "previewSandbox": null,
+        "unavailableText": false,
+        "bodyTextLength": 347,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0,
+        "name": "room-composer-1440",
+        "width": 1440,
+        "authorLabels": [
+          "Grace",
+          "You"
+        ],
+        "membersFact": false
+      }
+    },
+    {
+      "name": "room-long-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\room-long-390.png",
+      "metrics": {
+        "composerCount": 1,
+        "messageCount": 1,
+        "previewCount": 0,
+        "previewSandbox": null,
+        "unavailableText": false,
+        "bodyTextLength": 1278,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0
+      }
+    },
+    {
+      "name": "preview-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\preview-390.png",
+      "metrics": {
+        "composerCount": 0,
+        "messageCount": 0,
+        "previewCount": 1,
+        "previewSandbox": "",
+        "unavailableText": false,
+        "bodyTextLength": 279,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0
+      }
+    },
+    {
+      "name": "preview-1440",
+      "width": 1440,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\preview-1440.png",
+      "metrics": {
+        "composerCount": 0,
+        "messageCount": 0,
+        "previewCount": 1,
+        "previewSandbox": "",
+        "unavailableText": false,
+        "bodyTextLength": 279,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0
+      }
+    },
+    {
+      "name": "room-ended-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\room-ended-390.png",
+      "metrics": {
+        "composerCount": 0,
+        "messageCount": 0,
+        "previewCount": 0,
+        "previewSandbox": null,
+        "unavailableText": true,
+        "bodyTextLength": 257,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0
+      }
+    },
+    {
+      "name": "circle-archived-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\circle-archived-390.png",
+      "metrics": {
+        "composerCount": 0,
+        "messageCount": 0,
+        "previewCount": 0,
+        "previewSandbox": null,
+        "unavailableText": true,
+        "bodyTextLength": 120,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0
+      }
+    },
+    {
+      "name": "circle-proposed-390",
+      "width": 390,
+      "height": 844,
+      "screenshot": "C:\\Users\\yashs\\OneDrive\\Desktop\\Yash Stuff\\TECHTOK\\Buildmates\\docs\\product\\chat-native\\qa\\2026-10-02\\widget\\circle-proposed-390.png",
+      "metrics": {
+        "composerCount": 0,
+        "messageCount": 0,
+        "previewCount": 0,
+        "previewSandbox": null,
+        "unavailableText": false,
+        "bodyTextLength": 84,
+        "overflow": false,
+        "touchTargets": true,
+        "consoleErrors": 0,
+        "pageErrors": 0
+      }
+    }
+  ]
+}

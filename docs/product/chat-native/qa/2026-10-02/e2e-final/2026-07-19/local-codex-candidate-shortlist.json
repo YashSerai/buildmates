@@ -1,0 +1,60 @@
+{
+  "source": "guarded_local_buildmates_candidate_shortlist",
+  "generatedAt": "2026-10-02T23:55:31.489Z",
+  "requestedLimit": 30,
+  "returnedCount": 4,
+  "batchId": "cbdd725d-8aaf-4a1a-9f34-a20bd7bc4c90",
+  "candidates": [
+    {
+      "userId": "qa_45fd8680b921592e8287_strong",
+      "displayName": "Mira Chen",
+      "summary": "Building practical retrieval evaluation for AI products.",
+      "indexVersion": 1,
+      "taxonomyVersion": 0,
+      "visibleReasons": [
+        "topicOverlap",
+        "intentFit"
+      ],
+      "visibleEvidenceIds": []
+    },
+    {
+      "userId": "qa_45fd8680b921592e8287_duplicate",
+      "displayName": "Mira Labs",
+      "summary": "Building a lightweight retrieval testing workspace for applied AI teams.",
+      "indexVersion": 1,
+      "taxonomyVersion": 0,
+      "visibleReasons": [
+        "topicOverlap"
+      ],
+      "visibleEvidenceIds": []
+    },
+    {
+      "userId": "qa_45fd8680b921592e8287_adjacent",
+      "displayName": "Amara Okafor",
+      "summary": "Exploring human-centered agent observability and product research.",
+      "indexVersion": 1,
+      "taxonomyVersion": 0,
+      "visibleReasons": [
+        "topicAdjacency",
+        "toolDomainFit"
+      ],
+      "visibleEvidenceIds": []
+    },
+    {
+      "userId": "qa_45fd8680b921592e8287_weak",
+      "displayName": "Theo Martin",
+      "summary": "Building developer tooling for local-first creative software.",
+      "indexVersion": 1,
+      "taxonomyVersion": 0,
+      "visibleReasons": [
+        "serendipity"
+      ],
+      "visibleEvidenceIds": []
+    }
+  ],
+  "privacyAssertions": {
+    "excludedCandidateAbsent": true,
+    "privateSentinelAbsent": true,
+    "rawWorkSignalsAbsent": true
+  }
+}
