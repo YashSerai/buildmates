@@ -55,6 +55,8 @@ test("profile design workspace distinguishes private previews from published ver
   assert.match(component, /Select the prompt and copy it manually\./);
   assert.match(component, /codex:\/\/open\?prompt=/);
   assert.doesNotMatch(component, /Copy was blocked\. Use Design with Codex instead\./);
+  assert.match(component, /Review the complete page on desktop and phone before publishing\./);
+  assert.doesNotMatch(component, /ChatGPT or Codex checks the complete page/);
   assert.match(component, /first direction/);
   assert.match(component, /complete rethink/);
   assert.doesNotMatch(component, /cannot expose private fields/);

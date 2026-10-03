@@ -408,8 +408,9 @@ export async function revokeSource(
   DB: DB,
   userId: string,
   appId: string,
+  at = Date.now(),
 ): Promise<void> {
-  const now = Date.now();
+  const now = at;
   const result = await DB.batch([
     DB.prepare(
       "UPDATE connected_app_preferences SET access_mode='never',revoked_at=?,last_reviewed_at=? WHERE user_id=? AND app_id=? AND revoked_at IS NULL",
@@ -420,7 +421,7 @@ export async function revokeSource(
     ...matchingInvalidationStatements(DB, userId, now),
   ]);
   if (!result[0].meta.changes) throw new NotFoundError();
-  await audit(DB, userId, "source.revoked", "connected_app", appId, {});
+  await audit(DB, userId, "source.revoked", "connected_app", appId, {}, now);
 }
 
 export async function mutateOnboarding(
@@ -731,17 +732,18 @@ export async function updateWorkSignal(
   DB: DB,
   userId: string,
   body: Record<string, unknown>,
+  at = Date.now(),
 ): Promise<void> {
   const id = identifier(body.id, "signal identifier");
   const action = String(body.action ?? "update");
-  const now = Date.now();
+  const now = at;
   if (action === "reject" || action === "delete") {
     const results = await DB.batch([
       DB.prepare("UPDATE work_signals SET revoked_at=?,updated_at=? WHERE id=? AND user_id=? AND revoked_at IS NULL").bind(now,now,id,userId),
       ...matchingInvalidationStatements(DB,userId,now),
     ]);
     if (!results[0].meta.changes) throw new NotFoundError();
-    return audit(DB, userId, `work_signal.${action}`, "work_signal", id, {});
+    return audit(DB, userId, `work_signal.${action}`, "work_signal", id, {}, now);
   }
   const summary = text(body.summary, 1, 12000, "signal summary");
   const audience = workSignalAudienceValue(body.audience);
@@ -762,7 +764,7 @@ export async function updateWorkSignal(
   await audit(DB, userId, "work_signal.updated", "work_signal", id, {
     audience,
     allowMatching: Boolean(body.allowMatching),
-  });
+  }, now);
 }
 
 export async function runPrivacyCommand(
@@ -770,9 +772,10 @@ export async function runPrivacyCommand(
   userId: string,
   body: Record<string, unknown>,
   assets?: R2Like,
+  at = Date.now(),
 ): Promise<{ jobId?: string; status?: "deleting" | "complete" }> {
   const command = String(body.command ?? "");
-  const now = Date.now();
+  const now = at;
   if (command === "disconnect_all") {
     const existingAutomation = await DB.prepare("SELECT state_json AS stateJson FROM automation_checkpoints WHERE user_id=? AND kind='buildmates'").bind(userId).first<{stateJson:string}>();
     const disconnectedAutomation = {...safeObject(existingAutomation?.stateJson??"{}"),capability:"automation_unavailable",checkedAt:null,recheckRequestedAt:null};
@@ -792,7 +795,7 @@ export async function runPrivacyCommand(
       DB.prepare("UPDATE automation_checkpoints SET state_json=?,updated_at=? WHERE user_id=? AND kind='buildmates'").bind(JSON.stringify(disconnectedAutomation),now,userId),
       ...matchingInvalidationStatements(DB,userId,now),
     ]);
-    await audit(DB, userId, "sync.disconnected_all", "user", userId, {});
+    await audit(DB, userId, "sync.disconnected_all", "user", userId, {}, now);
     return {};
   }
   if (command === "pause_matching") {
@@ -802,12 +805,12 @@ export async function runPrivacyCommand(
       DB.prepare("DELETE FROM matching_snoozes WHERE user_id=? AND ends_at>?").bind(userId,now),
       DB.prepare("INSERT INTO matching_snoozes (id,user_id,reason,starts_at,ends_at,created_at) VALUES (?,?,'user_pause',?,?,?)").bind(id,userId,now,until,now),
     ]);
-    await audit(DB, userId, "matching.paused", "user", userId, { until });
+    await audit(DB, userId, "matching.paused", "user", userId, { until }, now);
     return {};
   }
   if (command === "resume_matching") {
     await DB.prepare("DELETE FROM matching_snoozes WHERE user_id=? AND ends_at>? ").bind(userId, now).run();
-    await audit(DB, userId, "matching.resumed", "user", userId, {});
+    await audit(DB, userId, "matching.resumed", "user", userId, {}, now);
     return {};
   }
   if (command === "disable_autopilot") {
@@ -816,7 +819,7 @@ export async function runPrivacyCommand(
     )
       .bind(now, userId)
       .run();
-    await audit(DB, userId, "autopilot.disabled", "user", userId, {});
+    await audit(DB, userId, "autopilot.disabled", "user", userId, {}, now);
     return {};
   }
   if (command === "redact_shared_context") {
@@ -829,7 +832,7 @@ export async function runPrivacyCommand(
       )`).bind(userId,userId),
       DB.prepare("UPDATE redaction_jobs SET status='complete',updated_at=? WHERE user_id=? AND source_kind='account' AND source_id='shared_connection_context'").bind(now,userId),
     ]);
-    await audit(DB,userId,"shared_context.redacted","user",userId,{});
+    await audit(DB,userId,"shared_context.redacted","user",userId,{},now);
     return { jobId: id };
   }
   if (command === "request_export") {
@@ -839,7 +842,7 @@ export async function runPrivacyCommand(
     )
       .bind(id, userId, now, now)
       .run();
-    await audit(DB, userId, "export.requested", "export_job", id, {});
+    await audit(DB, userId, "export.requested", "export_job", id, {}, now);
     return { jobId: id };
   }
   if (command === "request_deletion") {
@@ -856,7 +859,7 @@ export async function runPrivacyCommand(
   if (command === "delete_project") {
     const slug = text(body.slug,1,72,"project slug");
     await changeProjectLifecycle(DB,userId,slug,"delete");
-    await audit(DB,userId,"project.deleted","project",slug,{});
+    await audit(DB,userId,"project.deleted","project",slug,{},now);
     return {};
   }
   throw new InputError("Unknown privacy command.");
@@ -978,6 +981,7 @@ async function audit(
   objectKind: string,
   objectId: string,
   metadata: Record<string, unknown>,
+  at = Date.now(),
 ): Promise<void> {
   await DB.prepare(
     "INSERT INTO audit_events (id,actor_user_id,action,object_kind,object_id,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)",
@@ -989,7 +993,7 @@ async function audit(
       objectKind,
       objectId,
       JSON.stringify(metadata),
-      Date.now(),
+      at,
     )
     .run();
 }

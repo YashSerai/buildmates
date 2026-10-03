@@ -33,6 +33,12 @@ export type IdempotentMutation<T> = {
 export type McpPageOptions = { cursor?: string; limit: number; filter?: { connectionId?: string; surfaceId?: string } };
 export type McpRecordPage<T = unknown> = { records: McpRecord<T>[]; nextCursor: string | null };
 
+/** Keep repository pagination safe for callers that bypass the public Zod schema. */
+export function normalizeMcpPageLimit(value: unknown): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 20;
+  return Math.min(50, Math.max(1, Math.floor(value)));
+}
+
 export interface McpProductRepository {
   readForMember<T>(kind: string, id: string, actorUserId: string): Promise<McpRecord<T> | null>;
   listForMember<T>(kind: string, actorUserId: string): Promise<McpRecord<T>[]>;
@@ -65,15 +71,16 @@ export function createMemoryMcpProductRepository(): McpProductRepository {
       return (await this.listPageForMember<T>(kind, actorUserId, { limit: 50 })).records;
     },
     async listPageForMember<T>(kind: string, actorUserId: string, options: McpPageOptions) {
+      const limit = normalizeMcpPageLimit(options.limit);
       const values = [...records.values()]
         .filter((record) => record.kind === kind && (record.ownerUserId === actorUserId || record.memberUserIds.includes(actorUserId)))
         .filter((record) => !options.filter?.connectionId || (record.value as Record<string, unknown>).connectionId === options.filter.connectionId || (record.value as Record<string, unknown>).connection_id === options.filter.connectionId)
         .filter((record) => !options.filter?.surfaceId || (record.value as Record<string, unknown>).surfaceId === options.filter.surfaceId || (record.value as Record<string, unknown>).surface_id === options.filter.surfaceId)
         .sort((a, b) => a.id.localeCompare(b.id))
         .filter((record) => !options.cursor || record.id > options.cursor);
-      const page = values.slice(0, options.limit + 1);
-      const hasMore = page.length > options.limit;
-      const selected = page.slice(0, options.limit).map((record) => clone(record as McpRecord<T>));
+      const page = values.slice(0, limit + 1);
+      const hasMore = page.length > limit;
+      const selected = page.slice(0, limit).map((record) => clone(record as McpRecord<T>));
       return { records: selected, nextCursor: hasMore ? selected.at(-1)?.id ?? null : null };
     },
     async write<T>(input: McpRecordWrite<T>) {

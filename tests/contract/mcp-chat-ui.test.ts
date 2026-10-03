@@ -39,6 +39,9 @@ describe("Buildmates MCP Apps workspace UI", () => {
     expect(BUILD_MATES_CHAT_UI_HTML).toContain('viewBox="0 0 72 56"');
     expect(BUILD_MATES_CHAT_UI_HTML).toContain("Refresh workspace");
     expect(BUILD_MATES_CHAT_UI_HTML).toContain("Check the workspace before trying again.");
+    expect(BUILD_MATES_CHAT_UI_HTML).toContain("The action may have saved. Check the workspace before trying again.");
+    expect(BUILD_MATES_CHAT_UI_HTML).toContain("delete button.dataset.idempotencyKey");
+    expect(BUILD_MATES_CHAT_UI_HTML).toContain("Buildmates returned an invalid workspace snapshot.");
     expect(BUILD_MATES_CHAT_UI_HTML).toContain("confirmation: 'confirmed'");
     expect(BUILD_MATES_CHAT_UI_HTML).toContain("function activeRecord(value)");
     expect(BUILD_MATES_CHAT_UI_HTML).toContain("Messaging is unavailable");

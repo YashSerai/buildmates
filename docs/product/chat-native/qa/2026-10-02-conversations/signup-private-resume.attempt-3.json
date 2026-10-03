@@ -1,0 +1,179 @@
+{
+  "formatVersion": 1,
+  "syntheticOnly": true,
+  "recordedCase": {
+    "id": "signup-private-resume",
+    "scenario": "signup",
+    "catalogTargets": [
+      1,
+      11,
+      12
+    ],
+    "assertions": [
+      "The model reads saved setup state before asking questions. This case uses the already-linked synthetic Alice fixture and cannot pass a genuine OAuth or fresh-host installation gate; it must not pretend that such evidence exists.",
+      "The profile uses the user-provided display name Alice Synthetic, handle alice_synthetic, the exact reviewed research-team-agent summary, no portfolio links, no statistics, no connected sources, and no ongoing Work Signals. The context method is a manual profile description, not a Codex workspace read.",
+      "The saved privacy choices keep the generated page private, keep city-map participation off, allow matching only for the reviewed summary, and use manual acceptance. The Networking Pulse is balanced, global, capped at three introductions per week, has serendipity 40, no exclusions, daily 22:00 to 08:00 quiet hours in America/Vancouver, and a thirty-day expiry.",
+      "The continuation reads the existing setup record and does not create a second account, profile, source policy, signal, page revision, or schedule. The foreground Full Autopilot capability check is approval_required, so the model leaves matching manual and recurring Work Pulse disabled instead of treating that probe as proof of unattended scheduling.",
+      "The final response states what is saved, that no page is public, and that recurring work is disabled without inventing a URL or exposing internal identifiers."
+    ],
+    "evidenceDirectory": "signup-private-resume.attempt-3",
+    "sourceRecord": {
+      "model": "gpt-6-luna",
+      "reasoningEffort": "high",
+      "engine": null,
+      "sessionRecorded": true,
+      "turns": [
+        {
+          "user": "I want to set up Buildmates with a private page and manual matching. I am Alice Synthetic, use the handle alice_synthetic, and I am building a research-team agent for reliable handoffs. I have no portfolio link and do not want to connect or read any source.",
+          "messages": [
+            "I’ll start with the account’s setup state, then use only the details you provided. I’ll keep the page private and matching manual, and won’t connect or read any sources.",
+            "I can’t start setup because the Buildmates service isn’t available in this chat: there are no Buildmates tools or connected resources to read your setup state. I haven’t changed anything.\n\nYour requested setup is clear: Alice Synthetic (`alice_synthetic`), building a research-team agent for reliable handoffs, with a private page, manual matching, and no sources connected or read. Once Buildmates is connected here, I can continue using only those details."
+          ],
+          "usage": [
+            {
+              "input_tokens": 92009,
+              "cached_input_tokens": 65792,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 423,
+              "reasoning_output_tokens": 178
+            }
+          ],
+          "exitCode": 0,
+          "timedOut": false,
+          "errors": [],
+          "durationSeconds": 16.66
+        },
+        {
+          "user": "Show me the exact profile facts and privacy choices before saving them. Save my display name as Alice Synthetic and my summary as 'I am building a research-team agent for reliable handoffs.' Use only that reviewed summary for matching, keep every other field private, keep city-map participation off, use manual acceptance, save no statistics, and keep the generated page private.",
+          "messages": [
+            "I’ll verify the Buildmates connection first. I’ll use your exact wording and privacy choices, but I can only save them if the service is available in this chat.",
+            "Here are the exact facts and choices you specified:\n\n- **Display name:** Alice Synthetic\n- **Handle:** alice_synthetic — private\n- **Summary:** “I am building a research-team agent for reliable handoffs.”\n- **Matching:** Use only that reviewed summary. Keep the display name and every other field private.\n- **City-map participation:** Off\n- **Acceptance:** Manual\n- **Statistics:** Save none\n- **Generated page:** Private\n\nI haven’t saved these choices because the Buildmates service is still unavailable in this chat; it exposes no Buildmates tools."
+          ],
+          "usage": [
+            {
+              "input_tokens": 140441,
+              "cached_input_tokens": 112384,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1137,
+              "reasoning_output_tokens": 695
+            }
+          ],
+          "exitCode": 0,
+          "timedOut": false,
+          "errors": [],
+          "durationSeconds": 19.75
+        },
+        {
+          "user": "For my Networking Pulse, use balanced builder similarity, global geography, a hard cap of three introductions per week, serendipity 40, no exclusions, and quiet hours every day from 22:00 to 08:00 in America/Vancouver. Let it expire in 30 days. I approve those choices, and I want you to continue from the saved setup step rather than starting over.",
+          "messages": [
+            "I’ll check whether Buildmates is connected now and whether it has a saved setup checkpoint to resume.",
+            "I can’t resume from the saved setup step because Buildmates is still unavailable here. I couldn’t read your checkpoint or save the Networking Pulse, and I haven’t started a new setup.\n\nYour approved choices are: balanced builder similarity, global geography, a hard cap of three introductions per week, serendipity 40, no exclusions, daily quiet hours from 22:00 to 08:00 in America/Vancouver, and expiry 30 days after saving."
+          ],
+          "usage": [
+            {
+              "input_tokens": 190929,
+              "cached_input_tokens": 138496,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1493,
+              "reasoning_output_tokens": 857
+            }
+          ],
+          "exitCode": 0,
+          "timedOut": false,
+          "errors": [],
+          "durationSeconds": 17.1
+        },
+        {
+          "user": "Before you finish, check whether this chat can run Full Autopilot on Tuesdays and Fridays. If it cannot provide independent host proof, leave matching manual and recurring Work Pulse disabled. Finish the remaining setup using no sources and no ongoing Work Signals, then tell me the final saved state without claiming a public URL.",
+          "messages": [
+            "I’ll check the available Buildmates and host scheduling capabilities. If they’re absent, I’ll report that and won’t claim any setup changes were saved.",
+            "This chat has no connected Buildmates tools or scheduling capability, and no independent host proof for Tuesday and Friday runs. I couldn’t resume or finish setup, save your Networking Pulse, or verify the account’s saved settings.\n\nI haven’t read any sources or created Work Signals. Your requested fallback is manual matching and no recurring Work Pulse, but I can’t confirm those settings were saved. No public URL was created or provided."
+          ],
+          "usage": [
+            {
+              "input_tokens": 243018,
+              "cached_input_tokens": 188160,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1998,
+              "reasoning_output_tokens": 1145
+            }
+          ],
+          "exitCode": 0,
+          "timedOut": false,
+          "errors": [],
+          "durationSeconds": 16.89
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "sourceRevision": "32991d1a5bb42464c0ead04cc20dd547f6e7361c",
+    "workingProductDiffSha256": "d10e617aba99e900cb94974a59bba776c19692bb471e3de003b454f69fde7e7a",
+    "fixtureAndSkillSha256": {
+      "scripts/qa/conversation-server.ts": "64077cf7e214cfbe90663797a574c8f878db387637a6ad88f62b56855f0549ec",
+      "scripts/qa/conversation-fixture.ts": "25940e6c17595a47e3df2731930833fc39f9a6e7cd2e34d5d1915fa637ea0f4f",
+      "plugins/buildmates/skills/buildmates-matching/SKILL.md": "0b579001ceacedc89af2a22f5c6ba095e5d07c7c502ebf415edb1db3c6737bdd",
+      "plugins/buildmates/skills/buildmates-onboarding/SKILL.md": "9833296ad66d79d1f59b0223555632254ecac297d4633570b6cb029b1b788827",
+      "plugins/buildmates/skills/buildmates-surfaces/SKILL.md": "489ce5ff5a8a4fe443a8b2bb45f85f9ffc4a60bec272d8b8be561f4e50e93879",
+      "plugins/buildmates/skills/buildmates-work-pulse/SKILL.md": "ad5514396e1cf375319ea6614870f4326576fd71c6a59ccd89c1e1ebce231443"
+    },
+    "syntheticLocalOnly": true
+  },
+  "evidence": {
+    "source": "real local stdio MCP transport with synthetic Miniflare D1; no production network or account credentials",
+    "ndjsonFile": "tool-invocations.ndjson",
+    "parseErrors": 0,
+    "ndjsonMissing": false,
+    "inventoryAndHandshakeEventsExcluded": true,
+    "ignoredIncomingMethods": {
+      "initialize": 4,
+      "notifications/initialized": 4,
+      "tools/list": 4
+    },
+    "toolCallCount": 0,
+    "missingResponseCount": 0,
+    "bounds": {
+      "maxDepth": 6,
+      "maxArrayItems": 40,
+      "maxObjectKeys": 60,
+      "maxStringLength": 2000,
+      "truncationMarkers": true
+    },
+    "toolCalls": []
+  },
+  "finalState": {
+    "available": true,
+    "syntheticOnly": true,
+    "scenario": "signup",
+    "fixedNow": "2026-11-15T12:00:00.000Z",
+    "counts": {
+      "users": 3,
+      "profiles": 0,
+      "projects": 0,
+      "messages": 0,
+      "circles": 0,
+      "exports": 0
+    },
+    "profiles": [],
+    "profileFields": [],
+    "projects": [],
+    "projectCollaborators": [],
+    "proposals": [],
+    "circleProposals": [],
+    "connections": [],
+    "rooms": [],
+    "circles": [],
+    "circleMembers": [],
+    "messages": [],
+    "circleMessages": [],
+    "setup": [],
+    "sources": [],
+    "automation": [],
+    "pulses": [],
+    "surfaces": [],
+    "revisions": [],
+    "idempotency": [],
+    "exports": [],
+    "uncertainSaveProjectCommitted": false
+  }
+}

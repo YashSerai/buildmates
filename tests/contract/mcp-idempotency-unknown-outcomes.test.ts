@@ -73,6 +73,35 @@ describe("MCP idempotency unknown-outcome boundaries", () => {
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM circles WHERE id=?").bind(createdCircleIds[0]).first()).resolves.toEqual({ count: 1 });
   }, 30_000);
 
+  it("does not repeat a profile write when its committed result cannot be read", async () => {
+    const repository = createD1McpProductRepository(DB);
+    const originalWrite = repository.write.bind(repository);
+    let writes = 0;
+    repository.write = async (record) => {
+      const saved = await originalWrite(record);
+      if (record.kind === "profile_model") {
+        writes += 1;
+        throw new Error("profile_read_after_commit_failed");
+      }
+      return saved;
+    };
+    const services = servicesFor(repository, async () => { throw new Error("unexpected_grouped_action"); });
+    const input = {
+      profile: {
+        profileId: "profile_reviewed", displayName: "Reviewed builder", handle: "reviewed_builder",
+        builderSummary: "Building reliable research handoffs", projectOrInterest: "Research handoffs",
+        canonicalTopicIds: [], locationMapOptIn: false,
+        fields: [], statistics: [], acceptanceMode: "manual", allowMatching: false,
+        idempotencyKey: "profile-result-uncertain",
+      }, workspaceScope: "global",
+    };
+    await expect(executeBuildmatesTool("update_profile_model", input, SUBJECT, services)).rejects.toThrow("profile_read_after_commit_failed");
+    await expect(executeBuildmatesTool("update_profile_model", input, SUBJECT, services)).rejects.toThrow("idempotency_in_progress");
+    expect(writes).toBe(1);
+    await expect(DB.prepare("SELECT summary FROM profiles WHERE user_id=?").bind(USER_ID).first()).resolves.toEqual({ summary: input.profile.builderSummary });
+    await expect(DB.prepare("SELECT status FROM idempotency_keys WHERE actor_user_id=? AND operation='update_profile_model'").bind(USER_ID).first()).resolves.toEqual({ status: "processing" });
+  }, 30_000);
+
   it("does not replay an effect when the D1 completion receipt fails", async () => {
     const repository = createD1McpProductRepository(DB);
     let effectCount = 0;

@@ -86,7 +86,12 @@ async function authorize(request: Request, runtime: ExternalMcpRuntime): Promise
 }
 
 async function token(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: "invalid_request" }, 400, noStoreHeaders);
+  }
   const grantType = field(form, "grant_type");
   const clientId = field(form, "client_id");
   const requestedAudience = field(form, "resource");
@@ -109,7 +114,12 @@ async function token(request: Request, runtime: ExternalMcpRuntime): Promise<Res
 }
 
 async function revoke(request: Request, runtime: ExternalMcpRuntime): Promise<Response> {
-  const form = await request.formData();
+  let form: FormData;
+  try {
+    form = await request.formData();
+  } catch {
+    return json({ error: "invalid_request" }, 400, noStoreHeaders);
+  }
   const clientId = field(form, "client_id");
   await runtime.store.revoke(field(form, "token"), clientId);
   return new Response(null, { status: 200, headers: { "cache-control": "no-store" } });

@@ -145,8 +145,8 @@ export type BuildmatesChatToolGroup = {
 export const buildmatesChatToolGroups = [
   {
     name: "perform_buildmates_action",
-    title: "Act in Buildmates",
-    description: "Updates your profile, privacy settings, Work Signals, activity, safety controls, and account data after you review the action.",
+    title: "Manage profile, privacy and data export",
+    description: "Updates profiles, privacy, Work Signals, activity and safety. Exports account data with action.kind request_export: follow every returned section cursor and report oversized sections as incomplete. Prepares account deletion with prepare_account_deletion; request_deletion separately requires DELETE BUILDMATES. Saving an already published profile changes its visible fields immediately; obtain approval for public edits and preserve unrelated fields and statistics. Use permitted Work Signals for matching-only refreshes.",
     schema: groupSchema(CORE_ACTION_KINDS),
     kinds: CORE_ACTION_KINDS,
   },
@@ -167,7 +167,7 @@ export const buildmatesChatToolGroups = [
   {
     name: "perform_buildmates_circle_action",
     title: "Manage a Buildmates Circle",
-    description: "Creates and manages Circle members, messages, proposals, votes, and shared modules after you review the action.",
+    description: "Manages Circle members, messages, proposals, votes and shared modules after review. create_circle_proposal with proposalKind module uses payload {kind: resource_shelf|experiment_tracker|decision_log|feedback_queue|milestone_tracker|scoreboard, config: {title}}; a standard tool proposal needs no generated visual concept. Custom appearance needs reviewed design direction. proposalKind request uses payload {change,outcome} and records an intention that cannot be published. Rules use {moduleId,rules:{title,description}}. Creation does not vote or publish; read the actual governance state before those separate approved actions.",
     schema: groupSchema(CIRCLE_ACTION_KINDS),
     kinds: CIRCLE_ACTION_KINDS,
   },

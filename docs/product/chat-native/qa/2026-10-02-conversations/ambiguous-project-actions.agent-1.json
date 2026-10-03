@@ -1,0 +1,730 @@
+{
+  "formatVersion": 1,
+  "syntheticOnly": true,
+  "recordedCase": {
+    "id": "ambiguous-project-actions",
+    "scenario": "ambiguous",
+    "catalogTargets": [
+      3
+    ],
+    "assertions": [
+      "The model reads and presents the two candidate projects, asks for an exact target, and performs no destructive write while the request is ambiguous.",
+      "Only the project whose summary identifies it as the first Pulse project is deleted after the user's explicit confirmation; the other Pulse project remains unchanged.",
+      "The response names both projects by ordinary titles and summaries, reports the deletion after a fresh read, and does not expose slugs, user IDs, or schema terms."
+    ],
+    "evidenceDirectory": "ambiguous-project-actions.agent-1",
+    "sourceRecord": {
+      "model": "gpt-6-luna",
+      "reasoningEffort": "high",
+      "engine": "collaboration",
+      "sessionRecorded": true,
+      "turns": [
+        {
+          "user": "I have two projects with Pulse in the name. Delete the old Pulse project.",
+          "messages": [
+            "I found two active projects titled **Pulse**: `pulse-alpha` (“the first Pulse project”) and `pulse-beta` (“the second Pulse project”). Buildmates shows the same creation and update times for both, so I can’t tell which one is old. Which slug should I delete?\n"
+          ],
+          "recordedAt": 1790993158.9800913
+        },
+        {
+          "user": "The one whose summary says it is the first Pulse project for testing an agentic collaboration loop is the one I mean. Show me the two choices before doing anything.",
+          "messages": [
+            "The two choices are:\n\n- `pulse-alpha` — “The first Pulse project for testing an agentic collaboration loop.”\n- `pulse-beta` — “The second Pulse project for testing an agentic collaboration loop.”\n\nYou’ve identified `pulse-alpha` as the one you mean. I haven’t deleted anything.\n"
+          ],
+          "recordedAt": 1790993273.3957474
+        },
+        {
+          "user": "Delete the Pulse project whose summary says it is the first project for testing an agentic collaboration loop. I confirm that deletion.",
+          "messages": [
+            "The local Buildmates service reports `pulse-alpha` deleted. I checked the project list: `pulse-beta` is the remaining Pulse project.\n"
+          ],
+          "recordedAt": 1790993407.1844947
+        },
+        {
+          "user": "Show me the remaining Pulse project and leave it unchanged. I only wanted the first project removed.",
+          "messages": [
+            "The remaining project is **Pulse** (`pulse-beta`): “The second Pulse project for testing an agentic collaboration loop.” It’s active, in the building stage, and public. I left it unchanged.\n"
+          ],
+          "recordedAt": 1790993534.5210252
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "sourceRevision": "32991d1a5bb42464c0ead04cc20dd547f6e7361c",
+    "workingProductDiffSha256": "68a61e2755fc961828fc1d050213a8bc38c7699a22e0bcc8ca73eb3d22a1b474",
+    "fixtureAndSkillSha256": {
+      "scripts/qa/conversation-client-smoke.ts": "904cfa82765068740f007cbe6f61b28d1d85dd8b0e6b0f789e499f54c2fe54a3",
+      "scripts/qa/conversation-fixture.ts": "070fbfad793ddd66b95432a075eebf28ebb097f43357bce939c828d2d7659f9e",
+      "scripts/qa/conversation-server.ts": "c1a19dc2c8fa2439c124945692f3e65255d2334f1e3dbdc1b486b2be13bbf031",
+      "scripts/qa/conversation-tool.ts": "086c01cac75815c35099f9ef851b22ec395ebf1d69364cbd6664fcd8f14eb1b1",
+      "scripts/qa/conversation-transport.ts": "e46e6bf56a7b7d258c4ce7fee003cbe88a3e38821cb9105eb99aaaf4542009ff",
+      "scripts/qa/d1.ts": "ab840151f244b903bfb5919dbd95cb0ed2b7e4089a698b2fddc70c851280cbf7",
+      "plugins/buildmates/skills/buildmates-matching/SKILL.md": "0b579001ceacedc89af2a22f5c6ba095e5d07c7c502ebf415edb1db3c6737bdd",
+      "plugins/buildmates/skills/buildmates-onboarding/SKILL.md": "9833296ad66d79d1f59b0223555632254ecac297d4633570b6cb029b1b788827",
+      "plugins/buildmates/skills/buildmates-surfaces/SKILL.md": "489ce5ff5a8a4fe443a8b2bb45f85f9ffc4a60bec272d8b8be561f4e50e93879",
+      "plugins/buildmates/skills/buildmates-work-pulse/SKILL.md": "ad5514396e1cf375319ea6614870f4326576fd71c6a59ccd89c1e1ebce231443"
+    },
+    "syntheticLocalOnly": true,
+    "toolExposure": "local stdio MCP proxy, not native host installation"
+  },
+  "evidence": {
+    "source": "real local stdio MCP transport with synthetic Miniflare D1; no production network or account credentials",
+    "ndjsonFile": "tool-invocations.ndjson",
+    "parseErrors": 0,
+    "ndjsonMissing": false,
+    "inventoryAndHandshakeEventsExcluded": true,
+    "ignoredIncomingMethods": {
+      "initialize": 7,
+      "notifications/initialized": 7,
+      "tools/list": 7
+    },
+    "toolCallCount": 5,
+    "missingResponseCount": 0,
+    "bounds": {
+      "maxDepth": 6,
+      "maxArrayItems": 40,
+      "maxObjectKeys": 60,
+      "maxStringLength": 2000,
+      "truncationMarkers": true
+    },
+    "toolCalls": [
+      {
+        "requestSequence": 16,
+        "responseSequence": 17,
+        "requestRecordedAt": "2026-10-03T02:05:01.680Z",
+        "responseRecordedAt": "2026-10-03T02:05:01.818Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "projects",
+          "limit": 100
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "projects",
+                "data": [
+                  {
+                    "id": "qa_project_pulse_beta",
+                    "slug": "pulse-beta",
+                    "title": "Pulse",
+                    "summary": "The second Pulse project for testing an agentic collaboration loop.",
+                    "audience": "public",
+                    "allowMatching": 1,
+                    "status": "active",
+                    "stage": "building",
+                    "indexable": 1,
+                    "publishedAt": 1794744000000,
+                    "createdAt": 1794657600000,
+                    "updatedAt": 1794744000000
+                  },
+                  {
+                    "id": "qa_project_pulse_alpha",
+                    "slug": "pulse-alpha",
+                    "title": "Pulse",
+                    "summary": "The first Pulse project for testing an agentic collaboration loop.",
+                    "audience": "public",
+                    "allowMatching": 1,
+                    "status": "active",
+                    "stage": "building",
+                    "indexable": 1,
+                    "publishedAt": 1794744000000,
+                    "createdAt": 1794657600000,
+                    "updatedAt": 1794744000000
+                  },
+                  {
+                    "id": "qa_project_agent_workspace",
+                    "slug": "agent-workspace",
+                    "title": "Agent Workspace",
+                    "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+                    "audience": "public",
+                    "allowMatching": 1,
+                    "status": "active",
+                    "stage": "building",
+                    "indexable": 1,
+                    "publishedAt": 1794744000000,
+                    "createdAt": 1794657600000,
+                    "updatedAt": 1794744000000
+                  }
+                ],
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "projects",
+            "data": [
+              {
+                "id": "qa_project_pulse_beta",
+                "slug": "pulse-beta",
+                "title": "Pulse",
+                "summary": "The second Pulse project for testing an agentic collaboration loop.",
+                "audience": "public",
+                "allowMatching": 1,
+                "status": "active",
+                "stage": "building",
+                "indexable": 1,
+                "publishedAt": 1794744000000,
+                "createdAt": 1794657600000,
+                "updatedAt": 1794744000000
+              },
+              {
+                "id": "qa_project_pulse_alpha",
+                "slug": "pulse-alpha",
+                "title": "Pulse",
+                "summary": "The first Pulse project for testing an agentic collaboration loop.",
+                "audience": "public",
+                "allowMatching": 1,
+                "status": "active",
+                "stage": "building",
+                "indexable": 1,
+                "publishedAt": 1794744000000,
+                "createdAt": 1794657600000,
+                "updatedAt": 1794744000000
+              },
+              {
+                "id": "qa_project_agent_workspace",
+                "slug": "agent-workspace",
+                "title": "Agent Workspace",
+                "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+                "audience": "public",
+                "allowMatching": 1,
+                "status": "active",
+                "stage": "building",
+                "indexable": 1,
+                "publishedAt": 1794744000000,
+                "createdAt": 1794657600000,
+                "updatedAt": 1794744000000
+              }
+            ],
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 23,
+        "responseSequence": 24,
+        "requestRecordedAt": "2026-10-03T02:08:23.225Z",
+        "responseRecordedAt": "2026-10-03T02:08:23.840Z",
+        "tool": "perform_buildmates_project_action",
+        "arguments": {
+          "action": {
+            "kind": "delete_project",
+            "slug": "pulse-alpha",
+            "confirmation": "confirmed"
+          },
+          "idempotencyKey": "delete-pulse-alpha-confirmed-20261002"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "action": "delete_project",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "slug": "pulse-alpha",
+                    "status": "deleted"
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "action": "delete_project",
+              "confirmationState": "persisted",
+              "details": {
+                "slug": "pulse-alpha",
+                "status": "deleted"
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 30,
+        "responseSequence": 31,
+        "requestRecordedAt": "2026-10-03T02:08:38.588Z",
+        "responseRecordedAt": "2026-10-03T02:08:38.737Z",
+        "tool": "perform_buildmates_project_action",
+        "arguments": {
+          "action": {
+            "kind": "delete_project",
+            "slug": "pulse-alpha",
+            "confirmation": "confirmed"
+          },
+          "idempotencyKey": "delete-pulse-alpha-confirmed-20261002"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": true,
+                "result": {
+                  "action": "delete_project",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "slug": "pulse-alpha",
+                    "status": "deleted"
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": true,
+            "result": {
+              "action": "delete_project",
+              "confirmationState": "persisted",
+              "details": {
+                "slug": "pulse-alpha",
+                "status": "deleted"
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 37,
+        "responseSequence": 38,
+        "requestRecordedAt": "2026-10-03T02:08:55.335Z",
+        "responseRecordedAt": "2026-10-03T02:08:55.489Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "projects",
+          "limit": 100
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "projects",
+                "data": [
+                  {
+                    "id": "qa_project_pulse_beta",
+                    "slug": "pulse-beta",
+                    "title": "Pulse",
+                    "summary": "The second Pulse project for testing an agentic collaboration loop.",
+                    "audience": "public",
+                    "allowMatching": 1,
+                    "status": "active",
+                    "stage": "building",
+                    "indexable": 1,
+                    "publishedAt": 1794744000000,
+                    "createdAt": 1794657600000,
+                    "updatedAt": 1794744000000
+                  },
+                  {
+                    "id": "qa_project_agent_workspace",
+                    "slug": "agent-workspace",
+                    "title": "Agent Workspace",
+                    "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+                    "audience": "public",
+                    "allowMatching": 1,
+                    "status": "active",
+                    "stage": "building",
+                    "indexable": 1,
+                    "publishedAt": 1794744000000,
+                    "createdAt": 1794657600000,
+                    "updatedAt": 1794744000000
+                  }
+                ],
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "projects",
+            "data": [
+              {
+                "id": "qa_project_pulse_beta",
+                "slug": "pulse-beta",
+                "title": "Pulse",
+                "summary": "The second Pulse project for testing an agentic collaboration loop.",
+                "audience": "public",
+                "allowMatching": 1,
+                "status": "active",
+                "stage": "building",
+                "indexable": 1,
+                "publishedAt": 1794744000000,
+                "createdAt": 1794657600000,
+                "updatedAt": 1794744000000
+              },
+              {
+                "id": "qa_project_agent_workspace",
+                "slug": "agent-workspace",
+                "title": "Agent Workspace",
+                "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+                "audience": "public",
+                "allowMatching": 1,
+                "status": "active",
+                "stage": "building",
+                "indexable": 1,
+                "publishedAt": 1794744000000,
+                "createdAt": 1794657600000,
+                "updatedAt": 1794744000000
+              }
+            ],
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 44,
+        "responseSequence": 45,
+        "requestRecordedAt": "2026-10-03T02:10:32.344Z",
+        "responseRecordedAt": "2026-10-03T02:10:32.714Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "project_details",
+          "subjectId": "pulse-beta",
+          "limit": 100
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "project_details",
+                "subjectId": "pulse-beta",
+                "data": {
+                  "id": "qa_project_pulse_beta",
+                  "ownerUserId": "qa_synthetic_alice_v1",
+                  "slug": "pulse-beta",
+                  "title": "Pulse",
+                  "summary": "The second Pulse project for testing an agentic collaboration loop.",
+                  "audience": "public",
+                  "allow_matching": true,
+                  "status": "active",
+                  "stage": "building",
+                  "handle": "alice_synthetic",
+                  "ownerDisplayName": "Alice Synthetic",
+                  "links": [],
+                  "taxonomy": [],
+                  "updates": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "project_details",
+            "subjectId": "pulse-beta",
+            "data": {
+              "id": "qa_project_pulse_beta",
+              "ownerUserId": "qa_synthetic_alice_v1",
+              "slug": "pulse-beta",
+              "title": "Pulse",
+              "summary": "The second Pulse project for testing an agentic collaboration loop.",
+              "audience": "public",
+              "allow_matching": true,
+              "status": "active",
+              "stage": "building",
+              "handle": "alice_synthetic",
+              "ownerDisplayName": "Alice Synthetic",
+              "links": [],
+              "taxonomy": [],
+              "updates": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      }
+    ]
+  },
+  "finalState": {
+    "available": true,
+    "syntheticOnly": true,
+    "scenario": "ambiguous",
+    "fixedNow": "2026-11-15T12:00:00.000Z",
+    "counts": {
+      "users": 3,
+      "profiles": 3,
+      "projects": 5,
+      "messages": 1,
+      "circles": 1,
+      "exports": 0
+    },
+    "profiles": [
+      {
+        "id": "qa_profile_alice",
+        "userId": "qa_synthetic_alice_v1",
+        "displayName": "Alice Synthetic",
+        "summary": "Builds agentic collaboration tools with careful consent boundaries.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Vancouver",
+        "locationMapOptIn": 0,
+        "timezone": "America/Vancouver",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_profile_bob",
+        "userId": "qa_synthetic_bob_v1",
+        "displayName": "Bob Synthetic",
+        "summary": "Designs dependable agent workflows and collaboration rituals.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Vancouver",
+        "locationMapOptIn": 0,
+        "timezone": "America/Vancouver",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_profile_carol",
+        "userId": "qa_synthetic_carol_v1",
+        "displayName": "Carol Synthetic",
+        "summary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Toronto",
+        "locationMapOptIn": 0,
+        "timezone": "America/Toronto",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "profileFields": [],
+    "projects": [
+      {
+        "id": "qa_project_agent_workspace",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "slug": "agent-workspace",
+        "title": "Agent Workspace",
+        "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_pulse_alpha",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "slug": "pulse-alpha",
+        "title": "Pulse",
+        "summary": "The first Pulse project for testing an agentic collaboration loop.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "deleted",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1790993303464
+      },
+      {
+        "id": "qa_project_pulse_beta",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "slug": "pulse-beta",
+        "title": "Pulse",
+        "summary": "The second Pulse project for testing an agentic collaboration loop.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_bob_flows",
+        "ownerUserId": "qa_synthetic_bob_v1",
+        "slug": "reliable-flows",
+        "title": "Reliable Flows",
+        "summary": "A practical lab for human-readable agent handoffs.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_carol_evals",
+        "ownerUserId": "qa_synthetic_carol_v1",
+        "slug": "evaluation-notes",
+        "title": "Evaluation Notes",
+        "summary": "Small experiments for evaluating agent behavior with useful evidence.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "projectCollaborators": [
+      {
+        "projectId": "qa_project_agent_workspace",
+        "userId": "qa_synthetic_bob_v1",
+        "role": "editor",
+        "approvedAt": 1794744000000
+      }
+    ],
+    "proposals": [
+      {
+        "id": "qa_proposal_alice_bob",
+        "matchPairId": "qa_pair_alice_bob",
+        "state": "matched",
+        "expiresAt": 1794736800000,
+        "terminalAt": 1794736800000
+      },
+      {
+        "id": "qa_proposal_alice_carol",
+        "matchPairId": "qa_pair_alice_carol",
+        "state": "invalidated",
+        "expiresAt": 1795953600000,
+        "terminalAt": 1790993303464
+      }
+    ],
+    "circleProposals": [
+      {
+        "id": "qa_circle_proposal",
+        "circleId": "qa_circle_builders",
+        "proposerUserId": "qa_synthetic_bob_v1",
+        "kind": "request",
+        "status": "open",
+        "governanceVersion": 1,
+        "createdAt": 1794740400000
+      }
+    ],
+    "connections": [
+      {
+        "id": "qa_connection_alice_bob",
+        "matchPairId": "qa_pair_alice_bob",
+        "state": "active",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "rooms": [
+      {
+        "id": "qa_room_alice_bob",
+        "connectionId": "qa_connection_alice_bob",
+        "status": "active",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "circles": [
+      {
+        "id": "qa_circle_builders",
+        "name": "Synthetic Builders Circle",
+        "status": "active",
+        "governanceMode": "vote",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "circleMembers": [
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_alice_v1",
+        "role": "admin",
+        "status": "active",
+        "joinedAt": 1794657600000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_bob_v1",
+        "role": "member",
+        "status": "active",
+        "joinedAt": 1794657600000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_carol_v1",
+        "role": "member",
+        "status": "invited",
+        "joinedAt": null
+      }
+    ],
+    "messages": [
+      {
+        "id": "qa_message_room_bob",
+        "roomId": "qa_room_alice_bob",
+        "senderUserId": "qa_synthetic_bob_v1",
+        "clientMessageId": "qa-room-message-1",
+        "body": "I mapped the first handoff failure and kept the evidence narrow.",
+        "bodyLength": 64,
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": 1794740400000
+      }
+    ],
+    "circleMessages": [
+      {
+        "id": "qa_circle_message",
+        "circleId": "qa_circle_builders",
+        "senderUserId": "qa_synthetic_bob_v1",
+        "clientMessageId": "qa-circle-message-1",
+        "body": "A small governed Circle keeps context useful.",
+        "bodyLength": 45,
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": 1794742200000
+      }
+    ],
+    "setup": [
+      {
+        "userId": "qa_synthetic_alice_v1",
+        "completedStepsJson": "[\"identity_link\",\"storage_explanation\",\"source_selection\",\"context_collection\",\"signal_privacy_review\",\"basic_profile\",\"page_preview\",\"networking_pulse\",\"acceptance_mode\",\"automation\"]",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "sources": [],
+    "automation": [],
+    "pulses": [],
+    "surfaces": [
+      {
+        "id": "qa_surface_circle",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "kind": "circle",
+        "subjectId": "qa_circle_builders",
+        "publishedRevisionId": null,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "revisions": [],
+    "idempotency": [
+      {
+        "id": "idempotency_03a5faa2-fde0-42f1-8679-7d47fe46fb68",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_project_action",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "exports": [],
+    "uncertainSaveProjectCommitted": false
+  }
+}

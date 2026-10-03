@@ -77,7 +77,9 @@ describe("transport-neutral chat operations", () => {
     const first = await performChatAction(DB, { userId: "user_alice", action, now: NOW });
     const second = await performChatAction(DB, { userId: "user_alice", action, now: NOW });
     expect(first.details).toEqual(second.details);
+    await expect(performChatAction(DB, { userId: "user_alice", action: { ...action, body: "A different payload with the same client id.", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("message_id_conflict");
     await expect(DB.prepare("SELECT COUNT(*) AS count FROM messages WHERE room_id='room-1' AND sender_user_id='user_alice' AND client_message_id=?").bind(action.clientMessageId).first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT attempt_count AS attempts FROM mcp_rate_limits WHERE key=?").bind(`message:user_alice:${Math.floor(AT / 60_000)}`).first()).resolves.toEqual({ attempts: 1 });
 
     const workspace = await readChatWorkspace(DB, { userId: "user_alice", view: "room", subjectId: "room-1", now: NOW });
     expect(workspace).toMatchObject({ view: "room", subjectId: "room-1", nextCursor: null });
@@ -102,11 +104,19 @@ describe("transport-neutral chat operations", () => {
       now: NOW,
     });
     expect(await DB.prepare("SELECT status FROM circles WHERE id=?").bind(circleId).first()).toEqual({ status: "active" });
+    const governanceBeforeRetry = await DB.prepare("SELECT governance_version AS governanceVersion FROM circles WHERE id=?").bind(circleId).first();
+    await performChatAction(DB, {
+      userId: "user_bob",
+      action: { kind: "respond_circle_invite", circleId, accept: true, confirmation: "confirmed" },
+      now: NOW,
+    });
+    await expect(DB.prepare("SELECT governance_version AS governanceVersion FROM circles WHERE id=?").bind(circleId).first()).resolves.toEqual(governanceBeforeRetry);
 
     const messageAction: ChatAction = { kind: "send_circle_message", circleId, clientMessageId: "circle-message-retry-1", body: "Circle message", confirmation: "confirmed" };
     const first = await performChatAction(DB, { userId: "user_alice", action: messageAction, now: NOW });
     const second = await performChatAction(DB, { userId: "user_alice", action: messageAction, now: NOW });
     expect(first.details).toEqual(second.details);
+    await expect(performChatAction(DB, { userId: "user_alice", action: { ...messageAction, body: "Conflicting circle payload", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("message_id_conflict");
     const messageId = (first.details as { id: string }).id;
     await performChatAction(DB, {
       userId: "user_bob",
@@ -163,7 +173,10 @@ describe("transport-neutral chat operations", () => {
     await performChatAction(DB, { userId: "user_alice", action: { kind: "save_introduction_feedback", connectionId: "connection-1", useful: true, reasons: ["good_conversation"], similarMatchPreference: "same", followUpIntent: "keep_connected", privateNote: "Useful conversation." }, now: NOW });
     const reminder = await performChatAction(DB, { userId: "user_alice", action: { kind: "schedule_connection_reminder", connectionId: "connection-1", remindAt: futureStart }, now: NOW });
     await performChatAction(DB, { userId: "user_alice", action: { kind: "dismiss_connection_reminder", connectionId: "connection-1", reminderId: (reminder.details as { id: string }).id }, now: NOW });
+    await expect(performChatAction(DB, { userId: "user_alice", action: { kind: "dismiss_connection_reminder", connectionId: "connection-1", reminderId: (reminder.details as { id: string }).id }, now: NOW })).rejects.toThrow("reminder_not_found");
     await performChatAction(DB, { userId: "user_alice", action: { kind: "acknowledge_renewed_relevance", connectionId: "connection-1" }, now: NOW });
+    await performChatAction(DB, { userId: "user_alice", action: { kind: "set_connection_preference", connectionId: "connection-1", preference: "renewed_relevance", enabled: false }, now: NOW });
+    await expect(performChatAction(DB, { userId: "user_alice", action: { kind: "acknowledge_renewed_relevance", connectionId: "connection-1" }, now: NOW })).rejects.toThrow("connection_not_found");
     await performChatAction(DB, { userId: "user_alice", action: { kind: "publish_project_update", slug: "agent-updates", body: "A reviewed project update.", audience: "public", confirmation: "confirmed" }, now: NOW });
     await expect(readChatWorkspace(DB, { userId: "user_alice", view: "project_details", subjectId: "agent-updates", now: NOW })).resolves.toMatchObject({ data: { updates: [expect.objectContaining({ body: "A reviewed project update." })] } });
     await performChatAction(DB, { userId: "user_alice", action: { kind: "end_connection", connectionId: "connection-1", confirmation: "confirmed" }, now: NOW });
@@ -233,6 +246,8 @@ describe("transport-neutral chat operations", () => {
 
   it("requires an actor-bound, short-lived receipt before account deletion", async () => {
     const prepared = await performChatAction(DB, { userId: "user_alice", action: { kind: "prepare_account_deletion" }, now: NOW });
+    expect(prepared.confirmationState).toBe("persisted");
+    expect(prepared.details).toMatchObject({ deletionRequested: false, consequences: expect.arrayContaining([expect.stringContaining("cannot be undone"), expect.stringContaining("revokes account access")]) });
     const receipt = (prepared.details as { receipt: string }).receipt;
     await expect(performChatAction(DB, {
       userId: "user_bob",
@@ -343,6 +358,64 @@ describe("transport-neutral chat operations", () => {
     const matches = (workspace.data as { matches: Array<{ proposalId: string; theirEvaluation: string | null }> }).matches;
     expect(matches).toEqual([expect.objectContaining({ proposalId: "proposal-1", theirEvaluation: null })]);
   });
+
+  it("uses the chat request clock for revocation, signal edits, and matching pause audit state", async () => {
+    await DB.batch([
+      DB.prepare("INSERT INTO connected_app_preferences (id,user_id,app_id,display_name,category,access_mode,last_reviewed_at) VALUES ('clock-app','user_alice','github','GitHub','projects_code','allow_approved_work_signals',?)").bind(AT - 10_000),
+      DB.prepare("INSERT INTO work_signals (id,user_id,source_app_id,taxonomy_version_id,free_text_summary,audience,allow_matching,approved_at,expires_at,created_at,updated_at) VALUES ('clock-signal','user_alice','github','taxonomy-v1','Clock-sensitive context','private',1,?,?,?,?)").bind(AT - 10_000, AT + 86_400_000, AT - 10_000, AT - 10_000),
+    ]);
+    await performChatAction(DB, { userId: "user_alice", action: { kind: "update_work_signal", signalId: "clock-signal", summary: "Updated through chat", audience: "private", allowMatching: true, expiresAt: "2026-10-04T12:00:00.000Z" }, now: NOW });
+    await expect(DB.prepare("SELECT updated_at AS updatedAt FROM work_signals WHERE id='clock-signal'").first()).resolves.toEqual({ updatedAt: AT });
+    await performChatAction(DB, { userId: "user_alice", action: { kind: "revoke_connected_app", appId: "github" }, now: NOW });
+    await expect(DB.prepare("SELECT revoked_at AS revokedAt,last_reviewed_at AS reviewedAt FROM connected_app_preferences WHERE id='clock-app'").first()).resolves.toEqual({ revokedAt: AT, reviewedAt: AT });
+    await expect(DB.prepare("SELECT revoked_at AS revokedAt,updated_at AS updatedAt FROM work_signals WHERE id='clock-signal'").first()).resolves.toEqual({ revokedAt: AT, updatedAt: AT });
+    await performChatAction(DB, { userId: "user_alice", action: { kind: "pause_matching", until: "2026-10-03T12:00:00.000Z" }, now: NOW });
+    await expect(DB.prepare("SELECT starts_at AS startsAt,created_at AS createdAt FROM matching_snoozes WHERE user_id='user_alice' AND reason='user_pause'").first()).resolves.toEqual({ startsAt: AT, createdAt: AT });
+    await expect(DB.prepare("SELECT created_at AS createdAt FROM audit_events WHERE actor_user_id='user_alice' AND action='matching.paused' ORDER BY created_at DESC LIMIT 1").first()).resolves.toEqual({ createdAt: AT });
+  });
+
+  it("fails closed for inactive chat actors and candidates while preserving active matching capability freshness", async () => {
+    await DB.prepare("UPDATE profiles SET acceptance_mode='full_autopilot' WHERE user_id='user_alice'").run();
+    await DB.prepare("INSERT INTO automation_checkpoints (id,user_id,kind,state_json,updated_at) VALUES ('fresh-chat-capability','user_alice','buildmates',?,?)").bind(JSON.stringify({ capability: "available", checkedAt: NOW, proofSource: "verified_host_event" }), AT).run();
+    const fresh = await readChatWorkspace(DB, { userId: "user_alice", view: "introductions", now: NOW });
+    expect((fresh.data as { matches: Array<{ canAutopilot: boolean }> }).matches[0]?.canAutopilot).toBe(true);
+    const stale = await readChatWorkspace(DB, { userId: "user_alice", view: "introductions", now: "2026-10-12T12:00:00.000Z" });
+    expect((stale.data as { matches: Array<{ canAutopilot: boolean }> }).matches[0]?.canAutopilot).toBe(false);
+    await DB.prepare("UPDATE users SET status='suspended' WHERE id='user_bob'").run();
+    const hidden = await readChatWorkspace(DB, { userId: "user_alice", view: "introductions", now: NOW });
+    expect((hidden.data as { matches: unknown[] }).matches).toEqual([]);
+    await expect(performChatAction(DB, { userId: "user_alice", action: { kind: "send_room_message", roomId: "room-1", clientMessageId: "inactive-target-room", body: "Should be blocked", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("room_not_available");
+    await DB.prepare("UPDATE users SET status='suspended' WHERE id='user_alice'").run();
+    await expect(performChatAction(DB, { userId: "user_alice", action: { kind: "send_room_message", roomId: "room-1", clientMessageId: "inactive-actor-room", body: "Should be blocked", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("room_not_available");
+  });
+
+  it("rechecks room and Circle authority inside the message write when membership changes mid-request", async () => {
+    const roomRaceDB = interposeAfterFirst(DB, "SELECT r.id,r.connection_id AS connectionId", async () => {
+      await DB.prepare("UPDATE users SET status='suspended' WHERE id='user_bob'").run();
+    });
+    await expect(performChatAction(roomRaceDB, { userId: "user_alice", action: { kind: "send_room_message", roomId: "room-1", clientMessageId: "room-race", body: "Must not persist after peer suspension", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("room_not_available");
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM messages WHERE room_id='room-1' AND client_message_id='room-race'").first()).resolves.toEqual({ count: 0 });
+
+    await DB.prepare("UPDATE users SET status='active' WHERE id='user_bob'").run();
+    const transferCircle = await performChatAction(DB, { userId: "user_alice", action: { kind: "create_circle", name: "Transfer-safe Circle", purpose: "Protect ownership changes.", governanceMode: "admin", inviteeUserIds: ["user_bob"], confirmation: "confirmed" }, now: NOW });
+    const transferCircleId = (transferCircle.details as { id: string }).id;
+    await performChatAction(DB, { userId: "user_bob", action: { kind: "respond_circle_invite", circleId: transferCircleId, accept: true, confirmation: "confirmed" }, now: NOW });
+    const transferRaceDB = interposeAfterFirst(DB, "SELECT role,status FROM circle_memberships", async () => {
+      await DB.prepare("UPDATE circle_memberships SET status='left' WHERE circle_id=? AND user_id='user_bob'").bind(transferCircleId).run();
+    });
+    await expect(performChatAction(transferRaceDB, { userId: "user_alice", action: { kind: "manage_circle_member", circleId: transferCircleId, targetUserId: "user_bob", memberAction: "transfer", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("transfer_failed");
+    await expect(DB.prepare("SELECT user_id AS userId,role,status FROM circle_memberships WHERE circle_id=? ORDER BY user_id").bind(transferCircleId).all()).resolves.toMatchObject({ results: [{ userId: "user_alice", role: "owner", status: "active" }, { userId: "user_bob", role: "member", status: "left" }] });
+
+    const circle = await performChatAction(DB, { userId: "user_alice", action: { kind: "create_circle", name: "Race-safe Circle", purpose: "Protect shared writes.", governanceMode: "admin", inviteeUserIds: [], confirmation: "confirmed" }, now: NOW });
+    const circleId = (circle.details as { id: string }).id;
+    const circleRaceDB = interposeAfterFirst(DB, "SELECT membership.role", async () => {
+      await DB.prepare("UPDATE users SET status='suspended' WHERE id='user_alice'").run();
+    });
+    await expect(performChatAction(circleRaceDB, { userId: "user_alice", action: { kind: "send_circle_message", circleId, clientMessageId: "circle-race", body: "Must not persist after actor suspension", confirmation: "confirmed" }, now: NOW })).rejects.toThrow("forbidden");
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM circle_messages WHERE circle_id=? AND client_message_id='circle-race'").bind(circleId).first()).resolves.toEqual({ count: 0 });
+    const inactiveCircles = await readChatWorkspace(DB, { userId: "user_alice", view: "circles", now: NOW });
+    expect(inactiveCircles.data).toEqual([]);
+  });
 });
 
 async function seedNetwork(DB: D1Database): Promise<void> {
@@ -361,4 +434,30 @@ async function seedNetwork(DB: D1Database): Promise<void> {
   await DB.prepare("INSERT INTO rooms (id,match_pair_id,connection_id,status,theme_topic_id,created_at,updated_at) VALUES ('room-1','pair-1','connection-1','active',NULL,?,?)").bind(AT, AT).run();
   await DB.prepare("INSERT INTO room_memberships (room_id,user_id,joined_at,left_at,last_read_message_id) VALUES ('room-1','user_alice',?,NULL,NULL),('room-1','user_bob',?,NULL,NULL)").bind(AT, AT).run();
   await DB.prepare("INSERT INTO messages (id,room_id,sender_user_id,client_message_id,body,created_at) VALUES ('alice-message','room-1','user_alice','alice-client-message','Alice''s original message',?)").bind(AT).run();
+}
+
+function interposeAfterFirst(base: D1Database, needle: string, mutation: () => Promise<void>): D1Database {
+  let fired = false;
+  const prepare = base.prepare.bind(base);
+  const wrap = (statement: D1PreparedStatement): D1PreparedStatement => new Proxy(statement, {
+    get(target, property, receiver) {
+      if (property === "bind") return (...values: unknown[]) => wrap(target.bind(...values));
+      if (property === "first") return async () => {
+        const row = await target.first();
+        if (row && !fired) {
+          fired = true;
+          await mutation();
+        }
+        return row;
+      };
+      return Reflect.get(target, property, receiver);
+    },
+  }) as D1PreparedStatement;
+  return {
+    prepare(sql: string) {
+      const statement = prepare(sql);
+      return !fired && sql.includes(needle) ? wrap(statement) : statement;
+    },
+    batch: base.batch.bind(base),
+  } as unknown as D1Database;
 }

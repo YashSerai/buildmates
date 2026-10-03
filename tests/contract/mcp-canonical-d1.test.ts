@@ -1,4 +1,5 @@
 import { Miniflare } from "miniflare";
+import { createHash } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createD1Repositories } from "@buildmates/database";
 import { createD1McpProductRepository, createMemoryMcpProductRepository, executeBuildmatesTool, inspectIdempotencyRecovery, pruneExpiredAssertionReplays, pruneExpiredMcpRateLimits, recoverIdempotencyOperation, type BuildmatesToolServices } from "@buildmates/mcp-core";
@@ -129,6 +130,230 @@ describe("canonical MCP D1 execution", () => {
     await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ matchingReviewedAt: null, allowMatching: false, publishedAt: null }] });
   }, 60_000);
 
+  it("reuses a web-created profile identity and its existing profile surface", async () => {
+    await DB.batch([
+      DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES ('web-profile-alice','user_alice','Web Alice','Created on the web','Original project','[]','private',0,'manual',0,NULL,?,?)").bind(at, at),
+      DB.prepare("INSERT INTO profile_fields (profile_id,field_key,value_json,audience,allow_matching,source_status,provenance,updated_at) VALUES ('web-profile-alice','ambitions','\"Old ambition\"','private',0,'confirmed','self_reported',?)").bind(at),
+      DB.prepare("INSERT INTO profile_statistics (profile_id,stat_key,label,value,provenance,audience,updated_at) VALUES ('web-profile-alice','old_stat','Old stat','1','self_reported','private',?)").bind(at),
+      DB.prepare("INSERT INTO surfaces (id,owner_user_id,kind,subject_id,governance_version,created_at,updated_at) VALUES ('web-profile-surface','user_alice','profile','web-profile-alice',1,?,?)").bind(at, at),
+    ]);
+
+    const saved = await call(ALICE_SUB, "update_profile_model", { profile: {
+      profileId: "chatgpt-profile-request",
+      handle: "web_alice",
+      displayName: "Web Alice updated",
+      builderSummary: "Updated from ChatGPT",
+      projectOrInterest: "Canonical profile identity",
+      portfolioLinks: [],
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [{ key: "ambitions", value: "New ambition", audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" }],
+      statistics: [{ key: "active_users", label: "Active users", value: "42", provenance: "self_reported", audience: "public" }],
+      idempotencyKey: "web-profile-reuse-01",
+    } }) as MutationResult;
+
+    expect(saved.result.id).toBe("web-profile-alice");
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profiles WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT id,display_name AS displayName,summary,project_or_interest AS projectOrInterest FROM profiles WHERE user_id='user_alice'").first()).resolves.toEqual({ id: "web-profile-alice", displayName: "Web Alice updated", summary: "Updated from ChatGPT", projectOrInterest: "Canonical profile identity" });
+    await expect(DB.prepare("SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id='web-profile-alice'").all()).resolves.toMatchObject({ results: [{ key: "ambitions", valueJson: '"New ambition"' }] });
+    await expect(DB.prepare("SELECT stat_key AS key,label,value FROM profile_statistics WHERE profile_id='web-profile-alice'").all()).resolves.toMatchObject({ results: [{ key: "active_users", label: "Active users", value: "42" }] });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profile_fields WHERE profile_id<> 'web-profile-alice'").first()).resolves.toEqual({ count: 0 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profile_statistics WHERE profile_id<> 'web-profile-alice'").first()).resolves.toEqual({ count: 0 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM surfaces WHERE kind='profile' AND owner_user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT id,subject_id AS subjectId FROM surfaces WHERE kind='profile' AND owner_user_id='user_alice'").first()).resolves.toEqual({ id: "web-profile-surface", subjectId: "web-profile-alice" });
+    await expect(call(ALICE_SUB, "get_profile_model", {})).resolves.toMatchObject({ profiles: [{ profileId: "web-profile-alice", surfaceId: "web-profile-surface", displayName: "Web Alice updated", fields: [{ key: "ambitions", value: "New ambition" }], statistics: [{ key: "active_users", value: "42" }] }] });
+  }, 60_000);
+
+  it("preserves stored profile visibility and indexability while updating canonical content", async () => {
+    await DB.batch([
+      DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES ('web-visibility-profile','user_alice','Web Alice','Created on the web','Original project','[]','private',0,'manual',0,NULL,?,?)").bind(at, at),
+      DB.prepare("INSERT INTO profile_fields (profile_id,field_key,value_json,audience,allow_matching,source_status,provenance,updated_at) VALUES ('web-visibility-profile','ambitions','\"Old ambition\"','private',0,'confirmed','self_reported',?)").bind(at),
+      DB.prepare("INSERT INTO profile_statistics (profile_id,stat_key,label,value,provenance,audience,updated_at) VALUES ('web-visibility-profile','old_stat','Old stat','1','self_reported','private',?)").bind(at),
+      DB.prepare("INSERT INTO surfaces (id,owner_user_id,kind,subject_id,governance_version,created_at,updated_at) VALUES ('web-visibility-surface','user_alice','profile','web-visibility-profile',1,?,?)").bind(at, at),
+    ]);
+
+    const visibilityCases = [
+      { audience: "signed_in", indexable: 0, publishedAt: null },
+      { audience: "suggested_connections", indexable: 1, publishedAt: null },
+      { audience: "mutual_connections", indexable: 0, publishedAt: null },
+      { audience: "private", indexable: 1, publishedAt: null },
+      { audience: "public", indexable: 0, publishedAt: at },
+      { audience: "public", indexable: 1, publishedAt: at },
+    ] as const;
+
+    for (const [index, visibility] of visibilityCases.entries()) {
+      await DB.prepare("UPDATE profiles SET audience=?,indexable=?,published_at=? WHERE id='web-visibility-profile'").bind(visibility.audience, visibility.indexable, visibility.publishedAt).run();
+      const ambition = `Updated ambition ${index}`;
+      const saved = await call(ALICE_SUB, "update_profile_model", { profile: {
+        profileId: "chatgpt-visibility-request",
+        handle: "web_visibility_alice",
+        displayName: `Web Alice ${index}`,
+        builderSummary: "Updated from ChatGPT without changing page visibility",
+        projectOrInterest: "Canonical profile identity",
+        portfolioLinks: [],
+        allowMatching: true,
+        acceptanceMode: "manual",
+        fields: [{ key: "ambitions", value: ambition, audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" }],
+        statistics: [{ key: "active_users", label: "Active users", value: String(index + 1), provenance: "self_reported", audience: "public" }],
+        idempotencyKey: `web-visibility-preservation-${index}`,
+      } }) as MutationResult;
+
+      expect(saved.result.id).toBe("web-visibility-profile");
+      await expect(DB.prepare("SELECT audience,indexable,published_at AS publishedAt FROM profiles WHERE id='web-visibility-profile'").first()).resolves.toEqual(visibility);
+      await expect(DB.prepare("SELECT field_key AS key,value_json AS valueJson FROM profile_fields WHERE profile_id='web-visibility-profile'").all()).resolves.toMatchObject({ results: [{ key: "ambitions", valueJson: JSON.stringify(ambition) }] });
+      await expect(DB.prepare("SELECT stat_key AS key,value FROM profile_statistics WHERE profile_id='web-visibility-profile'").all()).resolves.toMatchObject({ results: [{ key: "active_users", value: String(index + 1) }] });
+    }
+
+    await expect(DB.prepare("SELECT id,subject_id AS subjectId FROM surfaces WHERE kind='profile' AND owner_user_id='user_alice'").first()).resolves.toEqual({ id: "web-visibility-surface", subjectId: "web-visibility-profile" });
+  }, 60_000);
+
+  it("resolves a profile created after the identity pre-read without splitting child records", async () => {
+    let injected = false;
+    const racedDB = new Proxy(DB, {
+      get(target, property, receiver) {
+        if (property !== "batch") return Reflect.get(target, property, receiver);
+        return async (statements: unknown[]) => {
+          if (!injected) {
+            injected = true;
+            await DB.batch([
+              DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES ('web-race-profile','user_alice','Web Race','Created on the web','Original project','[]','private',0,'manual',0,NULL,?,?)").bind(at, at),
+              DB.prepare("INSERT INTO surfaces (id,owner_user_id,kind,subject_id,governance_version,created_at,updated_at) VALUES ('web-race-surface','user_alice','profile','web-race-profile',1,?,?)").bind(at, at),
+            ]);
+          }
+          return DB.batch(statements as never);
+        };
+      },
+    });
+    const racedRepository = createD1McpProductRepository(racedDB);
+    const saved = await racedRepository.write({ kind: "profile_model", id: "race-profile-request", ownerUserId: "user_alice", actorUserId: "user_alice", value: {
+      profileId: "race-profile-request",
+      handle: "web_race_alice",
+      displayName: "Web Race updated",
+      builderSummary: "Updated after the web editor won the race",
+      projectOrInterest: "Canonical profile identity",
+      portfolioLinks: [],
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [{ key: "ambitions", value: "Race-safe profile writes", audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" }],
+      statistics: [{ key: "active_users", label: "Active users", value: "7", provenance: "self_reported", audience: "public" }],
+    }, now: new Date(toolNow).toISOString() });
+
+    expect(injected).toBe(true);
+    expect(saved.id).toBe("web-race-profile");
+    expect(saved.value).toMatchObject({ profileId: "web-race-profile", surfaceId: "web-race-surface" });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profiles WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM surfaces WHERE kind='profile' AND owner_user_id='user_alice'").first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT profile_id AS profileId,value_json AS valueJson FROM profile_fields WHERE profile_id='web-race-profile'").all()).resolves.toMatchObject({ results: [{ profileId: "web-race-profile", valueJson: '"Race-safe profile writes"' }] });
+    await expect(DB.prepare("SELECT profile_id AS profileId,stat_key AS key,value FROM profile_statistics WHERE profile_id='web-race-profile'").all()).resolves.toMatchObject({ results: [{ profileId: "web-race-profile", key: "active_users", value: "7" }] });
+  }, 60_000);
+
+  it("rolls back a profile batch on an unrelated deterministic surface id collision", async () => {
+    const canonicalProfileId = `profile_${createHash("sha256").update("user_alice\0primary").digest("hex").slice(0, 32)}`;
+    const collidingSurfaceId = `surface_profile_${canonicalProfileId}`;
+    await DB.batch([
+      DB.prepare("INSERT INTO profiles (id,user_id,display_name,summary,project_or_interest,portfolio_links_json,audience,allow_matching,acceptance_mode,indexable,published_at,created_at,updated_at) VALUES ('foreign-collision-profile','user_bob','Bob','Foreign profile','Foreign project','[]','private',0,'manual',0,NULL,?,?)").bind(at, at),
+      DB.prepare("INSERT INTO surfaces (id,owner_user_id,kind,subject_id,governance_version,created_at,updated_at) VALUES (?,?, 'profile','foreign-collision-profile',1,?,?)").bind(collidingSurfaceId, "user_bob", at, at),
+    ]);
+
+    await expect(services.repository.write({
+      kind: "profile_model",
+      id: "collision-profile-request",
+      ownerUserId: "user_alice",
+      actorUserId: "user_alice",
+      value: {
+        profileId: "collision-profile-request",
+        handle: "collision_alice",
+        displayName: "Alice",
+        builderSummary: "Collision rollback",
+        projectOrInterest: "Atomic profile writes",
+        portfolioLinks: [],
+        allowMatching: true,
+        acceptanceMode: "manual",
+        fields: [{ key: "ambitions", value: "Should roll back", audience: "public", allowMatching: true, provenance: "codex_summary", sourceStatus: "confirmed" }],
+        statistics: [{ key: "active_users", label: "Active users", value: "9", provenance: "self_reported", audience: "public" }],
+      },
+      now: new Date(toolNow).toISOString(),
+    })).rejects.toThrow();
+
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profiles WHERE user_id='user_alice'").first()).resolves.toEqual({ count: 0 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profile_fields WHERE profile_id=?").bind(canonicalProfileId).first()).resolves.toEqual({ count: 0 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM profile_statistics WHERE profile_id=?").bind(canonicalProfileId).first()).resolves.toEqual({ count: 0 });
+    await expect(DB.prepare("SELECT id,owner_user_id AS owner,kind,subject_id AS subjectId FROM surfaces WHERE id=?").bind(collidingSurfaceId).first()).resolves.toEqual({ id: collidingSurfaceId, owner: "user_bob", kind: "profile", subjectId: "foreign-collision-profile" });
+  }, 60_000);
+
+  it("requires an approved design brief for targeted edits from an existing private profile surface", async () => {
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: {
+      profileId: "private-surface-profile",
+      handle: "private_surface_alice",
+      displayName: "Alice",
+      builderSummary: "Builds governed profile surfaces",
+      projectOrInterest: "Privacy-safe generated pages",
+      portfolioLinks: [],
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [{ key: "ambitions", value: "Make generated pages feel authored", audience: "public", allowMatching: true, provenance: "self_reported", sourceStatus: "confirmed" }],
+      idempotencyKey: "private-surface-profile-01",
+    } }) as MutationResult;
+    await seedDesignPolicy(createD1Repositories(DB as never));
+    const surfaceId = String((profile.result as Record<string, unknown>).surfaceId);
+    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { customizedExample: Record<string, unknown> };
+    const designBrief = {
+      direction: "A restrained editorial profile with a clear workshop rhythm",
+      sections: ["Introduction", "Current work", "Projects"],
+      signatureElement: "A compact workshop ledger beside the project index",
+      selectionBasis: "The selected public reference supports a writing-led profile without relying on unapproved media.",
+      designSystem: { skill: "Hallmark", selection: "hallmark_default", rationale: "Hallmark supplies the coherent default system for this profile." },
+      contentPlan: { narrative: "Introduce the builder, establish the current work, and let approved project evidence carry the close.", featuredProjectIds: [], omittedProjectIds: [], fillerFree: true },
+      candidates: [
+        { url: "https://recent.design/i/reference-one", title: "Reference One", style: ["editorial", "typographic"], fit: "Strong fit for a writing-led profile with restrained project indexing.", selected: true },
+        { url: "https://recent.design/i/reference-two", title: "Reference Two", style: ["cinematic"], fit: "Too dependent on photography that this profile has not approved.", selected: false },
+        { url: "https://recent.design/i/reference-three", title: "Reference Three", style: ["technical"], fit: "Useful density, but too documentation-led for this profile.", selected: false },
+        { url: "https://recent.design/i/reference-four", title: "Reference Four", style: ["playful"], fit: "Expressive interaction, but weaker fit for the restrained direction.", selected: false },
+      ],
+      references: [{ url: "https://recent.design/i/reference-one", title: "Reference One", principles: ["Use a restrained project index", "Let typography create hierarchy"], designDna: { macrostructure: "Editorial introduction followed by a compact indexed body", typography: "Expressive display type paired with readable body text", color: "Warm paper neutrals with one low-chroma anchor", rhythm: "Generous opening followed by compact project cadence", interaction: "Simple text-led navigation with restrained motion" } }],
+      qualityReview: { viewports: [{ width: 1440, height: 1000, passed: true }, { width: 390, height: 844, passed: true }], scores: { philosophy: 4, hierarchy: 4, execution: 4, specificity: 4, restraint: 4, variety: 4 }, checks: ["coherent visual world", "complete project content", "no repeated project copy", "no filler copy", "no unrelated decoration", "desktop alignment", "phone reflow", "contrast and focus"], repairs: [], antiSlopAudit: { passed: true, signature: "A workshop ledger tied to the profile narrative", findings: [] }, passed: true },
+    };
+    const base = await call(ALICE_SUB, "submit_surface_revision", { revisionId: "private-profile-base", surfaceId, baseRevisionId: null, spec: brief.customizedExample, visibility: "private_preview", designBrief, designBriefApproved: true, idempotencyKey: "private-profile-base-01" }) as MutationResult;
+    const targetedSpec = structuredClone(brief.customizedExample) as Record<string, unknown>;
+    const targetedDocument = targetedSpec.document as Record<string, unknown>;
+    targetedDocument.css = `${String(targetedDocument.css)}.page{letter-spacing:normal}`;
+    const targetedIntent = { mode: "targeted" as const, summary: "Adjust only the generated document styling", targetNodeIds: [], targetThemeKeys: [], targetDocumentFields: ["css"] as const };
+
+    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "private-profile-targeted", surfaceId, baseRevisionId: base.result.id, spec: targetedSpec, visibility: "private_preview", revisionIntent: targetedIntent, designBrief, designBriefApproved: true, idempotencyKey: "private-profile-targeted-01" })).resolves.toMatchObject({ result: { id: expect.stringMatching(/^surface_revision_/) } });
+    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "private-profile-targeted-no-brief", surfaceId, baseRevisionId: base.result.id, spec: targetedSpec, visibility: "private_preview", revisionIntent: targetedIntent, idempotencyKey: "private-profile-targeted-no-brief-01" })).rejects.toThrow("profile_design_brief_required");
+    const collateralSpec = structuredClone(brief.customizedExample) as Record<string, unknown>;
+    collateralSpec.title = "Unexpected redesign";
+    await expect(call(ALICE_SUB, "submit_surface_revision", { revisionId: "private-profile-targeted-collateral", surfaceId, baseRevisionId: base.result.id, spec: collateralSpec, visibility: "private_preview", revisionIntent: targetedIntent, designBrief, designBriefApproved: true, idempotencyKey: "private-profile-targeted-collateral-01" })).rejects.toThrow("targeted_revision_scope_violation");
+  }, 60_000);
+
+  it("keeps the published surface revision compare-and-set guard for D1 writes", async () => {
+    const profile = await call(ALICE_SUB, "update_profile_model", { profile: {
+      profileId: "cas-surface-profile",
+      handle: "cas_surface_alice",
+      displayName: "Alice",
+      builderSummary: "Builds compare-and-set surfaces",
+      projectOrInterest: "Revision safety",
+      portfolioLinks: [],
+      allowMatching: true,
+      acceptanceMode: "manual",
+      fields: [{ key: "ambitions", value: "Keep revision writes race-safe", audience: "public", allowMatching: true, provenance: "self_reported", sourceStatus: "confirmed" }],
+      idempotencyKey: "cas-surface-profile-01",
+    } }) as MutationResult;
+    await seedDesignPolicy(createD1Repositories(DB as never));
+    const surfaceId = String((profile.result as Record<string, unknown>).surfaceId);
+    const brief = await call(ALICE_SUB, "get_surface_generation_brief", { surfaceId }) as { customizedExample: Record<string, unknown> };
+    const now = new Date(toolNow).toISOString();
+    const base = await services.repository.write({ kind: "surface_revision", id: "cas-surface-base", ownerUserId: "user_alice", actorUserId: "user_alice", value: { surfaceId, baseRevisionId: null, spec: brief.customizedExample, visibility: "private_preview" }, now });
+    await services.repository.write({ kind: "surface_approval", id: `${base.id}:user_alice`, ownerUserId: "user_alice", actorUserId: "user_alice", value: { revisionId: base.id, decision: "approved" }, now });
+    await expect(DB.prepare("SELECT published_revision_id AS published FROM surfaces WHERE id=?").bind(surfaceId).first()).resolves.toEqual({ published: base.id });
+
+    const next = await services.repository.write({ kind: "surface_revision", id: "cas-surface-next", ownerUserId: "user_alice", actorUserId: "user_alice", value: { surfaceId, baseRevisionId: base.id, spec: brief.customizedExample, visibility: "private_preview" }, now });
+    await services.repository.write({ kind: "surface_approval", id: `${next.id}:user_alice`, ownerUserId: "user_alice", actorUserId: "user_alice", value: { revisionId: next.id, decision: "approved" }, now });
+    await expect(DB.prepare("SELECT published_revision_id AS published FROM surfaces WHERE id=?").bind(surfaceId).first()).resolves.toEqual({ published: next.id });
+
+    await expect(services.repository.write({ kind: "surface_revision", id: "cas-surface-stale", ownerUserId: "user_alice", actorUserId: "user_alice", value: { surfaceId, baseRevisionId: base.id, spec: brief.customizedExample, visibility: "private_preview" }, now })).rejects.toThrow("stale_surface_base");
+  }, 60_000);
+
   it("persists every supported Connection update field and never reactivates an ended Connection", async () => {
     await DB.batch([
       DB.prepare("INSERT INTO match_pairs (id,user_a_id,user_b_id,created_at) VALUES ('connection-pair','user_alice','user_bob',?)").bind(at),
@@ -232,6 +457,45 @@ describe("canonical MCP D1 execution", () => {
     await call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("ask-signal", "ask-write"), sourceApprovalId: approvalId } });
     await expect(call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("ask-signal-two", "ask-write-two"), sourceApprovalId: approvalId } })).rejects.toThrow("source_approval_required");
     await expect(DB.prepare("SELECT consumed_at AS consumedAt FROM source_use_approvals WHERE id=?").bind(approvalId).first()).resolves.toMatchObject({ consumedAt: toolNow });
+  }, 60_000);
+
+  it("rejects duplicate Work Signal creation without mutating the owned row or consuming approval", async () => {
+    await saveSource(ALICE_SUB, "allow_approved_work_signals", "duplicate-source-policy");
+    const first = await call(ALICE_SUB, "submit_work_signal", { signal: signal("duplicate-signal", "duplicate-first") }) as MutationResult;
+    const before = await DB.prepare("SELECT id,free_text_summary AS summary,allow_matching AS allowMatching FROM work_signals WHERE id=?").bind(first.result.id).first();
+    await expect(call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("duplicate-signal", "duplicate-second"), summary: "Changed duplicate facts" } })).rejects.toThrow("known_work_signal_exists");
+    await expect(DB.prepare("SELECT id,free_text_summary AS summary,allow_matching AS allowMatching FROM work_signals WHERE id=?").bind(first.result.id).first()).resolves.toEqual(before);
+    await expect(call(ALICE_SUB, "submit_work_signal", { signal: signal("other-signal", "other-create") })).resolves.toMatchObject({ result: { id: expect.any(String) } });
+
+    const preference = await saveSource(ALICE_SUB, "ask_each_time", "duplicate-ask-policy", true, true) as MutationResult;
+    const approvalId = String((preference.result.details as Record<string, unknown>).approvalId);
+    await call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("approval-duplicate", "approval-first"), sourceApprovalId: approvalId } });
+    await expect(call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("approval-duplicate", "approval-reuse"), sourceApprovalId: approvalId, summary: "Should never replace the first signal" } })).rejects.toThrow("source_approval_required");
+  }, 60_000);
+
+  it("allows only one concurrent Ask-each-time Work Signal create for one owned id", async () => {
+    await saveSource(ALICE_SUB, "ask_each_time", "concurrent-ask-policy");
+    await DB.batch([
+      DB.prepare("INSERT INTO source_use_approvals (id,user_id,source_app_id,purpose,expires_at,created_at) VALUES ('concurrent-approval-a','user_alice','github','work_signal',?,?),('concurrent-approval-b','user_alice','github','work_signal',?,?)").bind(toolNow + 15 * 60_000, toolNow, toolNow + 15 * 60_000, toolNow),
+    ]);
+
+    const outcomes = await Promise.allSettled([
+      call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("concurrent-ask-signal", "concurrent-ask-first"), summary: "Concurrent first", sourceApprovalId: "concurrent-approval-a" } }),
+      call(ALICE_SUB, "submit_work_signal", { signal: { ...signal("concurrent-ask-signal", "concurrent-ask-second"), summary: "Concurrent second", sourceApprovalId: "concurrent-approval-b" } }),
+    ]);
+    const fulfilled = outcomes.filter((outcome): outcome is PromiseFulfilledResult<MutationResult> => outcome.status === "fulfilled");
+    const rejected = outcomes.filter((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect(rejected[0].reason).toBeInstanceOf(Error);
+    expect(rejected[0].reason.message).toBe("known_work_signal_exists");
+
+    const stored = await DB.prepare("SELECT id,free_text_summary AS summary FROM work_signals WHERE user_id='user_alice' AND source_app_id='github'").first<{ id: string; summary: string }>();
+    expect(stored?.id).toMatch(/^work_signal_/);
+    expect(["Concurrent first", "Concurrent second"]).toContain(stored?.summary);
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM work_signals WHERE user_id='user_alice' AND source_app_id='github'").first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM source_use_approvals WHERE user_id='user_alice' AND source_app_id='github' AND purpose='work_signal' AND consumed_at IS NOT NULL").first()).resolves.toEqual({ count: 1 });
+    await expect(DB.prepare("SELECT COUNT(*) AS count FROM source_use_approvals WHERE user_id='user_alice' AND source_app_id='github' AND purpose='work_signal' AND consumed_at IS NULL").first()).resolves.toEqual({ count: 1 });
   }, 60_000);
 
   it("conditionally recovers an exact crashed idempotency row and audits the operator disposition", async () => {
@@ -574,8 +838,14 @@ describe("canonical MCP D1 execution", () => {
     const mutation = { actorUserId: "user_alice", operation: "concurrent", key: "same", requestHash: "hash", now: new Date(at).toISOString(), execute: async () => { executions += 1; await Promise.resolve(); return { ok: true }; } };
     const outcomes = await Promise.allSettled([repository.runIdempotent(mutation), repository.runIdempotent(mutation)]);
     expect(executions).toBe(1);
-    expect(outcomes.filter((outcome) => outcome.status === "fulfilled")).toHaveLength(1);
-    expect(outcomes.filter((outcome) => outcome.status === "rejected")).toHaveLength(1);
+    const fulfilled = outcomes.filter((outcome): outcome is PromiseFulfilledResult<{ replayed: boolean; value: { ok: boolean } }> => outcome.status === "fulfilled");
+    const rejected = outcomes.filter((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
+    expect(fulfilled.filter((outcome) => !outcome.value.replayed)).toHaveLength(1);
+    expect(fulfilled.filter((outcome) => outcome.value.replayed).length + rejected.length).toBe(1);
+  for (const outcome of rejected) {
+    expect(outcome.reason).toBeInstanceOf(Error);
+    expect(outcome.reason.message).toBe("idempotency_in_progress");
+  }
     let recoveryAttempts = 0;
     const failed = { actorUserId: "user_alice", operation: "recoverable", key: "lease", requestHash: "same", now: new Date(at).toISOString(), execute: async () => { recoveryAttempts += 1; throw new Error("transient"); } };
     await expect(repository.runIdempotent(failed)).rejects.toThrow("transient");

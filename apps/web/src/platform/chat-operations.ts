@@ -382,35 +382,35 @@ export async function performChatAction(DB: DB, raw: PerformChatActionInput, ass
       return persisted(action.kind, result);
     }
     case "revoke_connected_app": {
-      await revokeSource(DB, userId, action.appId);
+      await revokeSource(DB, userId, action.appId, now);
       return persisted(action.kind, { appId: action.appId, revoked: true });
     }
     case "update_work_signal": {
-      await updateWorkSignal(DB, userId, { action: "update", id: action.signalId, summary: action.summary, audience: action.audience, allowMatching: action.allowMatching, expiresAt: action.expiresAt });
+      await updateWorkSignal(DB, userId, { action: "update", id: action.signalId, summary: action.summary, audience: action.audience, allowMatching: action.allowMatching, expiresAt: action.expiresAt }, now);
       return persisted(action.kind, { signalId: action.signalId, updated: true });
     }
     case "delete_work_signal": {
-      await updateWorkSignal(DB, userId, { action: "delete", id: action.signalId });
+      await updateWorkSignal(DB, userId, { action: "delete", id: action.signalId }, now);
       return persisted(action.kind, { signalId: action.signalId, deleted: true });
     }
     case "pause_matching": {
-      const result = await runPrivacyCommand(DB, userId, { command: "pause_matching", until: action.until });
+      const result = await runPrivacyCommand(DB, userId, { command: "pause_matching", until: action.until }, undefined, now);
       return persisted(action.kind, result);
     }
     case "resume_matching": {
-      const result = await runPrivacyCommand(DB, userId, { command: "resume_matching" });
+      const result = await runPrivacyCommand(DB, userId, { command: "resume_matching" }, undefined, now);
       return persisted(action.kind, result);
     }
     case "disable_autopilot": {
-      const result = await runPrivacyCommand(DB, userId, { command: "disable_autopilot" });
+      const result = await runPrivacyCommand(DB, userId, { command: "disable_autopilot" }, undefined, now);
       return persisted(action.kind, result);
     }
     case "disconnect_all": {
-      const result = await runPrivacyCommand(DB, userId, { command: "disconnect_all" });
+      const result = await runPrivacyCommand(DB, userId, { command: "disconnect_all" }, undefined, now);
       return persisted(action.kind, result);
     }
     case "redact_shared_context": {
-      const result = await runPrivacyCommand(DB, userId, { command: "redact_shared_context" });
+      const result = await runPrivacyCommand(DB, userId, { command: "redact_shared_context" }, undefined, now);
       return persisted(action.kind, result);
     }
     case "publish_project_update": {
@@ -431,7 +431,15 @@ export async function performChatAction(DB: DB, raw: PerformChatActionInput, ass
       const expiresAt = now + 10 * 60_000;
       await DB.prepare("INSERT INTO audit_events (id,actor_user_id,action,object_kind,object_id,metadata_json,created_at) VALUES (?,?,?,?,?,?,?)")
         .bind(`audit_${crypto.randomUUID()}`, userId, "account.deletion_confirmation_prepared", "deletion_confirmation", receipt, JSON.stringify({ expiresAt }), now).run();
-      return { action: action.kind, confirmationState: "queued", details: { receipt, expiresAt: new Date(expiresAt).toISOString() } };
+      return { action: action.kind, confirmationState: "persisted", details: {
+        receipt, expiresAt: new Date(expiresAt).toISOString(),
+        deletionRequested: false,
+        consequences: [
+          "Confirming deletion immediately revokes account access, removes private account data and redacts shared content.",
+          "Owned image cleanup may continue after access is revoked if storage cleanup needs another attempt.",
+          "Deletion cannot be undone. This preparation leaves the account active and expires unused if you cancel.",
+        ],
+      } };
     }
     case "request_deletion": {
       const confirmation = await DB.prepare("SELECT metadata_json AS metadataJson FROM audit_events WHERE actor_user_id=? AND action='account.deletion_confirmation_prepared' AND object_kind='deletion_confirmation' AND object_id=? ORDER BY created_at DESC LIMIT 1").bind(userId, action.receipt).first<{ metadataJson: string }>();

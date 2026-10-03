@@ -29,15 +29,21 @@ export function createAuthorizationHandoff(config: AuthorizationHandoffConfig) {
     },
 
     async complete(request: Request): Promise<Response> {
+      if (request.url.length > 4096) return Response.json({ error: "request_uri_too_large" }, { status: 400 });
       const url = new URL(request.url);
       if (url.pathname !== "/oauth/web-callback" || !sameOrigin(url, config.mcpBaseUrl)) return Response.json({ error: "invalid_handoff" }, { status: 400 });
       const state = url.searchParams.get("handoff");
       const assertion = url.searchParams.get("assertion");
       if (!state || !assertion) return Response.json({ error: "invalid_handoff" }, { status: 400 });
-      const key = await importSPKI(config.publicKeyPem, "RS256");
-      const { payload } = await jwtVerify(assertion, key, {
-        issuer: config.issuer, audience: config.audience, algorithms: ["RS256"], maxTokenAge: "2m",
-      });
+      let payload: Awaited<ReturnType<typeof jwtVerify>>["payload"];
+      try {
+        const key = await importSPKI(config.publicKeyPem, "RS256");
+        ({ payload } = await jwtVerify(assertion, key, {
+          issuer: config.issuer, audience: config.audience, algorithms: ["RS256"], maxTokenAge: "2m",
+        }));
+      } catch {
+        return Response.json({ error: "invalid_web_identity_assertion" }, { status: 401 });
+      }
       if (typeof payload.sub !== "string" || typeof payload.jti !== "string" || typeof payload.exp !== "number" || !Number.isFinite(payload.exp) || payload.exp * 1000 <= Date.now() || payload.channel !== "web" || payload.handoff_hash !== hashOAuthSecret(state)) return Response.json({ error: "invalid_web_identity_assertion" }, { status: 401 });
       const stateHash = hashOAuthSecret(state);
       const row = await config.DB.prepare("SELECT request_uri AS requestUri FROM oauth_authorization_handoffs WHERE state_hash = ? AND consumed_at IS NULL AND expires_at > ? LIMIT 1")

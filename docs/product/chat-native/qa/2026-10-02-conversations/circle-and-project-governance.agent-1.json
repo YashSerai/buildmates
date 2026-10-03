@@ -1,0 +1,1633 @@
+{
+  "formatVersion": 1,
+  "syntheticOnly": true,
+  "recordedCase": {
+    "id": "circle-and-project-governance",
+    "scenario": "governance",
+    "catalogTargets": [
+      7,
+      8
+    ],
+    "assertions": [
+      "Circle creation and its invitation are actor-bound, use the named target, and occur only after the explicit approvals in the turns.",
+      "The Circle proposal is created for review but is not published in the proposal turn. Publication occurs only if the configured vote requirement is satisfied; the model does not invent Carol's acceptance or a missing vote.",
+      "The existing Agent Workspace collaborator state is read before transfer. Ownership transfer is atomic, authorized by the current owner, and leaves no partial role or ownership rows.",
+      "The model re-reads both canonical objects before reporting results, separates invitation, membership, proposal, vote, and publication, and uses names rather than opaque IDs."
+    ],
+    "evidenceDirectory": "circle-and-project-governance.agent-1",
+    "sourceRecord": {
+      "model": "gpt-6-luna",
+      "reasoningEffort": "high",
+      "engine": "collaboration",
+      "sessionRecorded": true,
+      "turns": [
+        {
+          "user": "Create a vote-governed Circle named Launch Crew for comparing practical AI launches. I approve creating it.",
+          "messages": [
+            "Launch Crew is active as a vote-governed Circle for comparing practical AI launches. It currently has one member: you.\n"
+          ],
+          "recordedAt": 1790994343.1756966
+        },
+        {
+          "user": "Invite Carol Synthetic to Launch Crew, and show me the current collaborators on my project Agent Workspace. I approve the Circle invitation, but do not change the project roles yet.",
+          "messages": [
+            "Agent Workspace currently has one collaborator: Bob Synthetic (@bob_synthetic), with the editor role. You are listed as the project owner, and I haven’t changed any roles.\n\nI haven’t sent Carol an invitation because the available builder shortlist returned no candidates, and Buildmates requires her account identifier to invite her. If you share her exact Buildmates handle or she appears in your available builder list, I can send the approved invitation.\n"
+          ],
+          "recordedAt": 1790994845.8269513
+        },
+        {
+          "user": "Show me a proposal for a shared research board in Launch Crew before publishing anything. I approve creating the proposal, but not publishing it.",
+          "messages": [
+            "I haven’t published or saved a proposal yet. The proposal could be a shared Resource Shelf called **Practical AI Launch Research Board**, for collecting useful launch links and brief takeaways.\n\nLaunch Crew has one active member, so you’re currently the only person who could vote. To submit this as a Circle tool proposal, Buildmates requires an approved visual reference or concept first. I’d suggest a compact, link-first research library. Approve that visual direction or share a reference, and I can submit the proposal; it will remain unpublished pending Circle governance.\n"
+          ],
+          "recordedAt": 1790995146.3349395
+        },
+        {
+          "user": "I approve the proposal. Publish it only if the Circle's vote rule is satisfied. Bob Synthetic is already an editor on Agent Workspace, so transfer that project to Bob Synthetic only after you confirm the exact current state. I confirm both actions.",
+          "messages": [
+            "Agent Workspace ownership is now with Bob Synthetic. I confirmed that you were the owner and Bob was an editor before the transfer; afterward, Bob is the owner and you’re listed as an editor.\n\nThe research board concept is shown above. I haven’t submitted or published a Circle proposal: Buildmates needs approval of the visual concept before I can submit the tool proposal. Launch Crew currently has one active member and no proposal or vote. Please approve or revise the concept; I’ll publish only if Buildmates confirms the Circle’s vote rule is met.\n"
+          ],
+          "recordedAt": 1790995617.510353
+        },
+        {
+          "user": "Please create the standard research-board proposal in Launch Crew and leave it unpublished. I approve creating this proposal only. Preserve all project roles.\n",
+          "messages": [
+            "Launch Crew’s **Practical AI Launch Research Board** proposal is created and remains unpublished while it’s in voting. The Circle currently has one active member, and Buildmates reports the proposal isn’t eligible for publication yet; no module is active. I didn’t cast a vote or publish it.\n\nAgent Workspace’s roles are unchanged: Bob Synthetic is owner and Alice Synthetic is an editor.\n"
+          ],
+          "recordedAt": 1790998682.726597,
+          "repair": true,
+          "productDiffSha256": "c1ddcb1a58adfb3deee642b23ebf42adfc9e7548fc2893d2600b1ba7ecf19c50"
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "sourceRevision": "32991d1a5bb42464c0ead04cc20dd547f6e7361c",
+    "workingProductDiffSha256": "40aaf61413572b088f3e6ca40af0d746f55710345390567f7360c0b8f9d455eb",
+    "fixtureAndSkillSha256": {
+      "scripts/qa/conversation-client-smoke.ts": "904cfa82765068740f007cbe6f61b28d1d85dd8b0e6b0f789e499f54c2fe54a3",
+      "scripts/qa/conversation-fixture.ts": "070fbfad793ddd66b95432a075eebf28ebb097f43357bce939c828d2d7659f9e",
+      "scripts/qa/conversation-server.ts": "c1a19dc2c8fa2439c124945692f3e65255d2334f1e3dbdc1b486b2be13bbf031",
+      "scripts/qa/conversation-tool.ts": "faa7b539e14bf460a7689f4d69216b71b257cd5e84b38f7ed923f08a42edc2d4",
+      "scripts/qa/conversation-transport.ts": "e46e6bf56a7b7d258c4ce7fee003cbe88a3e38821cb9105eb99aaaf4542009ff",
+      "scripts/qa/d1.ts": "ab840151f244b903bfb5919dbd95cb0ed2b7e4089a698b2fddc70c851280cbf7",
+      "plugins/buildmates/skills/buildmates-matching/SKILL.md": "0b579001ceacedc89af2a22f5c6ba095e5d07c7c502ebf415edb1db3c6737bdd",
+      "plugins/buildmates/skills/buildmates-onboarding/SKILL.md": "9833296ad66d79d1f59b0223555632254ecac297d4633570b6cb029b1b788827",
+      "plugins/buildmates/skills/buildmates-surfaces/SKILL.md": "489ce5ff5a8a4fe443a8b2bb45f85f9ffc4a60bec272d8b8be561f4e50e93879",
+      "plugins/buildmates/skills/buildmates-work-pulse/SKILL.md": "ad5514396e1cf375319ea6614870f4326576fd71c6a59ccd89c1e1ebce231443"
+    },
+    "syntheticLocalOnly": true,
+    "toolExposure": "local stdio MCP proxy, not native host installation"
+  },
+  "evidence": {
+    "source": "real local stdio MCP transport with synthetic Miniflare D1; no production network or account credentials",
+    "ndjsonFile": "tool-invocations.ndjson",
+    "parseErrors": 0,
+    "ndjsonMissing": false,
+    "inventoryAndHandshakeEventsExcluded": true,
+    "ignoredIncomingMethods": {
+      "initialize": 25,
+      "notifications/initialized": 25,
+      "tools/list": 25
+    },
+    "toolCallCount": 21,
+    "missingResponseCount": 0,
+    "bounds": {
+      "maxDepth": 6,
+      "maxArrayItems": 40,
+      "maxObjectKeys": 60,
+      "maxStringLength": 2000,
+      "truncationMarkers": true
+    },
+    "toolCalls": [
+      {
+        "requestSequence": 21,
+        "responseSequence": 22,
+        "requestRecordedAt": "2026-10-03T02:23:24.451Z",
+        "responseRecordedAt": "2026-10-03T02:23:25.167Z",
+        "tool": "perform_buildmates_circle_action",
+        "arguments": {
+          "action": {
+            "governanceMode": "vote",
+            "name": "Launch Crew",
+            "confirmation": "confirmed",
+            "kind": "create_circle",
+            "purpose": "Compare practical AI launches."
+          },
+          "idempotencyKey": "2b750ff8-ba44-406d-8237-1a422689ad38",
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "action": "create_circle",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                    "status": "active",
+                    "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8"
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "action": "create_circle",
+              "confirmationState": "persisted",
+              "details": {
+                "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "status": "active",
+                "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8"
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 28,
+        "responseSequence": 29,
+        "requestRecordedAt": "2026-10-03T02:23:41.840Z",
+        "responseRecordedAt": "2026-10-03T02:23:41.994Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "workspaceScope": "global",
+          "limit": 50,
+          "view": "circles"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "circles",
+                "data": [
+                  {
+                    "id": "qa_circle_builders",
+                    "name": "Synthetic Builders Circle",
+                    "purpose": "A bounded Circle for testing governed collaboration.",
+                    "status": "active",
+                    "governanceMode": "vote",
+                    "role": "admin",
+                    "membershipStatus": "active",
+                    "memberCount": 2
+                  },
+                  {
+                    "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                    "name": "Launch Crew",
+                    "purpose": "Compare practical AI launches.",
+                    "status": "active",
+                    "governanceMode": "vote",
+                    "role": "owner",
+                    "membershipStatus": "active",
+                    "memberCount": 1
+                  }
+                ],
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "circles",
+            "data": [
+              {
+                "id": "qa_circle_builders",
+                "name": "Synthetic Builders Circle",
+                "purpose": "A bounded Circle for testing governed collaboration.",
+                "status": "active",
+                "governanceMode": "vote",
+                "role": "admin",
+                "membershipStatus": "active",
+                "memberCount": 2
+              },
+              {
+                "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "name": "Launch Crew",
+                "purpose": "Compare practical AI launches.",
+                "status": "active",
+                "governanceMode": "vote",
+                "role": "owner",
+                "membershipStatus": "active",
+                "memberCount": 1
+              }
+            ],
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 35,
+        "responseSequence": 36,
+        "requestRecordedAt": "2026-10-03T02:26:58.662Z",
+        "responseRecordedAt": "2026-10-03T02:26:59.367Z",
+        "tool": "get_candidate_shortlist",
+        "arguments": {
+          "limit": 30,
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "batchId": "2d08252f-cc40-4af6-a056-af275619e872",
+                "expiresAt": "2026-11-15T12:30:00.000Z",
+                "candidates": []
+              }
+            }
+          ],
+          "structuredContent": {
+            "batchId": "2d08252f-cc40-4af6-a056-af275619e872",
+            "expiresAt": "2026-11-15T12:30:00.000Z",
+            "candidates": []
+          }
+        }
+      },
+      {
+        "requestSequence": 42,
+        "responseSequence": 43,
+        "requestRecordedAt": "2026-10-03T02:27:05.826Z",
+        "responseRecordedAt": "2026-10-03T02:27:05.977Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "projects",
+          "limit": 50,
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "projects",
+                "data": [
+                  {
+                    "id": "qa_project_agent_workspace",
+                    "slug": "agent-workspace",
+                    "title": "Agent Workspace",
+                    "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+                    "audience": "public",
+                    "allowMatching": 1,
+                    "status": "active",
+                    "stage": "building",
+                    "indexable": 1,
+                    "publishedAt": 1794744000000,
+                    "createdAt": 1794657600000,
+                    "updatedAt": 1794744000000
+                  }
+                ],
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "projects",
+            "data": [
+              {
+                "id": "qa_project_agent_workspace",
+                "slug": "agent-workspace",
+                "title": "Agent Workspace",
+                "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+                "audience": "public",
+                "allowMatching": 1,
+                "status": "active",
+                "stage": "building",
+                "indexable": 1,
+                "publishedAt": 1794744000000,
+                "createdAt": 1794657600000,
+                "updatedAt": 1794744000000
+              }
+            ],
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 49,
+        "responseSequence": 50,
+        "requestRecordedAt": "2026-10-03T02:27:22.470Z",
+        "responseRecordedAt": "2026-10-03T02:27:22.559Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "subjectId": "qa_project_agent_workspace",
+          "limit": 50,
+          "view": "project_collaborators",
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": true,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "error": "tool_failed"
+              }
+            }
+          ],
+          "structuredContent": {
+            "error": "tool_failed"
+          }
+        }
+      },
+      {
+        "requestSequence": 56,
+        "responseSequence": 57,
+        "requestRecordedAt": "2026-10-03T02:27:47.731Z",
+        "responseRecordedAt": "2026-10-03T02:27:47.960Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "limit": 50,
+          "workspaceScope": "global",
+          "subjectId": "agent-workspace",
+          "view": "project_collaborators"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "project_collaborators",
+                "subjectId": "agent-workspace",
+                "data": {
+                  "projectId": "qa_project_agent_workspace",
+                  "ownerUserId": "qa_synthetic_alice_v1",
+                  "collaborators": [
+                    {
+                      "userId": "qa_synthetic_bob_v1",
+                      "displayName": "Bob Synthetic",
+                      "handle": "bob_synthetic",
+                      "role": "editor",
+                      "approvedAt": 1794744000000
+                    }
+                  ]
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "project_collaborators",
+            "subjectId": "agent-workspace",
+            "data": {
+              "projectId": "qa_project_agent_workspace",
+              "ownerUserId": "qa_synthetic_alice_v1",
+              "collaborators": [
+                {
+                  "userId": "qa_synthetic_bob_v1",
+                  "displayName": "Bob Synthetic",
+                  "handle": "bob_synthetic",
+                  "role": "editor",
+                  "approvedAt": 1794744000000
+                }
+              ]
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 63,
+        "responseSequence": 64,
+        "requestRecordedAt": "2026-10-03T02:28:06.797Z",
+        "responseRecordedAt": "2026-10-03T02:28:07.495Z",
+        "tool": "get_candidate_shortlist",
+        "arguments": {
+          "workspaceScope": "global",
+          "limit": 30
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "batchId": "fbde44b9-767b-4870-b04e-0c7270b97653",
+                "expiresAt": "2026-11-15T12:30:00.000Z",
+                "candidates": []
+              }
+            }
+          ],
+          "structuredContent": {
+            "batchId": "fbde44b9-767b-4870-b04e-0c7270b97653",
+            "expiresAt": "2026-11-15T12:30:00.000Z",
+            "candidates": []
+          }
+        }
+      },
+      {
+        "requestSequence": 70,
+        "responseSequence": 71,
+        "requestRecordedAt": "2026-10-03T02:28:25.336Z",
+        "responseRecordedAt": "2026-10-03T02:28:26.015Z",
+        "tool": "get_candidate_shortlist",
+        "arguments": {
+          "workspaceScope": "global",
+          "limit": 30
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "batchId": "eb9194e2-23a9-41bf-9c32-ee6e28294350",
+                "expiresAt": "2026-11-15T12:30:00.000Z",
+                "candidates": []
+              }
+            }
+          ],
+          "structuredContent": {
+            "batchId": "eb9194e2-23a9-41bf-9c32-ee6e28294350",
+            "expiresAt": "2026-11-15T12:30:00.000Z",
+            "candidates": []
+          }
+        }
+      },
+      {
+        "requestSequence": 77,
+        "responseSequence": 78,
+        "requestRecordedAt": "2026-10-03T02:28:57.261Z",
+        "responseRecordedAt": "2026-10-03T02:28:57.425Z",
+        "tool": "get_connections",
+        "arguments": {
+          "workspaceScope": "global",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "connections": [
+                  {
+                    "id": "qa_connection_alice_bob",
+                    "state": "active",
+                    "matchId": "qa_match_alice_bob",
+                    "sides": {
+                      "qa_synthetic_alice_v1": {
+                        "muted": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        },
+                        "renewedRelevanceEnabled": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        },
+                        "renewedRelevanceAcknowledgedAt": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "nextCursor": null
+              }
+            }
+          ],
+          "structuredContent": {
+            "connections": [
+              {
+                "id": "qa_connection_alice_bob",
+                "state": "active",
+                "matchId": "qa_match_alice_bob",
+                "sides": {
+                  "qa_synthetic_alice_v1": {
+                    "muted": false,
+                    "renewedRelevanceEnabled": true,
+                    "renewedRelevanceAcknowledgedAt": null
+                  }
+                }
+              }
+            ],
+            "nextCursor": null
+          }
+        }
+      },
+      {
+        "requestSequence": 84,
+        "responseSequence": 85,
+        "requestRecordedAt": "2026-10-03T02:29:20.038Z",
+        "responseRecordedAt": "2026-10-03T02:29:20.488Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "workspaceScope": "global",
+          "limit": 50,
+          "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+          "view": "circle"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "circle",
+                "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "data": {
+                  "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "name": "Launch Crew",
+                  "purpose": "Compare practical AI launches.",
+                  "status": "active",
+                  "governanceMode": "vote",
+                  "governanceVersion": 1,
+                  "role": "owner",
+                  "membershipStatus": "active",
+                  "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "publishedRevisionNumber": null,
+                  "viewerUserId": "qa_synthetic_alice_v1",
+                  "members": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "role": "owner",
+                      "status": "active",
+                      "joinedAt": 1794744000000
+                    }
+                  ],
+                  "proposals": [],
+                  "modules": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "circle",
+            "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "data": {
+              "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "name": "Launch Crew",
+              "purpose": "Compare practical AI launches.",
+              "status": "active",
+              "governanceMode": "vote",
+              "governanceVersion": 1,
+              "role": "owner",
+              "membershipStatus": "active",
+              "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "publishedRevisionNumber": null,
+              "viewerUserId": "qa_synthetic_alice_v1",
+              "members": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "role": "owner",
+                  "status": "active",
+                  "joinedAt": 1794744000000
+                }
+              ],
+              "proposals": [],
+              "modules": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 91,
+        "responseSequence": 92,
+        "requestRecordedAt": "2026-10-03T02:36:20.676Z",
+        "responseRecordedAt": "2026-10-03T02:36:21.153Z",
+        "tool": "perform_buildmates_circle_action",
+        "arguments": {
+          "action": {
+            "confirmation": "confirmed",
+            "payload": {
+              "purpose": "Collect source links and concise takeaways for comparing practical AI launches.",
+              "kind": "resource_shelf",
+              "title": "Practical AI Launch Research Board"
+            },
+            "proposalKind": "module",
+            "circleId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "kind": "create_circle_proposal"
+          },
+          "workspaceScope": "global",
+          "idempotencyKey": "7c2fdb18-9149-41e8-ae4c-8c441e80b230"
+        },
+        "result": {
+          "isError": true,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "error": "module_payload_invalid"
+              }
+            }
+          ],
+          "structuredContent": {
+            "error": "module_payload_invalid"
+          }
+        }
+      },
+      {
+        "requestSequence": 98,
+        "responseSequence": 99,
+        "requestRecordedAt": "2026-10-03T02:37:24.702Z",
+        "responseRecordedAt": "2026-10-03T02:37:25.166Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "workspaceScope": "global",
+          "view": "circle",
+          "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "circle",
+                "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "data": {
+                  "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "name": "Launch Crew",
+                  "purpose": "Compare practical AI launches.",
+                  "status": "active",
+                  "governanceMode": "vote",
+                  "governanceVersion": 1,
+                  "role": "owner",
+                  "membershipStatus": "active",
+                  "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "publishedRevisionNumber": null,
+                  "viewerUserId": "qa_synthetic_alice_v1",
+                  "members": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "role": "owner",
+                      "status": "active",
+                      "joinedAt": 1794744000000
+                    }
+                  ],
+                  "proposals": [],
+                  "modules": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "circle",
+            "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "data": {
+              "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "name": "Launch Crew",
+              "purpose": "Compare practical AI launches.",
+              "status": "active",
+              "governanceMode": "vote",
+              "governanceVersion": 1,
+              "role": "owner",
+              "membershipStatus": "active",
+              "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "publishedRevisionNumber": null,
+              "viewerUserId": "qa_synthetic_alice_v1",
+              "members": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "role": "owner",
+                  "status": "active",
+                  "joinedAt": 1794744000000
+                }
+              ],
+              "proposals": [],
+              "modules": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 105,
+        "responseSequence": 106,
+        "requestRecordedAt": "2026-10-03T02:41:08.463Z",
+        "responseRecordedAt": "2026-10-03T02:41:08.702Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "limit": 50,
+          "workspaceScope": "global",
+          "view": "project_collaborators",
+          "subjectId": "agent-workspace"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "project_collaborators",
+                "subjectId": "agent-workspace",
+                "data": {
+                  "projectId": "qa_project_agent_workspace",
+                  "ownerUserId": "qa_synthetic_alice_v1",
+                  "collaborators": [
+                    {
+                      "userId": "qa_synthetic_bob_v1",
+                      "displayName": "Bob Synthetic",
+                      "handle": "bob_synthetic",
+                      "role": "editor",
+                      "approvedAt": 1794744000000
+                    }
+                  ]
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "project_collaborators",
+            "subjectId": "agent-workspace",
+            "data": {
+              "projectId": "qa_project_agent_workspace",
+              "ownerUserId": "qa_synthetic_alice_v1",
+              "collaborators": [
+                {
+                  "userId": "qa_synthetic_bob_v1",
+                  "displayName": "Bob Synthetic",
+                  "handle": "bob_synthetic",
+                  "role": "editor",
+                  "approvedAt": 1794744000000
+                }
+              ]
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 112,
+        "responseSequence": 113,
+        "requestRecordedAt": "2026-10-03T02:41:27.171Z",
+        "responseRecordedAt": "2026-10-03T02:41:27.774Z",
+        "tool": "perform_buildmates_project_action",
+        "arguments": {
+          "idempotencyKey": "b0881055-c2e8-49b1-9651-22a59bf2a532",
+          "action": {
+            "confirmation": "confirmed",
+            "slug": "agent-workspace",
+            "targetUserId": "qa_synthetic_bob_v1",
+            "kind": "transfer_project_ownership"
+          },
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "action": "transfer_project_ownership",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "slug": "agent-workspace",
+                    "ownerUserId": "qa_synthetic_bob_v1",
+                    "transferred": true
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "action": "transfer_project_ownership",
+              "confirmationState": "persisted",
+              "details": {
+                "slug": "agent-workspace",
+                "ownerUserId": "qa_synthetic_bob_v1",
+                "transferred": true
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 119,
+        "responseSequence": 120,
+        "requestRecordedAt": "2026-10-03T02:41:45.472Z",
+        "responseRecordedAt": "2026-10-03T02:41:45.780Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "project_collaborators",
+          "workspaceScope": "global",
+          "limit": 50,
+          "subjectId": "agent-workspace"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "project_collaborators",
+                "subjectId": "agent-workspace",
+                "data": {
+                  "projectId": "qa_project_agent_workspace",
+                  "ownerUserId": "qa_synthetic_bob_v1",
+                  "collaborators": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "handle": "alice_synthetic",
+                      "role": "editor",
+                      "approvedAt": 1794744000000
+                    }
+                  ]
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "project_collaborators",
+            "subjectId": "agent-workspace",
+            "data": {
+              "projectId": "qa_project_agent_workspace",
+              "ownerUserId": "qa_synthetic_bob_v1",
+              "collaborators": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "handle": "alice_synthetic",
+                  "role": "editor",
+                  "approvedAt": 1794744000000
+                }
+              ]
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 126,
+        "responseSequence": 127,
+        "requestRecordedAt": "2026-10-03T02:42:21.034Z",
+        "responseRecordedAt": "2026-10-03T02:42:21.465Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+          "limit": 50,
+          "workspaceScope": "global",
+          "view": "circle"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "circle",
+                "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "data": {
+                  "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "name": "Launch Crew",
+                  "purpose": "Compare practical AI launches.",
+                  "status": "active",
+                  "governanceMode": "vote",
+                  "governanceVersion": 1,
+                  "role": "owner",
+                  "membershipStatus": "active",
+                  "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "publishedRevisionNumber": null,
+                  "viewerUserId": "qa_synthetic_alice_v1",
+                  "members": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "role": "owner",
+                      "status": "active",
+                      "joinedAt": 1794744000000
+                    }
+                  ],
+                  "proposals": [],
+                  "modules": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "circle",
+            "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "data": {
+              "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "name": "Launch Crew",
+              "purpose": "Compare practical AI launches.",
+              "status": "active",
+              "governanceMode": "vote",
+              "governanceVersion": 1,
+              "role": "owner",
+              "membershipStatus": "active",
+              "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "publishedRevisionNumber": null,
+              "viewerUserId": "qa_synthetic_alice_v1",
+              "members": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "role": "owner",
+                  "status": "active",
+                  "joinedAt": 1794744000000
+                }
+              ],
+              "proposals": [],
+              "modules": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 133,
+        "responseSequence": 134,
+        "requestRecordedAt": "2026-10-03T02:44:30.236Z",
+        "responseRecordedAt": "2026-10-03T02:44:30.729Z",
+        "tool": "perform_buildmates_circle_action",
+        "arguments": {
+          "action": {
+            "payload": {
+              "description": "Request a shared, link-first resource shelf where Launch Crew can collect references and concise takeaways about practical AI launches.",
+              "title": "Practical AI Launch Research Board"
+            },
+            "proposalKind": "request",
+            "circleId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "kind": "create_circle_proposal",
+            "confirmation": "confirmed"
+          },
+          "idempotencyKey": "cc46d504-299e-415f-a6aa-a2d1873a00e7",
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": true,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "error": "change_request_invalid"
+              }
+            }
+          ],
+          "structuredContent": {
+            "error": "change_request_invalid"
+          }
+        }
+      },
+      {
+        "requestSequence": 145,
+        "responseSequence": 146,
+        "requestRecordedAt": "2026-10-03T03:35:43.292Z",
+        "responseRecordedAt": "2026-10-03T03:35:43.751Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+          "workspaceScope": "global",
+          "view": "circle",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "circle",
+                "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "data": {
+                  "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "name": "Launch Crew",
+                  "purpose": "Compare practical AI launches.",
+                  "status": "active",
+                  "governanceMode": "vote",
+                  "governanceVersion": 1,
+                  "role": "owner",
+                  "membershipStatus": "active",
+                  "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "publishedRevisionNumber": null,
+                  "viewerUserId": "qa_synthetic_alice_v1",
+                  "members": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "role": "owner",
+                      "status": "active",
+                      "joinedAt": 1794744000000
+                    }
+                  ],
+                  "proposals": [],
+                  "modules": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "circle",
+            "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "data": {
+              "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "name": "Launch Crew",
+              "purpose": "Compare practical AI launches.",
+              "status": "active",
+              "governanceMode": "vote",
+              "governanceVersion": 1,
+              "role": "owner",
+              "membershipStatus": "active",
+              "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "publishedRevisionNumber": null,
+              "viewerUserId": "qa_synthetic_alice_v1",
+              "members": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "role": "owner",
+                  "status": "active",
+                  "joinedAt": 1794744000000
+                }
+              ],
+              "proposals": [],
+              "modules": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 152,
+        "responseSequence": 153,
+        "requestRecordedAt": "2026-10-03T03:36:06.425Z",
+        "responseRecordedAt": "2026-10-03T03:36:07.032Z",
+        "tool": "perform_buildmates_circle_action",
+        "arguments": {
+          "idempotencyKey": "57472a1e-35ab-4e79-b115-aef757e02b5d",
+          "action": {
+            "circleId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "kind": "create_circle_proposal",
+            "confirmation": "confirmed",
+            "proposalKind": "module",
+            "payload": {
+              "kind": "resource_shelf",
+              "config": {
+                "title": "Practical AI Launch Research Board"
+              }
+            }
+          },
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "action": "create_circle_proposal",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "id": "bb0b5b04-c6de-4b0e-87a0-089e6ba12f38",
+                    "status": "voting",
+                    "revisionId": null
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "action": "create_circle_proposal",
+              "confirmationState": "persisted",
+              "details": {
+                "id": "bb0b5b04-c6de-4b0e-87a0-089e6ba12f38",
+                "status": "voting",
+                "revisionId": null
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 159,
+        "responseSequence": 160,
+        "requestRecordedAt": "2026-10-03T03:36:24.619Z",
+        "responseRecordedAt": "2026-10-03T03:36:25.085Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "limit": 50,
+          "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+          "workspaceScope": "global",
+          "view": "circle"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "circle",
+                "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                "data": {
+                  "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "name": "Launch Crew",
+                  "purpose": "Compare practical AI launches.",
+                  "status": "active",
+                  "governanceMode": "vote",
+                  "governanceVersion": 1,
+                  "role": "owner",
+                  "membershipStatus": "active",
+                  "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+                  "publishedRevisionNumber": null,
+                  "viewerUserId": "qa_synthetic_alice_v1",
+                  "members": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "role": "owner",
+                      "status": "active",
+                      "joinedAt": 1794744000000
+                    }
+                  ],
+                  "proposals": [
+                    {
+                      "id": "bb0b5b04-c6de-4b0e-87a0-089e6ba12f38",
+                      "proposerUserId": "qa_synthetic_alice_v1",
+                      "kind": "module",
+                      "status": "voting",
+                      "governanceVersion": 1,
+                      "createdAt": 1794744000000,
+                      "payload": {
+                        "kind": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        },
+                        "config": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        }
+                      },
+                      "previewSpec": null,
+                      "canPublish": false
+                    }
+                  ],
+                  "modules": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "circle",
+            "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+            "data": {
+              "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "name": "Launch Crew",
+              "purpose": "Compare practical AI launches.",
+              "status": "active",
+              "governanceMode": "vote",
+              "governanceVersion": 1,
+              "role": "owner",
+              "membershipStatus": "active",
+              "surfaceId": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+              "publishedRevisionNumber": null,
+              "viewerUserId": "qa_synthetic_alice_v1",
+              "members": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "role": "owner",
+                  "status": "active",
+                  "joinedAt": 1794744000000
+                }
+              ],
+              "proposals": [
+                {
+                  "id": "bb0b5b04-c6de-4b0e-87a0-089e6ba12f38",
+                  "proposerUserId": "qa_synthetic_alice_v1",
+                  "kind": "module",
+                  "payloadJson": "undefined",
+                  "status": "voting",
+                  "governanceVersion": 1,
+                  "createdAt": 1794744000000,
+                  "payload": {
+                    "kind": "resource_shelf",
+                    "config": {
+                      "title": "Practical AI Launch Research Board"
+                    }
+                  },
+                  "previewSpec": null,
+                  "canPublish": false
+                }
+              ],
+              "modules": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 166,
+        "responseSequence": 167,
+        "requestRecordedAt": "2026-10-03T03:36:43.308Z",
+        "responseRecordedAt": "2026-10-03T03:36:43.618Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "limit": 50,
+          "view": "project_collaborators",
+          "subjectId": "agent-workspace",
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "project_collaborators",
+                "subjectId": "agent-workspace",
+                "data": {
+                  "projectId": "qa_project_agent_workspace",
+                  "ownerUserId": "qa_synthetic_bob_v1",
+                  "collaborators": [
+                    {
+                      "userId": "qa_synthetic_alice_v1",
+                      "displayName": "Alice Synthetic",
+                      "handle": "alice_synthetic",
+                      "role": "editor",
+                      "approvedAt": 1794744000000
+                    }
+                  ]
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "project_collaborators",
+            "subjectId": "agent-workspace",
+            "data": {
+              "projectId": "qa_project_agent_workspace",
+              "ownerUserId": "qa_synthetic_bob_v1",
+              "collaborators": [
+                {
+                  "userId": "qa_synthetic_alice_v1",
+                  "displayName": "Alice Synthetic",
+                  "handle": "alice_synthetic",
+                  "role": "editor",
+                  "approvedAt": 1794744000000
+                }
+              ]
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      }
+    ]
+  },
+  "finalState": {
+    "available": true,
+    "syntheticOnly": true,
+    "scenario": "governance",
+    "fixedNow": "2026-11-15T12:00:00.000Z",
+    "counts": {
+      "users": 3,
+      "profiles": 3,
+      "projects": 3,
+      "messages": 1,
+      "circles": 2,
+      "exports": 0
+    },
+    "profiles": [
+      {
+        "id": "qa_profile_alice",
+        "userId": "qa_synthetic_alice_v1",
+        "displayName": "Alice Synthetic",
+        "summary": "Builds agentic collaboration tools with careful consent boundaries.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Vancouver",
+        "locationMapOptIn": 0,
+        "timezone": "America/Vancouver",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_profile_bob",
+        "userId": "qa_synthetic_bob_v1",
+        "displayName": "Bob Synthetic",
+        "summary": "Designs dependable agent workflows and collaboration rituals.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Vancouver",
+        "locationMapOptIn": 0,
+        "timezone": "America/Vancouver",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_profile_carol",
+        "userId": "qa_synthetic_carol_v1",
+        "displayName": "Carol Synthetic",
+        "summary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Toronto",
+        "locationMapOptIn": 0,
+        "timezone": "America/Toronto",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "profileFields": [],
+    "projects": [
+      {
+        "id": "qa_project_agent_workspace",
+        "ownerUserId": "qa_synthetic_bob_v1",
+        "slug": "agent-workspace",
+        "title": "Agent Workspace",
+        "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_bob_flows",
+        "ownerUserId": "qa_synthetic_bob_v1",
+        "slug": "reliable-flows",
+        "title": "Reliable Flows",
+        "summary": "A practical lab for human-readable agent handoffs.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_carol_evals",
+        "ownerUserId": "qa_synthetic_carol_v1",
+        "slug": "evaluation-notes",
+        "title": "Evaluation Notes",
+        "summary": "Small experiments for evaluating agent behavior with useful evidence.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "projectCollaborators": [
+      {
+        "projectId": "qa_project_agent_workspace",
+        "userId": "qa_synthetic_alice_v1",
+        "role": "editor",
+        "approvedAt": 1794744000000
+      }
+    ],
+    "proposals": [
+      {
+        "id": "qa_proposal_alice_bob",
+        "matchPairId": "qa_pair_alice_bob",
+        "state": "matched",
+        "expiresAt": 1794736800000,
+        "terminalAt": 1794736800000
+      },
+      {
+        "id": "qa_proposal_alice_carol",
+        "matchPairId": "qa_pair_alice_carol",
+        "state": "pending",
+        "expiresAt": 1795953600000,
+        "terminalAt": null
+      }
+    ],
+    "circleProposals": [
+      {
+        "id": "qa_circle_proposal",
+        "circleId": "qa_circle_builders",
+        "proposerUserId": "qa_synthetic_bob_v1",
+        "kind": "request",
+        "status": "open",
+        "governanceVersion": 1,
+        "createdAt": 1794740400000
+      },
+      {
+        "id": "bb0b5b04-c6de-4b0e-87a0-089e6ba12f38",
+        "circleId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+        "proposerUserId": "qa_synthetic_alice_v1",
+        "kind": "module",
+        "status": "voting",
+        "governanceVersion": 1,
+        "createdAt": 1794744000000
+      }
+    ],
+    "connections": [
+      {
+        "id": "qa_connection_alice_bob",
+        "matchPairId": "qa_pair_alice_bob",
+        "state": "active",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "rooms": [
+      {
+        "id": "qa_room_alice_bob",
+        "connectionId": "qa_connection_alice_bob",
+        "status": "active",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "circles": [
+      {
+        "id": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+        "name": "Launch Crew",
+        "status": "active",
+        "governanceMode": "vote",
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_circle_builders",
+        "name": "Synthetic Builders Circle",
+        "status": "active",
+        "governanceMode": "vote",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "circleMembers": [
+      {
+        "circleId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+        "userId": "qa_synthetic_alice_v1",
+        "role": "owner",
+        "status": "active",
+        "joinedAt": 1794744000000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_alice_v1",
+        "role": "admin",
+        "status": "active",
+        "joinedAt": 1794657600000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_bob_v1",
+        "role": "member",
+        "status": "active",
+        "joinedAt": 1794657600000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_carol_v1",
+        "role": "member",
+        "status": "invited",
+        "joinedAt": null
+      }
+    ],
+    "messages": [
+      {
+        "id": "qa_message_room_bob",
+        "roomId": "qa_room_alice_bob",
+        "senderUserId": "qa_synthetic_bob_v1",
+        "clientMessageId": "qa-room-message-1",
+        "body": "I mapped the first handoff failure and kept the evidence narrow.",
+        "bodyLength": 64,
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": 1794740400000
+      }
+    ],
+    "circleMessages": [
+      {
+        "id": "qa_circle_message",
+        "circleId": "qa_circle_builders",
+        "senderUserId": "qa_synthetic_bob_v1",
+        "clientMessageId": "qa-circle-message-1",
+        "body": "A small governed Circle keeps context useful.",
+        "bodyLength": 45,
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": 1794742200000
+      }
+    ],
+    "setup": [
+      {
+        "userId": "qa_synthetic_alice_v1",
+        "completedStepsJson": "[\"identity_link\",\"storage_explanation\",\"source_selection\",\"context_collection\",\"signal_privacy_review\",\"basic_profile\",\"page_preview\",\"networking_pulse\",\"acceptance_mode\",\"automation\"]",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "sources": [],
+    "automation": [],
+    "pulses": [],
+    "surfaces": [
+      {
+        "id": "qa_surface_circle",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "kind": "circle",
+        "subjectId": "qa_circle_builders",
+        "publishedRevisionId": null,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "surface_circle_2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "kind": "circle",
+        "subjectId": "2a4e3d27-f33f-4145-8a67-c8a493d86aa8",
+        "publishedRevisionId": null,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "revisions": [],
+    "idempotency": [
+      {
+        "id": "idempotency_154e9b38-79ad-4c14-b75d-c6d1a22c7820",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_circle_action",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "idempotency_38f4438d-84f4-4f31-8fcb-b5238e91a77d",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_circle_action",
+        "status": "processing",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "idempotency_4839421d-796b-4407-a681-42dc348958ca",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_project_action",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "idempotency_4d737857-f76b-4ce1-a1d7-1ee0039a03ed",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_circle_action",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "idempotency_7cb20b6a-3e6e-46b2-8f28-bd332e81edd6",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_circle_action",
+        "status": "processing",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "exports": [],
+    "uncertainSaveProjectCommitted": false
+  }
+}

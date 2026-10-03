@@ -465,7 +465,12 @@ export const BUILD_MATES_CHAT_UI_HTML = String.raw`<!doctype html>
             state.snapshot = next;
             renderSnapshot(next);
           } else {
-            await loadView(state.view, state.subjectId);
+            const refreshed = await loadView(state.view, state.subjectId);
+            if (!refreshed) {
+              button.disabled = false;
+              setStatus('The action may have saved. Check the workspace before trying again.', 'error', { refresh: true });
+              return;
+            }
           }
           setStatus('Saved.', 'success');
         } catch (error) {
@@ -903,6 +908,8 @@ export const BUILD_MATES_CHAT_UI_HTML = String.raw`<!doctype html>
           });
           input.addEventListener('input', () => {
             delete button.dataset.confirmed;
+            delete button.dataset.idempotencyKey;
+            delete button.dataset.clientMessageId;
             button.textContent = composer.label || 'Send';
           });
           thread.appendChild(form);
@@ -975,6 +982,8 @@ export const BUILD_MATES_CHAT_UI_HTML = String.raw`<!doctype html>
           });
           input.addEventListener('input', () => {
             delete button.dataset.confirmed;
+            delete button.dataset.idempotencyKey;
+            delete button.dataset.clientMessageId;
             button.textContent = composer.label || 'Send';
           });
           thread.appendChild(form);
@@ -1082,12 +1091,22 @@ export const BUILD_MATES_CHAT_UI_HTML = String.raw`<!doctype html>
           if (state.subjectId) argumentsValue.subjectId = state.subjectId;
           const result = await request('tools/call', { name: 'get_buildmates_workspace', arguments: argumentsValue });
           if (result && result.isError) throw new Error('Buildmates could not load that view.');
-          state.snapshot = snapshotFromResult(result);
+          const snapshot = snapshotFromResult(result);
+          const nestedResult = snapshot && typeof snapshot === 'object' && snapshot.result && typeof snapshot.result === 'object'
+            ? snapshot.result
+            : null;
+          const candidate = nestedResult && (nestedResult.view || nestedResult.data || nestedResult.title) ? nestedResult : snapshot;
+          if (!candidate || typeof candidate !== 'object' || (!candidate.view && !candidate.data && !candidate.title)) {
+            throw new Error('Buildmates returned an invalid workspace snapshot.');
+          }
+          state.snapshot = snapshot;
           renderSnapshot(state.snapshot);
           setStatus('', '');
           if (window.openai && typeof window.openai.setWidgetState === 'function') window.openai.setWidgetState({ view });
+          return true;
         } catch (error) {
           setStatus(error instanceof Error ? error.message : 'Buildmates could not load that view.', 'error');
+          return false;
         }
       }
 

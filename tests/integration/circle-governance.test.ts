@@ -9,6 +9,7 @@ import {
   getCircle,
   inviteCircleMember,
   leaveCircle,
+  listCircles,
   listCircleModuleEntries,
   manageCircleMember,
   publishCircleProposal,
@@ -17,6 +18,7 @@ import {
   updateCircleModuleEntry,
   voteCircleProposal,
 } from "../../apps/web/src/circles/service";
+import { beginAccountDeletion } from "../../apps/web/src/privacy/account-deletion";
 import { applyD1Migrations } from "../helpers/migrate-d1";
 
 const circleDesignSpec: SurfaceSpecV2 = {
@@ -55,6 +57,26 @@ const circleDesignSpec: SurfaceSpecV2 = {
   accessibility: { label: "Surface builders Circle", primaryHeadingNodeId: "circle-title", reducedMotion: "required" },
 };
 
+function interposeAfterFirst(base: D1Database, needle: string, mutation: () => Promise<void>): D1Database {
+  let fired = false;
+  const prepare = base.prepare.bind(base);
+  const wrap = (statement: D1PreparedStatement): D1PreparedStatement => new Proxy(statement, {
+    get(target, property, receiver) {
+      if (property === "bind") return (...values: unknown[]) => wrap(target.bind(...values));
+      if (property === "first") return async () => {
+        const row = await target.first();
+        if (row && !fired) {
+          fired = true;
+          await mutation();
+        }
+        return row;
+      };
+      return Reflect.get(target, property, receiver);
+    },
+  }) as D1PreparedStatement;
+  return { prepare(sql: string) { const statement = prepare(sql); return !fired && sql.includes(needle) ? wrap(statement) : statement; }, batch: base.batch.bind(base) } as unknown as D1Database;
+}
+
 describe("Circle governance and privacy", () => {
   let mf: Miniflare;
   let DB: D1Database;
@@ -81,6 +103,41 @@ describe("Circle governance and privacy", () => {
     expect(await getCircle(DB,circle.id,"stranger")).toBeNull();
     await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+3});
     expect((await getCircle(DB,circle.id,"member"))?.members).toHaveLength(2);
+  });
+
+  it("serializes same-clock invitation responses without a duplicate governance bump", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Response race",purpose:"Keep invitation decisions single-writer",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    // Complete the competing same-clock decline after the accepting request has
+    // performed its pre-read, but before it reaches the CAS batch.
+    const raceDB = interposeAfterFirst(DB,"SELECT membership.status,circle.status AS circleStatus",async () => {
+      await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:false,now:now+2});
+    });
+    await expect(respondCircleInvite(raceDB,{actorId:"member",circleId:circle.id,accept:true,now:now+2})).rejects.toThrow("invitation_unavailable");
+    expect(await DB.prepare("SELECT status FROM circle_memberships WHERE circle_id=? AND user_id='member'").bind(circle.id).first()).toEqual({status:"declined"});
+    expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:2});
+  });
+
+  it("does not accept a pending invitation after owner deletion archives its Circle", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Archived response",purpose:"Keep deleted Circle content private",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    await beginAccountDeletion(DB,"owner");
+    expect(await DB.prepare("SELECT status FROM circles WHERE id=?").bind(circle.id).first()).toEqual({status:"archived"});
+    await expect(respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2})).rejects.toThrow("invitation_unavailable");
+    expect(await getCircle(DB,circle.id,"member")).toBeNull();
+    expect(await listCircles(DB,"member")).toEqual([]);
+    expect(await DB.prepare("SELECT status FROM circle_memberships WHERE circle_id=? AND user_id='member'").bind(circle.id).first()).toEqual({status:"invited"});
+    expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:1});
+  });
+
+  it("does not treat an already accepted member as active after Circle archival", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Archived accepted",purpose:"Keep archived Circle membership unavailable",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2});
+    await DB.prepare("UPDATE circles SET status='archived' WHERE id=?").bind(circle.id).run();
+    await expect(respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+3})).rejects.toThrow("invitation_unavailable");
+    expect(await DB.prepare("SELECT status FROM circle_memberships WHERE circle_id=? AND user_id='member'").bind(circle.id).first()).toEqual({status:"active"});
+    expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:2});
   });
 
   it("rate limits Circle creation at the shared service boundary", async () => {
@@ -157,6 +214,42 @@ describe("Circle governance and privacy", () => {
     expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:3});
     await expect(manageCircleMember(DB,{actorId:"owner",circleId:circle.id,targetUserId:"member",action:"promote"})).rejects.toThrow("member_unavailable");
     expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:3});
+  });
+
+  it("rolls back a role change when the member leaves between pre-read and CAS", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Role race",purpose:"Keep membership and governance aligned",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2});
+    const raceDB = interposeAfterFirst(DB,"SELECT role,status FROM circle_memberships",async () => {
+      await DB.prepare("UPDATE circle_memberships SET status='left' WHERE circle_id=? AND user_id='member'").bind(circle.id).run();
+    });
+    await expect(manageCircleMember(raceDB,{actorId:"owner",circleId:circle.id,targetUserId:"member",action:"promote"})).rejects.toThrow("member_unavailable");
+    expect(await DB.prepare("SELECT role,status FROM circle_memberships WHERE circle_id=? AND user_id='member'").bind(circle.id).first()).toEqual({role:"member",status:"left"});
+    expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:2});
+  });
+
+  it("does not promote after ownership transfer wins the pre-read", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Transfer race",purpose:"Keep ownership authority current",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2});
+    const raceDB = interposeAfterFirst(DB,"SELECT role,status FROM circle_memberships",async () => {
+      await manageCircleMember(DB,{actorId:"owner",circleId:circle.id,targetUserId:"member",action:"transfer"});
+    });
+    await expect(manageCircleMember(raceDB,{actorId:"owner",circleId:circle.id,targetUserId:"member",action:"promote"})).rejects.toThrow("member_unavailable");
+    expect(await DB.prepare("SELECT user_id AS userId,role,status FROM circle_memberships WHERE circle_id=? ORDER BY user_id").bind(circle.id).all()).toMatchObject({results:[{userId:"member",role:"owner",status:"active"},{userId:"owner",role:"admin",status:"active"}]});
+    expect(await DB.prepare("SELECT governance_version AS version FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:3});
+  });
+
+  it("rejects an ownership transfer when the Circle archives during its pre-read", async () => {
+    const circle = await createCircle(DB,{actorId:"owner",name:"Archived transfer",purpose:"Keep archived ownership immutable",governanceMode:"admin",now});
+    await inviteCircleMember(DB,{actorId:"owner",circleId:circle.id,userId:"member",now:now+1});
+    await respondCircleInvite(DB,{actorId:"member",circleId:circle.id,accept:true,now:now+2});
+    const raceDB = interposeAfterFirst(DB,"SELECT role,status FROM circle_memberships",async () => {
+      await DB.prepare("UPDATE circles SET status='archived' WHERE id=?").bind(circle.id).run();
+    });
+    await expect(manageCircleMember(raceDB,{actorId:"owner",circleId:circle.id,targetUserId:"member",action:"transfer"})).rejects.toThrow("transfer_failed");
+    expect(await DB.prepare("SELECT user_id AS userId,role,status FROM circle_memberships WHERE circle_id=? ORDER BY user_id").bind(circle.id).all()).toMatchObject({results:[{userId:"member",role:"member",status:"active"},{userId:"owner",role:"owner",status:"active"}]});
+    expect(await DB.prepare("SELECT governance_version AS version,status FROM circles WHERE id=?").bind(circle.id).first()).toEqual({version:2,status:"archived"});
   });
 
   it("creates a governed Surface and publishes a real private design revision", async () => {

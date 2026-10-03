@@ -18,9 +18,10 @@ async function connectionContext(DB: D1Database, connectionId: string, userId: s
     CASE WHEN pair.user_a_id=? THEN pair.user_b_id ELSE pair.user_a_id END AS otherUserId
     FROM connections c
     JOIN connection_sides side ON side.connection_id=c.id AND side.user_id=?
+    JOIN users viewer ON viewer.id=? AND viewer.status='active'
     JOIN match_pairs pair ON pair.id=c.match_pair_id
     JOIN rooms r ON r.connection_id=c.id
-    WHERE c.id=? LIMIT 1`).bind(userId, userId, connectionId).first<ConnectionContext>();
+    WHERE c.id=? LIMIT 1`).bind(userId, userId, userId, connectionId).first<ConnectionContext>();
   if (!row) throw new Error("connection_not_found");
   const blocked = await DB.prepare(`SELECT 1 AS blocked FROM blocks WHERE revoked_at IS NULL AND
     ((blocker_user_id=? AND blocked_user_id=?) OR (blocker_user_id=? AND blocked_user_id=?)) LIMIT 1`)
@@ -112,7 +113,8 @@ export async function createReminder(DB:D1Database,input:{connectionId:string;us
 
 export async function dismissReminder(DB:D1Database,input:{connectionId:string;userId:string;reminderId:string}) {
   await connectionContext(DB,input.connectionId,input.userId);
-  await DB.prepare("UPDATE connection_reminders SET status='dismissed' WHERE id=? AND connection_id=? AND user_id=?").bind(input.reminderId,input.connectionId,input.userId).run();
+  const result=await DB.prepare("UPDATE connection_reminders SET status='dismissed' WHERE id=? AND connection_id=? AND user_id=? AND status='scheduled'").bind(input.reminderId,input.connectionId,input.userId).run();
+  if(Number(result.meta?.changes??0)!==1)throw new Error("reminder_not_found");
 }
 
 export async function endConnection(DB:D1Database,input:{connectionId:string;userId:string;now:number}) {
@@ -159,7 +161,8 @@ export async function respondReconnect(DB:D1Database,input:{connectionId:string;
 
 export async function acknowledgeRenewedRelevance(DB:D1Database,input:{connectionId:string;userId:string;now:number}) {
   await connectionContext(DB,input.connectionId,input.userId);
-  await DB.prepare("UPDATE connection_sides SET renewed_relevance_acknowledged_at=?,updated_at=? WHERE connection_id=? AND user_id=? AND renewed_relevance_enabled=1").bind(input.now,input.now,input.connectionId,input.userId).run();
+  const result=await DB.prepare("UPDATE connection_sides SET renewed_relevance_acknowledged_at=?,updated_at=? WHERE connection_id=? AND user_id=? AND renewed_relevance_enabled=1").bind(input.now,input.now,input.connectionId,input.userId).run();
+  if(Number(result.meta?.changes??0)!==1)throw new Error("connection_not_found");
 }
 
 export async function saveIntroductionFeedback(DB:D1Database,input:{connectionId:string;userId:string;useful:boolean;reasons:string[];similarMatchPreference:"more"|"same"|"less"|null;followUpIntent:"keep_connected"|"collaborate"|"not_now"|null;privateNote:string|null;now:number}) {

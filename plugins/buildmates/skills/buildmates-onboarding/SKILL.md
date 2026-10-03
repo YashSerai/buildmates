@@ -1,6 +1,6 @@
 ---
 name: buildmates-onboarding
-description: Set up or resume Buildmates in ChatGPT or Codex with explicit privacy choices and optional profile publication and Work Pulse.
+description: Set up or resume Buildmates in ChatGPT or Codex, review profile privacy, export account data, or prepare account deletion. Profile publication and recurring Work Pulse are optional.
 ---
 
 # Buildmates onboarding
@@ -15,7 +15,11 @@ When the host exposes `perform_buildmates_action`, use it for the documented cor
 
 Consequential shared writes require the action's literal `confirmation: "confirmed"`: project and Circle invitations, room and Circle messages, Circle creation, and shared proposals. A clear user command is already the approval; do not ask the same question again just to fill the field. For an embedded message composer, add the field only after the user presses its confirmation control, then send the action once with its fresh idempotency key. Never treat a preview, candidate text, or generated button label as approval.
 
+Account export and deletion are actions inside `perform_buildmates_action`, not separate export-named tools. For an approved export, use `action.kind: "request_export"` with the exact returned schema, continue every section cursor, and check `completeness.complete`. An account workspace view is not an export. If a record exceeds the chat limit, explain which section remains incomplete and use the returned supported download path. In the response, call `authoredSurfaceRevisions` "your page revision history" and `authoredRoomMessages` "messages you sent in rooms"; translate other section keys into ordinary descriptions rather than quoting schema fields. Account deletion starts with `prepare_account_deletion`; preparation alone does not delete anything. Call `request_deletion` only after the separate literal `DELETE BUILDMATES` confirmation. A cancellation means no deletion request.
+
 Do not show raw tool names, snake-case identifiers, schema fields, checkpoint labels, or opaque IDs in user-facing copy. Translate the ten compatible setup steps as follows: account connection, storage and privacy, profile sources, private context, Work Signal privacy, profile draft, profile page choice, networking preferences, connection consent, and Work Pulse.
+
+When project titles are identical, present each title with a distinctive approved summary and ask which description the user means. Keep slugs and internal IDs in tool inputs; do not ask the user to choose an identifier or include one in a completion message.
 
 ## Install and identity
 
@@ -40,6 +44,8 @@ Keep these boundaries separate:
 
 Safe, reversible settings can share one approval when every value and consequence is shown. A saved profile approval does not grant permission to read another source. A saved schedule preference does not prove that a recurring host task exists.
 
+After explaining storage, a direct request to save the exact reviewed profile acknowledges storage for that save. Use the user's ordinary approval to fill internal confirmation fields; do not require them to say the word "confirmed" again. If one privacy choice is unresolved, ask about that choice rather than re-requesting approval for the whole profile. Account deletion still requires its separate literal confirmation.
+
 The first-run finish line is an authenticated account, an acknowledged storage and privacy explanation, approved source choices, reviewed profile context, a reviewed profile draft, a current Networking Pulse, and an acceptance mode. A public page and background Work Pulse are optional. A user can finish without publishing a public page and use manual refresh; matching remains available with the reviewed fields they allow.
 
 ## Choose sources without assuming a whole workspace
@@ -55,6 +61,8 @@ For each source the service actually exposes, explain the available policy befor
 ## Review the profile and privacy choices
 
 Use only approved context. Separate confirmed facts from suggestions and ask focused questions for missing facts. Show the complete proposed profile before saving it. Explain visibility, matching permission, search indexing, city-map participation, private style notes, acceptance mode, and any recurring source policy in plain language. Explain that matching is separate from publishing a public page: when the user allows matching, Buildmates may share the reviewed display name and builder description with suggested builders, while every other profile field and Work Signal follows its own audience setting. Never infer identity, exact location, personality, or ambitions from a connector, filename, or message count.
+
+If the user permits only a summary to be shared, explain that introductions also show the reviewed display name and ask permission for that name specifically before enabling matching. Empty additional fields do not make the display name private. Do not silently enable matching or change the user's requested visibility.
 
 Classify reviewed project facts with the most specific accurate topic IDs returned by `list_topic_taxonomy`. Do not add ancestor IDs just to fill the graph. Buildmates may aggregate canonical topic IDs anonymously, but never submit raw prompts, source excerpts, full files, repository contents, or identity to the graph.
 

@@ -17,17 +17,19 @@ export type MatchInboxRow = { proposalId:string; candidateUserId:string; candida
 
 export async function listMatchInbox(DB:D1,viewerId:string,now:number):Promise<MatchInboxRow[]>{return (await listMatchInboxPage(DB,viewerId,now,null,50)).items}
 export async function listMatchInboxPage(DB:D1,viewerId:string,now:number,after:string|null,limit=50):Promise<{items:MatchInboxRow[];nextCursor:string|null}>{
-  const bounded=Math.max(1,Math.min(100,limit)),cursor=parseMatchInboxCursor(after),capability=await automationCapability(DB,viewerId);
+  const bounded=Math.max(1,Math.min(100,limit)),cursor=parseMatchInboxCursor(after),capability=await automationCapability(DB,viewerId,now);
   const rows=await DB.prepare(`SELECT p.id AS proposalId,p.state,p.expires_at AS expiresAt,p.created_at AS createdAt,
     CASE WHEN mp.user_a_id=? THEN mp.user_b_id ELSE mp.user_a_id END AS candidateUserId,
     other.display_name AS candidateName,other.summary AS candidateSummary,
     mine.decision AS myEvaluation,theirs.decision AS theirEvaluation,response.response AS myResponse,
     me.acceptance_mode AS myAcceptanceMode
     FROM match_proposals p JOIN match_pairs mp ON mp.id=p.match_pair_id
-    JOIN profiles me ON me.user_id=?
+    JOIN profiles me ON me.user_id=? AND me.allow_matching=1
+    JOIN users me_user ON me_user.id=me.user_id AND me_user.status='active'
     JOIN profiles other ON other.user_id=CASE WHEN mp.user_a_id=? THEN mp.user_b_id ELSE mp.user_a_id END
       AND other.allow_matching=1
       AND (other.matching_reviewed_at IS NOT NULL OR (other.published_at IS NOT NULL AND other.audience IN ('public','signed_in','suggested_connections')))
+    JOIN users other_user ON other_user.id=other.user_id AND other_user.status='active'
     LEFT JOIN codex_evaluations mine ON mine.proposal_id=p.id AND mine.user_id=?
     LEFT JOIN codex_evaluations theirs ON theirs.proposal_id=p.id AND theirs.user_id=CASE WHEN mp.user_a_id=me.user_id THEN mp.user_b_id ELSE mp.user_a_id END
     LEFT JOIN human_responses response ON response.proposal_id=p.id AND response.user_id=?
@@ -236,10 +238,10 @@ async function connectionPresentation(DB:D1,input:{proposalId:string;userA:strin
   return {themeTopicId:topic?.id??null,sharedContext,reason:topic?`Your current work overlaps around ${topic.label}.`:labels.length?`Buildmates found mutual relevance through ${labels.join(", ")}.`:"Buildmates found mutual relevance in your current work."};
 }
 
-async function automationCapability(DB:D1,userId:string):Promise<Capability>{
+async function automationCapability(DB:D1,userId:string,now=Date.now()):Promise<Capability>{
   const row=await DB.prepare("SELECT state_json AS stateJson FROM automation_checkpoints WHERE user_id=? AND kind='buildmates' LIMIT 1").bind(userId).first<{stateJson:string}>();
   const state=safeObject(row?.stateJson??"{}");const value=state.capability;
-  if(value==="available"){const checkedAt=Date.parse(String(state.checkedAt??""));if(state.proofSource!=="verified_host_event"||!Number.isFinite(checkedAt)||checkedAt<Date.now()-AUTOMATION_CAPABILITY_TTL_MS||checkedAt>Date.now()+5*60_000)return "approval_required";}
+  if(value==="available"){const checkedAt=Date.parse(String(state.checkedAt??""));if(state.proofSource!=="verified_host_event"||!Number.isFinite(checkedAt)||checkedAt<now-AUTOMATION_CAPABILITY_TTL_MS||checkedAt>now+5*60_000)return "approval_required";}
   return value==="available"||value==="approval_required"||value==="automation_unavailable"?value:"approval_required";
 }
 

@@ -59,6 +59,37 @@ async function invoke(services: BuildmatesToolServices, name: string, input: Rec
 }
 
 describe("Buildmates MCP contract", () => {
+  it("returns actionable service failures while hiding internal errors over the MCP transport", async () => {
+    const { services, links } = fixture();
+    links.set(SUBJECT_A, "user_alice");
+    let failure = "message_id_conflict";
+    services.performChatAction = async () => { throw new Error(failure); };
+    const server = createBuildmatesMcpServer(services);
+    const client = new Client({ name: "error-contract-test", version: "1.0.0" });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    const handleMessage = serverTransport.onmessage!;
+    serverTransport.onmessage = (message, extra) => handleMessage(message, {
+      ...extra,
+      authInfo: { token: "synthetic-contract-token", clientId: "contract-client", scopes: [], extra: { mcp_sub: SUBJECT_A } },
+    });
+    await client.connect(clientTransport);
+    try {
+      for (const code of ["message_id_conflict", "reminder_not_found", "reminder_must_be_future", "proposal_not_approved", "targeted_revision_base_required", "targeted_revision_base_not_published", "targeted_revision_scope_violation", "candidate_batch_invalid", "known_work_signal_exists", "internal_database_password_detail"]) {
+        failure = code;
+        const response = await client.callTool({ name: "perform_buildmates_relationship_action", arguments: {
+          action: { kind: "send_room_message", roomId: "room-test", clientMessageId: "contract-message", body: "Approved message", confirmation: "confirmed" },
+          idempotencyKey: `error-contract-${code}`, workspaceScope: "global",
+        } });
+        expect(response.isError).toBe(true);
+        expect(response.structuredContent).toEqual({ error: code === "internal_database_password_detail" ? "tool_failed" : code });
+        expect(JSON.stringify(response)).not.toContain("password_detail");
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
   it("keeps an authenticated foreground probe approval-required", async () => {
     const { services, links } = fixture();
     await expect(invoke(services,"probe_automation_capability",{probeId:"probe-auth-check"})).rejects.toThrow("identity_link_required");

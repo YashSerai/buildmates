@@ -1,6 +1,6 @@
 # Buildmates in ChatGPT and Codex
 
-Status: reviewed local candidate saved. Local acceptance is recorded; real-host and deployment gates remain open. Production is unchanged.
+Status: expanded local QA and repairs complete. Real-host, fresh-context and deployment gates remain open. Production is unchanged.
 
 Restart authority: [Current checkpoint](CURRENT.md).
 
@@ -12,6 +12,7 @@ Contract: one canonical Buildmates account and authoritative backend, with conve
 - [Operations](OPERATIONS.md): staged deletion recovery and uncertain idempotency handling.
 - `qa/`: bounded verification evidence with source, runtime, exclusions, and invalidators.
 - [Candidate QA](qa/2026-10-02-candidate.md): consolidated local checks and remaining host boundaries.
+- [Expanded QA](qa/2026-10-02-expanded-qa.md): additional edge checks, graded model findings, repairs and fresh browser evidence.
 - [Local integration gate (October 2, 2026)](qa/2026-10-02-integration.md): 99 baseline tests passed, followed by final deletion/retry and actor-write checks.
 - [ChatGPT/Codex host boundary QA (October 2, 2026)](qa/2026-10-02-chat-plugin-host-boundary.md): local journey results and native-host install evidence.
 - Previous assessment: `../2026-10-02-post-hackathon-review.md`.

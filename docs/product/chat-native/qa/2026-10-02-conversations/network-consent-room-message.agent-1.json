@@ -1,0 +1,1125 @@
+{
+  "formatVersion": 1,
+  "syntheticOnly": true,
+  "recordedCase": {
+    "id": "network-consent-room-message",
+    "scenario": "network",
+    "catalogTargets": [
+      5
+    ],
+    "assertions": [
+      "The shortlist is bounded and visible evidence is used only for Carol's proposal. Recording Carol's interest does not create a Connection or room and does not mutate Carol's evaluation.",
+      "The model does not invent a room for Carol while consent is pending, and it does not disclose private participant evidence.",
+      "The Bob room draft is shown without sending. After the explicit approval, exactly one authored message is sent and only that authored message is edited to the requested final wording.",
+      "Message send and edit use fresh request protection and the required confirmation. The final authored message is exactly 'Hi Bob, I would love to compare notes on privacy-safe reviews.' The response distinguishes Carol's pending consent from Bob's confirmed message state."
+    ],
+    "evidenceDirectory": "network-consent-room-message.agent-1",
+    "sourceRecord": {
+      "model": "gpt-6-luna",
+      "reasoningEffort": "high",
+      "engine": "collaboration",
+      "sessionRecorded": true,
+      "turns": [
+        {
+          "user": "Show my current introductions, any active rooms, and anything waiting for a response.",
+          "messages": [
+            "You have two introductions: Bob Synthetic is matched, and your connection with him has an active room. Carol Synthetic’s introduction is still pending, with no response recorded from you. There are no pending invitations.\n\nBob’s room has one message, but the room metadata doesn’t show a pending meeting, shared-tool proposal, or other response request.\n"
+          ],
+          "recordedAt": 1790993650.9515882
+        },
+        {
+          "user": "I am interested in Carol Synthetic. Record my interest only; do not accept for Carol or show me private evidence.",
+          "messages": [
+            "Your interest in Carol was recorded. Her response remains untouched, so the introduction is still pending.\n"
+          ],
+          "recordedAt": 1790993901.148343
+        },
+        {
+          "user": "Carol has not accepted yet, so do not open a room for her. For my active room with Bob Synthetic, draft a short welcome message and show it without sending.",
+          "messages": [
+            "Draft, not sent:\n\n“Hey Bob, glad we connected. I’m looking forward to hearing more about the agent workflows you’re working on.”\n"
+          ],
+          "recordedAt": 1790993967.7806299
+        },
+        {
+          "user": "Use this exact wording after I review it: 'Hi Bob, I would love to compare notes on privacy reviews.' I approve sending it. After it sends, edit only my own message by replacing the words 'privacy reviews' with 'privacy-safe reviews', leaving the rest unchanged.",
+          "messages": [
+            "In Bob’s room, your message now reads: “Hi Bob, I would love to compare notes on privacy-safe reviews.”\n"
+          ],
+          "recordedAt": 1790994342.494675
+        }
+      ]
+    }
+  },
+  "provenance": {
+    "sourceRevision": "32991d1a5bb42464c0ead04cc20dd547f6e7361c",
+    "workingProductDiffSha256": "a399340a2e97e51c23c540a816825c65320a7e32f8621885cdf39cf7adfc1fb2",
+    "fixtureAndSkillSha256": {
+      "scripts/qa/conversation-client-smoke.ts": "904cfa82765068740f007cbe6f61b28d1d85dd8b0e6b0f789e499f54c2fe54a3",
+      "scripts/qa/conversation-fixture.ts": "070fbfad793ddd66b95432a075eebf28ebb097f43357bce939c828d2d7659f9e",
+      "scripts/qa/conversation-server.ts": "c1a19dc2c8fa2439c124945692f3e65255d2334f1e3dbdc1b486b2be13bbf031",
+      "scripts/qa/conversation-tool.ts": "faa7b539e14bf460a7689f4d69216b71b257cd5e84b38f7ed923f08a42edc2d4",
+      "scripts/qa/conversation-transport.ts": "e46e6bf56a7b7d258c4ce7fee003cbe88a3e38821cb9105eb99aaaf4542009ff",
+      "scripts/qa/d1.ts": "ab840151f244b903bfb5919dbd95cb0ed2b7e4089a698b2fddc70c851280cbf7",
+      "plugins/buildmates/skills/buildmates-matching/SKILL.md": "0b579001ceacedc89af2a22f5c6ba095e5d07c7c502ebf415edb1db3c6737bdd",
+      "plugins/buildmates/skills/buildmates-onboarding/SKILL.md": "9833296ad66d79d1f59b0223555632254ecac297d4633570b6cb029b1b788827",
+      "plugins/buildmates/skills/buildmates-surfaces/SKILL.md": "489ce5ff5a8a4fe443a8b2bb45f85f9ffc4a60bec272d8b8be561f4e50e93879",
+      "plugins/buildmates/skills/buildmates-work-pulse/SKILL.md": "ad5514396e1cf375319ea6614870f4326576fd71c6a59ccd89c1e1ebce231443"
+    },
+    "syntheticLocalOnly": true,
+    "toolExposure": "local stdio MCP proxy, not native host installation"
+  },
+  "evidence": {
+    "source": "real local stdio MCP transport with synthetic Miniflare D1; no production network or account credentials",
+    "ndjsonFile": "tool-invocations.ndjson",
+    "parseErrors": 0,
+    "ndjsonMissing": false,
+    "inventoryAndHandshakeEventsExcluded": true,
+    "ignoredIncomingMethods": {
+      "initialize": 13,
+      "notifications/initialized": 13,
+      "tools/list": 13
+    },
+    "toolCallCount": 11,
+    "missingResponseCount": 0,
+    "bounds": {
+      "maxDepth": 6,
+      "maxArrayItems": 40,
+      "maxObjectKeys": 60,
+      "maxStringLength": 2000,
+      "truncationMarkers": true
+    },
+    "toolCalls": [
+      {
+        "requestSequence": 16,
+        "responseSequence": 17,
+        "requestRecordedAt": "2026-10-03T02:10:43.497Z",
+        "responseRecordedAt": "2026-10-03T02:10:43.883Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "introductions",
+          "workspaceScope": "global",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "introductions",
+                "data": {
+                  "matches": [
+                    {
+                      "proposalId": "qa_proposal_alice_bob",
+                      "candidateUserId": "qa_synthetic_bob_v1",
+                      "candidateName": "Bob Synthetic",
+                      "candidateSummary": "Designs dependable agent workflows and collaboration rituals.",
+                      "state": "matched",
+                      "expiresAt": 1794736800000,
+                      "myEvaluation": null,
+                      "theirEvaluation": null,
+                      "myResponse": null,
+                      "myAcceptanceMode": "manual",
+                      "canAutopilot": false
+                    },
+                    {
+                      "proposalId": "qa_proposal_alice_carol",
+                      "candidateUserId": "qa_synthetic_carol_v1",
+                      "candidateName": "Carol Synthetic",
+                      "candidateSummary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+                      "state": "pending",
+                      "expiresAt": 1795953600000,
+                      "myEvaluation": null,
+                      "theirEvaluation": null,
+                      "myResponse": null,
+                      "myAcceptanceMode": "manual",
+                      "canAutopilot": false
+                    }
+                  ],
+                  "invites": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "introductions",
+            "data": {
+              "matches": [
+                {
+                  "proposalId": "qa_proposal_alice_bob",
+                  "candidateUserId": "qa_synthetic_bob_v1",
+                  "candidateName": "Bob Synthetic",
+                  "candidateSummary": "Designs dependable agent workflows and collaboration rituals.",
+                  "state": "matched",
+                  "expiresAt": 1794736800000,
+                  "myEvaluation": null,
+                  "theirEvaluation": null,
+                  "myResponse": null,
+                  "myAcceptanceMode": "manual",
+                  "canAutopilot": false
+                },
+                {
+                  "proposalId": "qa_proposal_alice_carol",
+                  "candidateUserId": "qa_synthetic_carol_v1",
+                  "candidateName": "Carol Synthetic",
+                  "candidateSummary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+                  "state": "pending",
+                  "expiresAt": 1795953600000,
+                  "myEvaluation": null,
+                  "theirEvaluation": null,
+                  "myResponse": null,
+                  "myAcceptanceMode": "manual",
+                  "canAutopilot": false
+                }
+              ],
+              "invites": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 23,
+        "responseSequence": 24,
+        "requestRecordedAt": "2026-10-03T02:11:06.990Z",
+        "responseRecordedAt": "2026-10-03T02:11:07.156Z",
+        "tool": "get_connections",
+        "arguments": {
+          "limit": 50,
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "connections": [
+                  {
+                    "id": "qa_connection_alice_bob",
+                    "state": "active",
+                    "matchId": "qa_match_alice_bob",
+                    "sides": {
+                      "qa_synthetic_alice_v1": {
+                        "muted": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        },
+                        "renewedRelevanceEnabled": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        },
+                        "renewedRelevanceAcknowledgedAt": {
+                          "__truncated": true,
+                          "reason": "max_depth"
+                        }
+                      }
+                    }
+                  }
+                ],
+                "nextCursor": null
+              }
+            }
+          ],
+          "structuredContent": {
+            "connections": [
+              {
+                "id": "qa_connection_alice_bob",
+                "state": "active",
+                "matchId": "qa_match_alice_bob",
+                "sides": {
+                  "qa_synthetic_alice_v1": {
+                    "muted": false,
+                    "renewedRelevanceEnabled": true,
+                    "renewedRelevanceAcknowledgedAt": null
+                  }
+                }
+              }
+            ],
+            "nextCursor": null
+          }
+        }
+      },
+      {
+        "requestSequence": 30,
+        "responseSequence": 31,
+        "requestRecordedAt": "2026-10-03T02:11:27.801Z",
+        "responseRecordedAt": "2026-10-03T02:11:27.956Z",
+        "tool": "get_room_summaries",
+        "arguments": {
+          "limit": 50,
+          "workspaceScope": "global"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "rooms": [
+                  {
+                    "roomId": "qa_room_alice_bob",
+                    "connectionId": "qa_connection_alice_bob",
+                    "status": "active",
+                    "themeTopicId": "ai-agents",
+                    "conversation": {
+                      "messageCount": 1,
+                      "meaningful": false,
+                      "lastActivityAt": "2026-11-15T11:00:00.000Z"
+                    },
+                    "feedback": {
+                      "submittedByViewer": false,
+                      "positiveFromViewer": false
+                    },
+                    "upgradeState": "none"
+                  }
+                ],
+                "nextCursor": null
+              }
+            }
+          ],
+          "structuredContent": {
+            "rooms": [
+              {
+                "roomId": "qa_room_alice_bob",
+                "connectionId": "qa_connection_alice_bob",
+                "status": "active",
+                "themeTopicId": "ai-agents",
+                "conversation": {
+                  "messageCount": 1,
+                  "meaningful": false,
+                  "lastActivityAt": "2026-11-15T11:00:00.000Z"
+                },
+                "feedback": {
+                  "submittedByViewer": false,
+                  "positiveFromViewer": false
+                },
+                "upgradeState": "none"
+              }
+            ],
+            "nextCursor": null
+          }
+        }
+      },
+      {
+        "requestSequence": 37,
+        "responseSequence": 38,
+        "requestRecordedAt": "2026-10-03T02:12:06.112Z",
+        "responseRecordedAt": "2026-10-03T02:12:06.266Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "view": "connections",
+          "workspaceScope": "global",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "connections",
+                "data": [
+                  {
+                    "id": "qa_connection_alice_bob",
+                    "roomId": "qa_room_alice_bob",
+                    "otherUserId": "qa_synthetic_bob_v1",
+                    "otherName": "Bob Synthetic",
+                    "otherSummary": "Designs dependable agent workflows and collaboration rituals.",
+                    "connectionReason": "Both builders care about understandable agent handoffs.",
+                    "sharedContext": [
+                      "agent handoffs",
+                      "consent-aware collaboration"
+                    ],
+                    "state": "active",
+                    "muted": false,
+                    "createdAt": 1794736800000,
+                    "lastMessageAt": 1794740400000
+                  }
+                ],
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "connections",
+            "data": [
+              {
+                "id": "qa_connection_alice_bob",
+                "roomId": "qa_room_alice_bob",
+                "otherUserId": "qa_synthetic_bob_v1",
+                "otherName": "Bob Synthetic",
+                "otherSummary": "Designs dependable agent workflows and collaboration rituals.",
+                "connectionReason": "Both builders care about understandable agent handoffs.",
+                "sharedContext": [
+                  "agent handoffs",
+                  "consent-aware collaboration"
+                ],
+                "state": "active",
+                "muted": false,
+                "createdAt": 1794736800000,
+                "lastMessageAt": 1794740400000
+              }
+            ],
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 44,
+        "responseSequence": 45,
+        "requestRecordedAt": "2026-10-03T02:12:40.595Z",
+        "responseRecordedAt": "2026-10-03T02:12:41.510Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "workspaceScope": "global",
+          "subjectId": "qa_room_alice_bob",
+          "limit": 50,
+          "view": "room_enhancements"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "room_enhancements",
+                "subjectId": "qa_room_alice_bob",
+                "data": {
+                  "viewerUserId": "qa_synthetic_alice_v1",
+                  "feedback": {
+                    "submitted": false,
+                    "useful": null,
+                    "createdAt": null
+                  },
+                  "upgradeEligible": false,
+                  "upgrades": [],
+                  "modules": [],
+                  "entries": [],
+                  "meetings": [],
+                  "receipts": [],
+                  "myAvailability": [],
+                  "availabilityIntersections": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "room_enhancements",
+            "subjectId": "qa_room_alice_bob",
+            "data": {
+              "viewerUserId": "qa_synthetic_alice_v1",
+              "feedback": {
+                "submitted": false,
+                "useful": null,
+                "createdAt": null
+              },
+              "upgradeEligible": false,
+              "upgrades": [],
+              "modules": [],
+              "entries": [],
+              "meetings": [],
+              "receipts": [],
+              "myAvailability": [],
+              "availabilityIntersections": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 51,
+        "responseSequence": 52,
+        "requestRecordedAt": "2026-10-03T02:14:48.065Z",
+        "responseRecordedAt": "2026-10-03T02:14:50.233Z",
+        "tool": "record_manual_match_response",
+        "arguments": {
+          "confirmation": "confirmed",
+          "workspaceScope": "global",
+          "response": "interested",
+          "idempotencyKey": "codex_carol_interest_20261002_a1",
+          "proposalId": "qa_proposal_alice_carol",
+          "responseId": "qa_response_alice_carol_interest_20261002"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "responseId": "qa_response_alice_carol_interest_20261002",
+                  "state": "pending",
+                  "connectionId": null,
+                  "roomId": null
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "responseId": "qa_response_alice_carol_interest_20261002",
+              "state": "pending",
+              "connectionId": null,
+              "roomId": null
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 58,
+        "responseSequence": 59,
+        "requestRecordedAt": "2026-10-03T02:15:08.000Z",
+        "responseRecordedAt": "2026-10-03T02:15:08.370Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "workspaceScope": "global",
+          "limit": 50,
+          "view": "introductions"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "introductions",
+                "data": {
+                  "matches": [
+                    {
+                      "proposalId": "qa_proposal_alice_bob",
+                      "candidateUserId": "qa_synthetic_bob_v1",
+                      "candidateName": "Bob Synthetic",
+                      "candidateSummary": "Designs dependable agent workflows and collaboration rituals.",
+                      "state": "matched",
+                      "expiresAt": 1794736800000,
+                      "myEvaluation": null,
+                      "theirEvaluation": null,
+                      "myResponse": null,
+                      "myAcceptanceMode": "manual",
+                      "canAutopilot": false
+                    },
+                    {
+                      "proposalId": "qa_proposal_alice_carol",
+                      "candidateUserId": "qa_synthetic_carol_v1",
+                      "candidateName": "Carol Synthetic",
+                      "candidateSummary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+                      "state": "pending",
+                      "expiresAt": 1795953600000,
+                      "myEvaluation": null,
+                      "theirEvaluation": null,
+                      "myResponse": "interested",
+                      "myAcceptanceMode": "manual",
+                      "canAutopilot": false
+                    }
+                  ],
+                  "invites": []
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "introductions",
+            "data": {
+              "matches": [
+                {
+                  "proposalId": "qa_proposal_alice_bob",
+                  "candidateUserId": "qa_synthetic_bob_v1",
+                  "candidateName": "Bob Synthetic",
+                  "candidateSummary": "Designs dependable agent workflows and collaboration rituals.",
+                  "state": "matched",
+                  "expiresAt": 1794736800000,
+                  "myEvaluation": null,
+                  "theirEvaluation": null,
+                  "myResponse": null,
+                  "myAcceptanceMode": "manual",
+                  "canAutopilot": false
+                },
+                {
+                  "proposalId": "qa_proposal_alice_carol",
+                  "candidateUserId": "qa_synthetic_carol_v1",
+                  "candidateName": "Carol Synthetic",
+                  "candidateSummary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+                  "state": "pending",
+                  "expiresAt": 1795953600000,
+                  "myEvaluation": null,
+                  "theirEvaluation": null,
+                  "myResponse": "interested",
+                  "myAcceptanceMode": "manual",
+                  "canAutopilot": false
+                }
+              ],
+              "invites": []
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 65,
+        "responseSequence": 66,
+        "requestRecordedAt": "2026-10-03T02:20:08.314Z",
+        "responseRecordedAt": "2026-10-03T02:20:09.272Z",
+        "tool": "perform_buildmates_relationship_action",
+        "arguments": {
+          "workspaceScope": "global",
+          "action": {
+            "body": "Hi Bob, I would love to compare notes on privacy reviews.",
+            "clientMessageId": "qa_bob_privacy_message_20261002",
+            "confirmation": "confirmed",
+            "kind": "send_room_message",
+            "roomId": "qa_room_alice_bob"
+          },
+          "idempotencyKey": "codex_bob_privacy_send_20261002"
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "action": "send_room_message",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                    "createdAt": 1794744000000
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "action": "send_room_message",
+              "confirmationState": "persisted",
+              "details": {
+                "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                "createdAt": 1794744000000
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 72,
+        "responseSequence": 73,
+        "requestRecordedAt": "2026-10-03T02:20:42.376Z",
+        "responseRecordedAt": "2026-10-03T02:20:42.694Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "workspaceScope": "global",
+          "view": "room",
+          "subjectId": "qa_room_alice_bob",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "room",
+                "subjectId": "qa_room_alice_bob",
+                "data": {
+                  "room": {
+                    "id": "qa_room_alice_bob",
+                    "connectionId": "qa_connection_alice_bob",
+                    "status": "active",
+                    "otherUserId": "qa_synthetic_bob_v1",
+                    "otherName": "Bob Synthetic",
+                    "themeLabel": "AI agents"
+                  },
+                  "messages": [
+                    {
+                      "id": "qa_message_room_bob",
+                      "senderUserId": "qa_synthetic_bob_v1",
+                      "body": "I mapped the first handoff failure and kept the evidence narrow.",
+                      "createdAt": 1794740400000,
+                      "editedAt": null,
+                      "mine": false
+                    },
+                    {
+                      "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                      "senderUserId": "qa_synthetic_alice_v1",
+                      "body": "Hi Bob, I would love to compare notes on privacy reviews.",
+                      "createdAt": 1794744000000,
+                      "editedAt": null,
+                      "mine": true
+                    }
+                  ]
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "room",
+            "subjectId": "qa_room_alice_bob",
+            "data": {
+              "room": {
+                "id": "qa_room_alice_bob",
+                "connectionId": "qa_connection_alice_bob",
+                "status": "active",
+                "otherUserId": "qa_synthetic_bob_v1",
+                "otherName": "Bob Synthetic",
+                "themeLabel": "AI agents"
+              },
+              "messages": [
+                {
+                  "id": "qa_message_room_bob",
+                  "senderUserId": "qa_synthetic_bob_v1",
+                  "body": "I mapped the first handoff failure and kept the evidence narrow.",
+                  "createdAt": 1794740400000,
+                  "editedAt": null,
+                  "mine": false
+                },
+                {
+                  "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                  "senderUserId": "qa_synthetic_alice_v1",
+                  "body": "Hi Bob, I would love to compare notes on privacy reviews.",
+                  "createdAt": 1794744000000,
+                  "editedAt": null,
+                  "mine": true
+                }
+              ]
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      },
+      {
+        "requestSequence": 79,
+        "responseSequence": 80,
+        "requestRecordedAt": "2026-10-03T02:21:01.711Z",
+        "responseRecordedAt": "2026-10-03T02:21:02.159Z",
+        "tool": "perform_buildmates_relationship_action",
+        "arguments": {
+          "idempotencyKey": "codex_bob_privacy_edit_20261002",
+          "workspaceScope": "global",
+          "action": {
+            "roomId": "qa_room_alice_bob",
+            "messageId": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+            "kind": "edit_room_message",
+            "confirmation": "confirmed",
+            "body": "Hi Bob, I would love to compare notes on privacy-safe reviews."
+          }
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "replayed": false,
+                "result": {
+                  "action": "edit_room_message",
+                  "confirmationState": "persisted",
+                  "details": {
+                    "roomId": "qa_room_alice_bob",
+                    "messageId": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                    "edited": true
+                  }
+                }
+              }
+            }
+          ],
+          "structuredContent": {
+            "replayed": false,
+            "result": {
+              "action": "edit_room_message",
+              "confirmationState": "persisted",
+              "details": {
+                "roomId": "qa_room_alice_bob",
+                "messageId": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                "edited": true
+              }
+            }
+          }
+        }
+      },
+      {
+        "requestSequence": 86,
+        "responseSequence": 87,
+        "requestRecordedAt": "2026-10-03T02:21:18.811Z",
+        "responseRecordedAt": "2026-10-03T02:21:19.124Z",
+        "tool": "get_buildmates_workspace",
+        "arguments": {
+          "subjectId": "qa_room_alice_bob",
+          "view": "room",
+          "workspaceScope": "global",
+          "limit": 50
+        },
+        "result": {
+          "isError": false,
+          "content": [
+            {
+              "type": "text",
+              "data": {
+                "view": "room",
+                "subjectId": "qa_room_alice_bob",
+                "data": {
+                  "room": {
+                    "id": "qa_room_alice_bob",
+                    "connectionId": "qa_connection_alice_bob",
+                    "status": "active",
+                    "otherUserId": "qa_synthetic_bob_v1",
+                    "otherName": "Bob Synthetic",
+                    "themeLabel": "AI agents"
+                  },
+                  "messages": [
+                    {
+                      "id": "qa_message_room_bob",
+                      "senderUserId": "qa_synthetic_bob_v1",
+                      "body": "I mapped the first handoff failure and kept the evidence narrow.",
+                      "createdAt": 1794740400000,
+                      "editedAt": null,
+                      "mine": false
+                    },
+                    {
+                      "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                      "senderUserId": "qa_synthetic_alice_v1",
+                      "body": "Hi Bob, I would love to compare notes on privacy-safe reviews.",
+                      "createdAt": 1794744000000,
+                      "editedAt": 1794744000000,
+                      "mine": true
+                    }
+                  ]
+                },
+                "nextCursor": null,
+                "generatedAt": "2026-11-15T12:00:00.000Z"
+              }
+            }
+          ],
+          "structuredContent": {
+            "view": "room",
+            "subjectId": "qa_room_alice_bob",
+            "data": {
+              "room": {
+                "id": "qa_room_alice_bob",
+                "connectionId": "qa_connection_alice_bob",
+                "status": "active",
+                "otherUserId": "qa_synthetic_bob_v1",
+                "otherName": "Bob Synthetic",
+                "themeLabel": "AI agents"
+              },
+              "messages": [
+                {
+                  "id": "qa_message_room_bob",
+                  "senderUserId": "qa_synthetic_bob_v1",
+                  "body": "I mapped the first handoff failure and kept the evidence narrow.",
+                  "createdAt": 1794740400000,
+                  "editedAt": null,
+                  "mine": false
+                },
+                {
+                  "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+                  "senderUserId": "qa_synthetic_alice_v1",
+                  "body": "Hi Bob, I would love to compare notes on privacy-safe reviews.",
+                  "createdAt": 1794744000000,
+                  "editedAt": 1794744000000,
+                  "mine": true
+                }
+              ]
+            },
+            "nextCursor": null,
+            "generatedAt": "2026-11-15T12:00:00.000Z"
+          }
+        }
+      }
+    ]
+  },
+  "finalState": {
+    "available": true,
+    "syntheticOnly": true,
+    "scenario": "network",
+    "fixedNow": "2026-11-15T12:00:00.000Z",
+    "counts": {
+      "users": 3,
+      "profiles": 3,
+      "projects": 3,
+      "messages": 2,
+      "circles": 1,
+      "exports": 0
+    },
+    "profiles": [
+      {
+        "id": "qa_profile_alice",
+        "userId": "qa_synthetic_alice_v1",
+        "displayName": "Alice Synthetic",
+        "summary": "Builds agentic collaboration tools with careful consent boundaries.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Vancouver",
+        "locationMapOptIn": 0,
+        "timezone": "America/Vancouver",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_profile_bob",
+        "userId": "qa_synthetic_bob_v1",
+        "displayName": "Bob Synthetic",
+        "summary": "Designs dependable agent workflows and collaboration rituals.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Vancouver",
+        "locationMapOptIn": 0,
+        "timezone": "America/Vancouver",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_profile_carol",
+        "userId": "qa_synthetic_carol_v1",
+        "displayName": "Carol Synthetic",
+        "summary": "Studies evaluation, data quality, and useful feedback loops for AI products.",
+        "audience": "public",
+        "allowMatching": 1,
+        "acceptanceMode": "manual",
+        "indexable": 1,
+        "coarseLocation": "Toronto",
+        "locationMapOptIn": 0,
+        "timezone": "America/Toronto",
+        "publishedAt": 1794657600000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "profileFields": [],
+    "projects": [
+      {
+        "id": "qa_project_agent_workspace",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "slug": "agent-workspace",
+        "title": "Agent Workspace",
+        "summary": "Buildmates is a consent-aware space for finding useful collaborators through ChatGPT and Codex.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_bob_flows",
+        "ownerUserId": "qa_synthetic_bob_v1",
+        "slug": "reliable-flows",
+        "title": "Reliable Flows",
+        "summary": "A practical lab for human-readable agent handoffs.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "qa_project_carol_evals",
+        "ownerUserId": "qa_synthetic_carol_v1",
+        "slug": "evaluation-notes",
+        "title": "Evaluation Notes",
+        "summary": "Small experiments for evaluating agent behavior with useful evidence.",
+        "audience": "public",
+        "allowMatching": 1,
+        "status": "active",
+        "stage": "building",
+        "indexable": 1,
+        "publishedAt": 1794744000000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "projectCollaborators": [
+      {
+        "projectId": "qa_project_agent_workspace",
+        "userId": "qa_synthetic_bob_v1",
+        "role": "editor",
+        "approvedAt": 1794744000000
+      }
+    ],
+    "proposals": [
+      {
+        "id": "qa_proposal_alice_bob",
+        "matchPairId": "qa_pair_alice_bob",
+        "state": "matched",
+        "expiresAt": 1794736800000,
+        "terminalAt": 1794736800000
+      },
+      {
+        "id": "qa_proposal_alice_carol",
+        "matchPairId": "qa_pair_alice_carol",
+        "state": "pending",
+        "expiresAt": 1795953600000,
+        "terminalAt": null
+      }
+    ],
+    "circleProposals": [
+      {
+        "id": "qa_circle_proposal",
+        "circleId": "qa_circle_builders",
+        "proposerUserId": "qa_synthetic_bob_v1",
+        "kind": "request",
+        "status": "open",
+        "governanceVersion": 1,
+        "createdAt": 1794740400000
+      }
+    ],
+    "connections": [
+      {
+        "id": "qa_connection_alice_bob",
+        "matchPairId": "qa_pair_alice_bob",
+        "state": "active",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "rooms": [
+      {
+        "id": "qa_room_alice_bob",
+        "connectionId": "qa_connection_alice_bob",
+        "status": "active",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "circles": [
+      {
+        "id": "qa_circle_builders",
+        "name": "Synthetic Builders Circle",
+        "status": "active",
+        "governanceMode": "vote",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "circleMembers": [
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_alice_v1",
+        "role": "admin",
+        "status": "active",
+        "joinedAt": 1794657600000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_bob_v1",
+        "role": "member",
+        "status": "active",
+        "joinedAt": 1794657600000
+      },
+      {
+        "circleId": "qa_circle_builders",
+        "userId": "qa_synthetic_carol_v1",
+        "role": "member",
+        "status": "invited",
+        "joinedAt": null
+      }
+    ],
+    "messages": [
+      {
+        "id": "qa_message_room_bob",
+        "roomId": "qa_room_alice_bob",
+        "senderUserId": "qa_synthetic_bob_v1",
+        "clientMessageId": "qa-room-message-1",
+        "body": "I mapped the first handoff failure and kept the evidence narrow.",
+        "bodyLength": 64,
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": 1794740400000
+      },
+      {
+        "id": "94732a1f-80c0-4396-90b5-c6f8221e2da8",
+        "roomId": "qa_room_alice_bob",
+        "senderUserId": "qa_synthetic_alice_v1",
+        "clientMessageId": "qa_bob_privacy_message_20261002",
+        "body": "Hi Bob, I would love to compare notes on privacy-safe reviews.",
+        "bodyLength": 62,
+        "editedAt": 1794744000000,
+        "deletedAt": null,
+        "createdAt": 1794744000000
+      }
+    ],
+    "circleMessages": [
+      {
+        "id": "qa_circle_message",
+        "circleId": "qa_circle_builders",
+        "senderUserId": "qa_synthetic_bob_v1",
+        "clientMessageId": "qa-circle-message-1",
+        "body": "A small governed Circle keeps context useful.",
+        "bodyLength": 45,
+        "editedAt": null,
+        "deletedAt": null,
+        "createdAt": 1794742200000
+      }
+    ],
+    "setup": [
+      {
+        "userId": "qa_synthetic_alice_v1",
+        "completedStepsJson": "[\"identity_link\",\"storage_explanation\",\"source_selection\",\"context_collection\",\"signal_privacy_review\",\"basic_profile\",\"page_preview\",\"networking_pulse\",\"acceptance_mode\",\"automation\"]",
+        "updatedAt": 1794744000000
+      }
+    ],
+    "sources": [],
+    "automation": [],
+    "pulses": [],
+    "surfaces": [
+      {
+        "id": "qa_surface_circle",
+        "ownerUserId": "qa_synthetic_alice_v1",
+        "kind": "circle",
+        "subjectId": "qa_circle_builders",
+        "publishedRevisionId": null,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "revisions": [],
+    "idempotency": [
+      {
+        "id": "idempotency_240e5dda-14a8-4f25-a98c-676cdcbd6a53",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_relationship_action",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "idempotency_62dcf7bf-fdf7-48d6-a619-768148f5d142",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "record_manual_match_response",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      },
+      {
+        "id": "idempotency_95cbabd1-fafe-4117-9e17-4996ad1a90c3",
+        "actorUserId": "qa_synthetic_alice_v1",
+        "operation": "perform_buildmates_relationship_action",
+        "status": "complete",
+        "expiresAt": 1794744120000,
+        "updatedAt": 1794744000000
+      }
+    ],
+    "exports": [],
+    "uncertainSaveProjectCommitted": false
+  }
+}
