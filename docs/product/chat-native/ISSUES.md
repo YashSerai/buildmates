@@ -6,7 +6,7 @@
 - Deploy the reviewed web/MCP candidate and its additive migrations, then verify version parity, authenticated tools, protected data, asset access, and recovery on the deployed runtime.
 - Keep background tasks unavailable until a real host adapter verifies unattended execution. Foreground conversational use and private signup do not depend on that optional capability.
 - Establish operator coverage for pending deletion cleanup and uncertain writes before accepting external accounts.
-- Complete reviewer credentials and public review submission after candidate and live-host QA. No review acceptance or public availability is assumed.
-- Run the committed CI gate on its declared Node 22 runtime before release. The expanded complete local verification gate and affected repair checks use supported Node 24.19.0; remote CI remains unverified.
+- Complete verified publisher identity, dedicated reviewer credentials, current walkthrough and dashboard scans after candidate and live-host QA. Use [Directory release](DIRECTORY.md) and [Review cases](DIRECTORY_REVIEW_CASES.md). No review acceptance or public availability is assumed.
+- Complete the full remote browser gate on the October 3 repairs before release. Six targeted Chromium desktop/phone checks passed locally. The earlier `0245791` gate passed all 394 deterministic checks and builds but had four browser failures.
 
 Optional identity work: confirm eligibility for Sign in with ChatGPT before offering it. The candidate retains the supported provider authentication path.

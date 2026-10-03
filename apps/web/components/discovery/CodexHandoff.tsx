@@ -10,7 +10,20 @@ type CodexHandoffProps = {
   pasteTarget?: string;
 };
 
-const subscribeToHydration = () => () => {};
+let hydrationComplete = false;
+const hydrationListeners = new Set<() => void>();
+
+function subscribeToHydration(listener: () => void) {
+  hydrationListeners.add(listener);
+  if (!hydrationComplete) {
+    hydrationComplete = true;
+    hydrationListeners.forEach((notify) => notify());
+  }
+  return () => hydrationListeners.delete(listener);
+}
+
+const getHydrationSnapshot = () => hydrationComplete;
+const getServerHydrationSnapshot = () => false;
 
 export function CodexHandoff({
   className,
@@ -19,7 +32,11 @@ export function CodexHandoff({
 }: CodexHandoffProps) {
   const [status, setStatus] = useState("");
   const [open, setOpen] = useState(false);
-  const ready = useSyncExternalStore(subscribeToHydration, () => true, () => false);
+  const ready = useSyncExternalStore(
+    subscribeToHydration,
+    getHydrationSnapshot,
+    getServerHydrationSnapshot,
+  );
   const triggerRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 

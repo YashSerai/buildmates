@@ -26,12 +26,13 @@ export default async function Home() {
             <span>through what you build.</span>
           </h1>
           <p>
-            Codex turns the work you&rsquo;re already doing into a living
-            profile, then finds builders whose work or ambition gives you a
+            Use ChatGPT or Codex to turn the work you choose to share into a
+            profile, then find builders whose work or ambition gives you a
             reason to connect.
           </p>
           <div className={styles.heroActions}>
             <CodexHandoff className={styles.codexHandoff} />
+            <Link className={styles.secondary} href="/install">ChatGPT setup guide</Link>
           </div>
         </div>
         <div
@@ -79,11 +80,11 @@ export default async function Home() {
           </span>
         </div>
         <div>
-          <strong>Your profile keeps up</strong>
+          <strong>Keep your profile current</strong>
           <span>
-            Once you approve the sources, Codex brings in your projects,
-            refreshes your profile, and looks for relevant builders as your work
-            changes.
+            Ask ChatGPT or Codex to refresh your approved work context when
+            your projects change. Review what belongs on your profile and what
+            you want to use for matching.
           </span>
         </div>
       </section>
@@ -91,7 +92,7 @@ export default async function Home() {
         <div className={styles.spacesIntro}>
           <h2>Generative UI for every connection.</h2>
           <p>
-            Start with a conversation. When you need more, tell Codex what the
+            Start with a conversation. When you need more, tell ChatGPT or Codex what the
             space should become. It can shape the room around why you met,
             creating a custom interface with a timer, checklist, research board,
             decision log, or another useful tool.
@@ -103,8 +104,8 @@ export default async function Home() {
             <strong>A custom room for two builders</strong>
             <p>
               Builders discussing RAG might get a shared research board.
-              Cofounders might add a decision log or launch checklist. Codex
-              designs the space and publishes it only after approval.
+              Cofounders might add a decision log or launch checklist. Ask
+              ChatGPT or Codex to design the space, then review it before it goes live.
             </p>
             <small>Timer · Checklist · Research board · Decision log</small>
           </article>
@@ -114,8 +115,8 @@ export default async function Home() {
             <p>
               A Circle is a group conversation with its own custom interface and
               tools. A shipping group might add a sprint timer and tracker. A
-              local community might create an event board. Codex designs the
-              shared space, and its members decide what goes live.
+              local community might create an event board. Ask ChatGPT or Codex
+              to design the shared space. Its members decide what goes live.
             </p>
             <small>Sprint timer · Tracker · Event board · Shared tools</small>
           </article>

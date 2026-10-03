@@ -48,6 +48,7 @@ function legacyMcpConfig(portable) {
 
 function compatibilityManifest(manifest) {
   const extension = manifest.extensions?.["com.openai"] ?? {};
+  const { interface: presentation, ...openAiExtensions } = extension;
   return {
     name: manifest.name,
     version: manifest.version,
@@ -59,7 +60,8 @@ function compatibilityManifest(manifest) {
     keywords: manifest.keywords,
     skills: "./skills/",
     mcpServers: "./.mcp.json",
-    interface: extension.interface ?? {},
+    interface: presentation ?? {},
+    ...(Object.keys(openAiExtensions).length > 0 ? { extensions: { "com.openai": openAiExtensions } } : {}),
   };
 }
 
@@ -117,6 +119,13 @@ async function validatePackage(root, { requirePortable = true } = {}) {
     await stat(assetPath).catch(() => failure(`${field} asset does not exist: ${assetPath}`));
   }
   const skills = await validateSkills(root);
+  const onboardingSkill = manifest.extensions?.["com.openai"]?.onboardingSkill;
+  assert(typeof onboardingSkill === "string" && onboardingSkill.startsWith("./skills/"), "OpenAI onboardingSkill must reference a packaged skill");
+  const onboardingSkillPath = resolve(root, onboardingSkill);
+  assert(onboardingSkillPath.startsWith(`${resolve(root)}${sep}`), "OpenAI onboardingSkill must stay inside the package");
+  assert(await stat(onboardingSkillPath).then(() => true, () => false), "OpenAI onboardingSkill file does not exist");
+  const releaseNotes = manifest.extensions?.["com.openai"]?.publication?.release_notes;
+  assert(typeof releaseNotes === "string" && releaseNotes.trim().length > 0, "OpenAI publication.release_notes is required for this package");
   if (requirePortable) {
     const overlay = join(root, ".codex-plugin", "plugin.json");
     const legacyMcp = join(root, ".mcp.json");
@@ -126,6 +135,8 @@ async function validatePackage(root, { requirePortable = true } = {}) {
     const legacyJson = await readJson(legacyMcp);
     assert(!("apps" in overlayJson), "Codex compatibility manifest must not register an app reference");
     assert(overlayJson.mcpServers === "./.mcp.json", "Codex compatibility manifest must point to the direct MCP mapping");
+    assert(JSON.stringify(overlayJson.extensions?.["com.openai"] ?? {}) === JSON.stringify(compatibilityManifest(manifest).extensions?.["com.openai"] ?? {}), "Codex compatibility manifest must preserve OpenAI extensions without duplicating interface");
+    assert(!("interface" in (overlayJson.extensions?.["com.openai"] ?? {})), "Codex compatibility manifest must not duplicate interface inside OpenAI extensions");
     assert(JSON.stringify(legacyJson) === JSON.stringify(legacyMcpConfig(portableMcp)), `${legacyMcp} is out of sync with mcp.json`);
   }
   return { manifest, portableMcp, skills };
@@ -172,6 +183,18 @@ async function listFiles(root, current = root) {
   return files.sort();
 }
 
+async function collectPackageFiles(root) {
+  return (await listFiles(root)).filter((file) =>
+    file === "plugin.json"
+    || file === "mcp.json"
+    || file === "README.md"
+    || file === ".mcp.json"
+    || file === ".codex-plugin/plugin.json"
+    || file.startsWith("skills/")
+    || file.startsWith("assets/"),
+  );
+}
+
 function crc32(buffer) {
   let crc = 0xffffffff;
   for (const byte of buffer) {
@@ -186,15 +209,7 @@ function dosDate() {
 }
 
 async function writeDeterministicZip(root, destination) {
-  const files = (await listFiles(root)).filter((file) =>
-    file === "plugin.json"
-    || file === "mcp.json"
-    || file === "README.md"
-    || file === ".mcp.json"
-    || file === ".codex-plugin/plugin.json"
-    || file.startsWith("skills/")
-    || file.startsWith("assets/"),
-  );
+  const files = await collectPackageFiles(root);
   assert(files.length > 0, "release package has no allowlisted files");
   const localParts = [];
   const centralParts = [];
@@ -271,14 +286,23 @@ async function main() {
   }
   const canonical = await validatePackage(scriptRoot);
   if (mode === "--check") {
-    const beta = await validatePackage(betaRoot);
-    const canonicalSkills = await Promise.all(canonical.skills.map(async (skill) => [skill, await readFile(join(scriptRoot, "skills", skill, "SKILL.md"), "utf8")]));
-    for (const [skill, source] of canonicalSkills) {
-      const candidate = await readFile(join(betaRoot, "skills", skill, "SKILL.md"), "utf8");
-      assert(candidate === source, `beta skill is out of sync: ${skill}`);
+    await validatePackage(betaRoot);
+    const canonicalFiles = await collectPackageFiles(scriptRoot);
+    const betaFiles = await collectPackageFiles(betaRoot);
+    const canonicalSet = new Set(canonicalFiles);
+    const betaSet = new Set(betaFiles);
+    const missingFromBeta = canonicalFiles.filter((file) => !betaSet.has(file));
+    const extraInBeta = betaFiles.filter((file) => !canonicalSet.has(file));
+    assert(
+      missingFromBeta.length === 0 && extraInBeta.length === 0,
+      `canonical/beta package file set differs; missing from beta: ${missingFromBeta.join(", ") || "none"}; extra in beta: ${extraInBeta.join(", ") || "none"}`,
+    );
+    for (const file of canonicalFiles) {
+      const canonicalBytes = await readFile(join(scriptRoot, ...file.split("/")));
+      const betaBytes = await readFile(join(betaRoot, ...file.split("/")));
+      assert(betaBytes.equals(canonicalBytes), `beta package file is out of sync: ${file}`);
     }
-    assert(beta.manifest.version === canonical.manifest.version, "beta manifest version is out of sync");
-    console.log(`Buildmates plugin package is valid (${canonical.skills.length} skills; canonical and beta agree).`);
+    console.log(`Buildmates plugin package is valid (${canonicalFiles.length} package files; canonical and beta agree).`);
     return;
   }
   const output = join(repositoryRoot, "dist", `buildmates-plugin-${canonical.manifest.version}.zip`);

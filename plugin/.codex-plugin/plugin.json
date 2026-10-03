@@ -39,5 +39,13 @@
     "brandColor": "#17594A",
     "composerIcon": "./assets/buildmates-mark.svg",
     "logo": "./assets/buildmates-mark.svg"
+  },
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/buildmates-onboarding/SKILL.md",
+      "publication": {
+        "release_notes": "Version 0.4.0 packages the direct Buildmates MCP connection and four skills for onboarding, matching, shared surfaces, and Work Pulse. It supports reviewed profiles, consent-based introductions, Connections, rooms, and Circles."
+      }
+    }
   }
 }

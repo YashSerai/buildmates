@@ -1,6 +1,6 @@
 # Buildmates in ChatGPT and Codex
 
-Status: expanded local QA and repairs complete. Real-host, fresh-context and deployment gates remain open. Production is unchanged.
+Status: expanded local QA complete; candidate pushed and website version 104 saved. Linux backend verification and six targeted browser repair checks passed. The complete repaired CI gate, deployment and real-host acceptance remain open.
 
 Restart authority: [Current checkpoint](CURRENT.md).
 
@@ -10,6 +10,7 @@ Contract: one canonical Buildmates account and authoritative backend, with conve
 - [Open issues](ISSUES.md): unresolved release work only.
 - [Release acceptance plan](QA_PLAN.md): complete journeys and the evidence required at each boundary.
 - [Operations](OPERATIONS.md): staged deletion recovery and uncertain idempotency handling.
+- [Directory release](DIRECTORY.md): current submission route, discovery research and cost boundaries.
 - `qa/`: bounded verification evidence with source, runtime, exclusions, and invalidators.
 - [Candidate QA](qa/2026-10-02-candidate.md): consolidated local checks and remaining host boundaries.
 - [Expanded QA](qa/2026-10-02-expanded-qa.md): additional edge checks, graded model findings, repairs and fresh browser evidence.

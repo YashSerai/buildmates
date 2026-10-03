@@ -48,7 +48,7 @@ test("profile design workspace stays aligned and renders real project content", 
     title: "Field Notes profile",
     document: {
       html: `<main class="profile-page"><header><p>{{profile.summary}}</p><h1>{{profile.displayName}}</h1></header><section><h2>Selected work</h2><template data-buildmates-repeat="profile.projects"><article><h3>{{item.title}}</h3><p>{{item.summary}}</p></article></template></section></main>`,
-      css: ".profile-page{max-width:72rem;margin:auto;padding:clamp(1.25rem,5vw,5rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.profile-page h1{font-size:clamp(3rem,9vw,8rem);line-height:.9}.profile-page section{display:grid;gap:1rem}.profile-page article{border-top:1px solid #4d5148;padding:1.5rem 0}@media(max-width:720px){.profile-page{padding:1rem}.profile-page h1{font-size:clamp(2.6rem,16vw,5rem)}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms;animation-iteration-count:1;scroll-behavior:auto}}",
+      css: ".profile-page{max-width:72rem;margin:auto;padding:clamp(1.25rem,5vw,5rem);font-family:system-ui,sans-serif;color:#171914;background:#f7f4ec}.profile-page h1{font-size:clamp(3rem,9vw,8rem);line-height:.9}.profile-page section{display:grid;gap:1rem}.profile-page article{border-top:1px solid #4d5148;padding:1.5rem 0}@media(max-width:720px){.profile-page{padding:1rem}.profile-page h1{font-size:clamp(2.2rem,12vw,4rem);overflow-wrap:anywhere}}@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms;animation-iteration-count:1;scroll-behavior:auto}}",
     },
     bindingManifest: {
       content: [

@@ -30,7 +30,7 @@ node plugin/scripts/package-plugin.mjs --package
 
 ## Review boundary
 
-The local checks prove package integrity only. They do not prove that the remote MCP endpoint is deployed, that OAuth works for a real account, that a host can install the package, or that a public directory lists it. No screenshot metadata is supplied in this package, so an empty screenshot set cannot be treated as design QA or submission readiness. Before submission, a reviewer should inspect the ZIP, install it in disposable ChatGPT and Codex test environments, exercise account linking, the private/manual path, and the reviewed publication path, verify that unsupported background execution stays manual, and check the live privacy, support, and terms URLs. These scripts do not submit, publish, deploy, or install a live account.
+The local checks prove package integrity only. They do not prove that the remote MCP endpoint is deployed, OAuth works for a real account, either host can install the package, or the directory lists it. Current OpenAI MCP review also requires five positive and three negative cases, a reviewer-accessible walkthrough, and a dedicated test account when sign-in is required. Case drafts and their evidence boundary are in `docs/product/chat-native/DIRECTORY_REVIEW_CASES.md`; the reviewer account, walkthrough, actual account runs, dashboard checks, and policy attestations remain to be completed. These scripts do not submit, publish, deploy, or install a live account.
 
 ## Authentication and first use
 
