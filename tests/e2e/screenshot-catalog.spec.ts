@@ -249,7 +249,7 @@ async function capture(page: Page, testInfo: TestInfo, input: CaptureInput) {
     consoleErrors.length ? `Console errors: ${consoleErrors.slice(0, 2).join(" | ")}` : "",
   ].filter(Boolean).join(" ");
   await appendFile(manifestPath, [
-    "2026-07-18", input.key, input.route, input.state, input.access, input.fixtureId ?? "", input.viewerId ?? "", "",
+    new Date().toISOString().slice(0, 10), input.key, input.route, input.state, input.access, input.fixtureId ?? "", input.viewerId ?? "", "",
     viewport, relative, String(consoleErrors.length), String(pageErrors.length), String(failedRequests.length), String(metrics.overflow),
     "true", String(keyboardChecked), String(touchTargetsChecked), status, notes,
   ].map(csv).join(",") + "\n");
