@@ -21,7 +21,8 @@ test("server-renders the Buildmates public landing page", async () => {
   assert.match(html, /<title>Buildmates<\/title>/i);
   assert.match(html, /Find your people/);
   assert.match(html, /Set up with Codex/);
-  assert.match(html, /Codex turns the work you.*already doing into a living/);
+  assert.match(html, /Use ChatGPT or Codex to turn the work you choose to share/);
+  assert.match(html, /href="\/install"[^>]*>ChatGPT setup guide<\/a>/);
   assert.doesNotMatch(html, /built for people/i);
   assert.match(html, /Mutual relevance over popularity/);
   assert.match(html, /Generative UI for every connection/);
