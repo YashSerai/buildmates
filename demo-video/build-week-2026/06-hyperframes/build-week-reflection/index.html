@@ -1,0 +1,501 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Buildmates Build Week reflection</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #122419; }
+      body { color: #f3eee3; font-family: Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      .clip { position: absolute; inset: 0; overflow: hidden; }
+      .world {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 13% 18%, rgba(167, 179, 147, .14), transparent 28%),
+          radial-gradient(circle at 82% 72%, rgba(233, 99, 22, .12), transparent 30%),
+          linear-gradient(135deg, #122419 0%, #18271d 46%, #0e1a12 100%);
+      }
+      .world::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: .11;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.76' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E");
+        mix-blend-mode: soft-light;
+      }
+      .scene { position: absolute; inset: 0; opacity: 0; }
+      .small-label {
+        color: #b9c7aa;
+        font: 800 20px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+      .headline {
+        margin: 0;
+        color: #f3eee3;
+        font: 850 80px/.92 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        letter-spacing: -.055em;
+      }
+      .copy {
+        color: rgba(243,238,227,.76);
+        font: 580 26px/1.28 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+      }
+      .line {
+        position: absolute;
+        height: 4px;
+        background: #e96316;
+        transform: scaleX(0);
+        transform-origin: left center;
+      }
+      .mark {
+        width: 180px;
+        height: 140px;
+        overflow: visible;
+        flex: 0 0 auto;
+      }
+
+      /* Scene 1 */
+      #build-week-lockup { position: absolute; left: 130px; top: 160px; width: 850px; }
+      .title-row { display: flex; align-items: center; gap: 44px; }
+      .title-stack { display: grid; gap: 24px; }
+      .build-week-title { width: 690px; }
+      .badge-row { display: flex; gap: 18px; margin-top: 38px; }
+      .badge {
+        padding: 16px 22px;
+        border: 2px solid rgba(243,238,227,.25);
+        color: #f3eee3;
+        background: rgba(243,238,227,.06);
+        font: 750 18px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+      }
+      .codex-orb {
+        position: absolute;
+        right: 178px;
+        top: 190px;
+        width: 420px;
+        height: 420px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        border: 3px solid rgba(243,238,227,.22);
+      }
+      .codex-orb img { width: 250px; height: 250px; border-radius: 50%; object-fit: cover; transform: scale(1.05); }
+      .path-ring { position: absolute; border: 2px solid rgba(167,179,147,.2); border-radius: 50%; }
+      .path-ring.a { right: 74px; top: 86px; width: 628px; height: 628px; }
+      .path-ring.b { right: -20px; top: -8px; width: 816px; height: 816px; border-color: rgba(233,99,22,.13); }
+
+      /* Scene 2 */
+      .proof-wrap { position: absolute; inset: 104px 106px 94px; }
+      #proof-grid {
+        position: absolute;
+        inset: 214px 0 0;
+        display: grid;
+        grid-template-columns: 1.05fr .95fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 24px;
+      }
+      #scene-proof .headline { font-size: 72px; }
+      .frame-card {
+        position: relative;
+        overflow: hidden;
+        border: 2px solid rgba(243,238,227,.2);
+        background: #f3eee3;
+        box-shadow: 0 30px 90px rgba(0,0,0,.22);
+      }
+      .frame-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .frame-card.tall { grid-row: span 2; }
+      .frame-label {
+        position: absolute;
+        left: 22px;
+        top: 20px;
+        padding: 10px 13px;
+        background: #122419;
+        color: #f3eee3;
+        font: 800 15px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+
+      /* Scene 3 */
+      #auth-flow { position: absolute; left: 110px; right: 110px; top: 168px; height: 710px; }
+      .auth-title { width: 690px; }
+      .auth-row {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 60px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 26px;
+      }
+      .auth-node {
+        min-height: 280px;
+        padding: 30px;
+        border: 2px solid rgba(243,238,227,.24);
+        background: rgba(243,238,227,.065);
+        color: #f3eee3;
+      }
+      .auth-node.problem { background: rgba(233,99,22,.15); border-color: rgba(233,99,22,.54); }
+      .auth-number { color: #e96316; font: 800 28px/1 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .auth-node h3 { margin: 28px 0 14px; font: 850 32px/1 Inter, ui-sans-serif, system-ui; letter-spacing: -.035em; }
+      .auth-node p { margin: 0; color: rgba(243,238,227,.76); font: 600 21px/1.28 Inter, ui-sans-serif, system-ui; }
+      .auth-connector {
+        position: absolute;
+        bottom: 182px;
+        left: 360px;
+        right: 360px;
+        height: 4px;
+        background: rgba(167,179,147,.4);
+        transform-origin: left center;
+      }
+
+      /* Scene 4 */
+      #reset-stack { position: absolute; left: 170px; top: 160px; right: 170px; bottom: 120px; }
+      .reset-cards { position: absolute; left: 0; top: 210px; display: flex; gap: 28px; }
+      .reset-card {
+        width: 300px;
+        height: 360px;
+        padding: 34px 30px;
+        border: 3px solid #122419;
+        background: #f3eee3;
+        color: #122419;
+        box-shadow: 18px 22px 0 rgba(0,0,0,.25);
+      }
+      .reset-card:nth-child(2) { background: #a7b393; }
+      .reset-card:nth-child(3) { background: #e96316; color: #122419; }
+      .reset-card:nth-child(4) { background: #dfe4d6; }
+      .reset-num { font: 900 106px/.8 Inter, ui-sans-serif, system-ui; letter-spacing: -.07em; }
+      .reset-label { margin-top: 54px; font: 850 24px/1.1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; letter-spacing: .05em; }
+      .rip {
+        position: absolute;
+        right: 0;
+        bottom: 70px;
+        width: 560px;
+        color: #f3eee3;
+        font: 850 66px/.9 Inter, ui-sans-serif, system-ui;
+        letter-spacing: -.055em;
+      }
+
+      /* Scene 5 */
+      #rough-stack { position: absolute; inset: 110px 110px 110px; }
+      .rough-title { position: absolute; left: 0; top: 0; width: 660px; }
+      .rough-cards { position: absolute; right: 0; top: 46px; width: 980px; height: 780px; }
+      .rough-card {
+        position: absolute;
+        width: 438px;
+        min-height: 178px;
+        padding: 28px;
+        border: 3px solid #e96316;
+        background: #f3eee3;
+        color: #122419;
+        box-shadow: 12px 14px 0 rgba(233,99,22,.68);
+      }
+      .rough-card.dark { background: #101a13; color: #f3eee3; border-color: rgba(243,238,227,.34); box-shadow: 12px 14px 0 rgba(0,0,0,.22); }
+      .rough-card h3 { margin: 0; font: 850 30px/1 Inter, ui-sans-serif, system-ui; letter-spacing: -.035em; }
+      .rough-card p { margin: 16px 0 0; font: 650 19px/1.25 Inter, ui-sans-serif, system-ui; opacity: .74; }
+      .r1 { left: 0; top: 30px; transform: rotate(-3deg); }
+      .r2 { right: 0; top: 122px; transform: rotate(2deg); }
+      .r3 { left: 80px; top: 330px; transform: rotate(2deg); }
+      .r4 { right: 56px; top: 500px; transform: rotate(-2deg); }
+      .test-timer {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        padding: 18px 22px;
+        background: #122419;
+        border: 2px solid rgba(243,238,227,.26);
+        color: #f3eee3;
+        font: 800 26px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+      }
+
+      /* Scene 6 */
+      #repair-system { position: absolute; inset: 115px 125px; }
+      .repair-row {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 80px;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 24px;
+      }
+      .repair-card {
+        min-height: 310px;
+        padding: 34px;
+        background: rgba(243,238,227,.08);
+        border: 2px solid rgba(167,179,147,.38);
+      }
+      .check {
+        width: 74px;
+        height: 74px;
+        display: grid;
+        place-items: center;
+        margin-bottom: 34px;
+        background: #a7b393;
+        color: #122419;
+        font: 900 44px/1 Inter, ui-sans-serif, system-ui;
+      }
+      .repair-card h3 { margin: 0; font: 850 31px/1.02 Inter, ui-sans-serif, system-ui; letter-spacing: -.035em; }
+      .repair-card p { margin: 18px 0 0; color: rgba(243,238,227,.74); font: 600 20px/1.3 Inter, ui-sans-serif, system-ui; }
+
+      /* Scene 7 */
+      #final-mosaic { position: absolute; inset: 74px 74px 92px; }
+      .mosaic-grid {
+        position: absolute;
+        left: 0;
+        top: 92px;
+        width: 1190px;
+        height: 816px;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 18px;
+      }
+      .mosaic-card {
+        position: relative;
+        overflow: hidden;
+        background: #f3eee3;
+        border: 2px solid rgba(243,238,227,.2);
+      }
+      .mosaic-card.big { grid-row: span 2; }
+      .mosaic-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .mosaic-label {
+        position: absolute;
+        left: 16px;
+        bottom: 16px;
+        padding: 10px 12px;
+        background: #122419;
+        color: #f3eee3;
+        font: 800 14px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+        letter-spacing: .06em;
+        text-transform: uppercase;
+      }
+      .result-panel {
+        position: absolute;
+        right: 0;
+        top: 92px;
+        width: 570px;
+        height: 816px;
+        padding: 56px;
+        background: #f3eee3;
+        color: #122419;
+      }
+      .result-panel h2 { margin: 0; font: 880 70px/.9 Inter, ui-sans-serif, system-ui; letter-spacing: -.06em; }
+      .result-panel p { margin: 34px 0 0; font: 620 28px/1.25 Inter, ui-sans-serif, system-ui; color: rgba(18,36,25,.75); }
+      .result-mark { position: absolute; left: 56px; bottom: 54px; display: flex; align-items: center; gap: 28px; }
+      .result-mark .mark { width: 126px; height: 98px; }
+      .result-name { font: 900 54px/.9 Inter, ui-sans-serif, system-ui; letter-spacing: -.06em; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="build-week-reflection" data-start="0" data-duration="55" data-width="1920" data-height="1080">
+      <section id="reflection-main-clip" class="clip" data-start="0" data-duration="55" data-track-index="1">
+        <div class="world">
+          <section id="scene-build" class="scene">
+            <span class="path-ring a"></span>
+            <span class="path-ring b"></span>
+            <div id="build-week-lockup">
+              <div class="title-row">
+                <svg class="mark" viewBox="0 0 72 56" aria-label="Buildmates">
+                  <path d="M13 43 36 11" fill="none" stroke="#f3eee3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M36 11 59 43" fill="none" stroke="#e96316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M13 43h18v-4a9 9 0 0 1 9-9" fill="none" stroke="#f3eee3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M40 30a9 9 0 0 1 9 9v4h10" fill="none" stroke="#e96316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="m32 23 4-5 4 5-4 5z" fill="#a7b393"/>
+                  <circle cx="36" cy="11" r="8" fill="#f3eee3"/>
+                  <circle cx="13" cy="43" r="8" fill="#a7b393"/>
+                  <circle cx="59" cy="43" r="8" fill="#e96316"/>
+                </svg>
+                <div class="title-stack">
+                  <div class="small-label">OpenAI Build Week</div>
+                  <h1 class="headline build-week-title">Built with Codex. Built for Codex.</h1>
+                </div>
+              </div>
+              <div class="badge-row">
+                <span class="badge">GPT-5.6</span>
+                <span class="badge">Web app</span>
+                <span class="badge">MCP server</span>
+                <span class="badge">ChatGPT Sites</span>
+              </div>
+            </div>
+            <div class="codex-orb"><img src="assets/codex-app.png" alt="Codex" /></div>
+          </section>
+
+          <section id="scene-proof" class="scene">
+            <div class="proof-wrap">
+              <div class="small-label">Codex did the work with me</div>
+              <h2 class="headline">Plan, build, test, repeat.</h2>
+              <div id="proof-grid">
+                <div class="frame-card tall"><img src="assets/codex-planning.png" alt="Codex profile planning screenshot" /><span class="frame-label">Planning</span></div>
+                <div class="frame-card"><img src="assets/home.png" alt="Buildmates homepage screenshot" /><span class="frame-label">Web app</span></div>
+                <div class="frame-card"><img src="assets/codex-setup.png" alt="Codex setup screenshot" /><span class="frame-label">Plugin + MCP</span></div>
+                <div class="frame-card"><img src="assets/codex-automation.png" alt="Work Pulse automation screenshot" /><span class="frame-label">Automation</span></div>
+                <div class="frame-card"><img src="assets/profile.png" alt="Generated profile screenshot" /><span class="frame-label">Profile UI</span></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="scene-auth" class="scene">
+            <div id="auth-flow">
+              <div class="small-label">Biggest platform bottleneck</div>
+              <h2 class="headline auth-title">Identity needed a bridge.</h2>
+              <p class="copy" style="width: 720px; margin-top: 28px;">ChatGPT Sites did not expose the secure user identity token Buildmates needed, so launch uses GitHub OAuth plus Codex MCP linking.</p>
+              <span class="auth-connector"></span>
+              <div class="auth-row">
+                <div class="auth-node problem"><span class="auth-number">01</span><h3>Sites identity gap</h3><p>No production-ready Sign in with ChatGPT token for this app boundary.</p></div>
+                <div class="auth-node"><span class="auth-number">02</span><h3>GitHub OAuth</h3><p>The website signs in with a verified external account.</p></div>
+                <div class="auth-node"><span class="auth-number">03</span><h3>One-time link</h3><p>A short code connects the website account to Codex.</p></div>
+                <div class="auth-node"><span class="auth-number">04</span><h3>Codex MCP</h3><p>Codex uses Buildmates tools from its own authenticated channel.</p></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="scene-resets" class="scene">
+            <div id="reset-stack">
+              <div class="small-label">Build Week reality</div>
+              <h2 class="headline" style="width: 680px;">Four usage resets later.</h2>
+              <div class="reset-cards">
+                <div class="reset-card"><div class="reset-num">1</div><div class="reset-label">Product plan</div></div>
+                <div class="reset-card"><div class="reset-num">2</div><div class="reset-label">Web + MCP</div></div>
+                <div class="reset-card"><div class="reset-num">3</div><div class="reset-label">QA repair</div></div>
+                <div class="reset-card"><div class="reset-num">4</div><div class="reset-label">Demo polish</div></div>
+              </div>
+              <div class="rip">RIP my banked resets</div>
+            </div>
+          </section>
+
+          <section id="scene-rough" class="scene">
+            <div id="rough-stack">
+              <div class="rough-title">
+                <div class="small-label">What broke</div>
+                <h2 class="headline">The backend was steady. The UI needed discipline.</h2>
+              </div>
+              <div class="rough-cards">
+                <div class="rough-card r1"><h3>Copy leak</h3><p>Internal edit instructions showed up as product text.</p></div>
+                <div class="rough-card dark r2"><h3>Bad contrast</h3><p>White text on white surfaces made previews unreadable.</p></div>
+                <div class="rough-card r3"><h3>Layout drift</h3><p>Overlaps, clipped headers, and dead space kept appearing.</p></div>
+                <div class="rough-card dark r4"><h3>Over-testing</h3><p>Small edits triggered too much validation before a meaningful chunk was ready.</p></div>
+                <div class="test-timer">00:30 build -> 10:00 test loop</div>
+              </div>
+            </div>
+          </section>
+
+          <section id="scene-repair" class="scene">
+            <div id="repair-system">
+              <div class="small-label">What fixed it</div>
+              <h2 class="headline" style="width: 920px;">Skills, rules, and screenshots changed the output.</h2>
+              <div class="repair-row">
+                <div class="repair-card"><div class="check">✓</div><h3>Design skills</h3><p>Codex got stronger visual constraints before generating surfaces.</p></div>
+                <div class="repair-card"><div class="check">✓</div><h3>Copy rules</h3><p>Meta language and process notes were blocked from user-facing UI.</p></div>
+                <div class="repair-card"><div class="check">✓</div><h3>Screenshot QA</h3><p>Desktop and mobile renders caught what schema checks missed.</p></div>
+                <div class="repair-card"><div class="check">✓</div><h3>Bigger batches</h3><p>Build a real slice, then test the whole flow.</p></div>
+              </div>
+            </div>
+          </section>
+
+          <section id="scene-final" class="scene">
+            <div id="final-mosaic">
+              <div class="small-label">The result</div>
+              <div class="mosaic-grid">
+                <div class="mosaic-card big"><img src="assets/profile-final.png" alt="Published profile screenshot" /><span class="mosaic-label">Living profile</span></div>
+                <div class="mosaic-card"><img src="assets/room.png" alt="Connection room screenshot" /><span class="mosaic-label">Rooms</span></div>
+                <div class="mosaic-card"><img src="assets/circle.png" alt="Circle screenshot" /><span class="mosaic-label">Circles</span></div>
+                <div class="mosaic-card"><img src="assets/map.png" alt="City Map screenshot" /><span class="mosaic-label">City Map</span></div>
+                <div class="mosaic-card"><img src="assets/graph.png" alt="Build Graph screenshot" /><span class="mosaic-label">Build Graph</span></div>
+              </div>
+              <div class="result-panel">
+                <h2>Work finds someone worth talking to.</h2>
+                <p>Codex turns active work into a living profile, finds relevant builders, and helps the relationship grow.</p>
+                <div class="result-mark">
+                  <svg class="mark" viewBox="0 0 72 56" aria-label="Buildmates">
+                    <path d="M13 43 36 11" fill="none" stroke="#122419" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M36 11 59 43" fill="none" stroke="#e96316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M13 43h18v-4a9 9 0 0 1 9-9" fill="none" stroke="#122419" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M40 30a9 9 0 0 1 9 9v4h10" fill="none" stroke="#e96316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="m32 23 4-5 4 5-4 5z" fill="#a7b393"/>
+                    <circle cx="36" cy="11" r="8" fill="#122419"/>
+                    <circle cx="13" cy="43" r="8" fill="#a7b393"/>
+                    <circle cx="59" cy="43" r="8" fill="#e96316"/>
+                  </svg>
+                  <div class="result-name">buildmates</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.set("#scene-build", { opacity: 1 }, 0);
+      tl.fromTo("#build-week-lockup", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: .8, ease: "power4.out" }, .15);
+      tl.fromTo(".codex-orb", { scale: .35, opacity: 0, rotation: -55 }, { scale: 1, opacity: 1, rotation: 0, duration: .92, ease: "back.out(1.4)" }, .55);
+      tl.fromTo(".path-ring", { scale: .45, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.15, stagger: .13, ease: "sine.out" }, .7);
+      tl.fromTo(".badge", { y: 42, opacity: 0 }, { y: 0, opacity: 1, duration: .5, stagger: .08, ease: "power2.out" }, 1.1);
+      tl.to(".codex-orb", { scale: 1.04, duration: 1.3, yoyo: true, repeat: 3, ease: "sine.inOut" }, 2.0);
+      tl.to(".path-ring.a", { rotation: 14, duration: 4.8, ease: "sine.inOut" }, 1.2);
+      tl.to(".path-ring.b", { rotation: -9, duration: 4.7, ease: "sine.inOut" }, 1.2);
+      tl.to("#scene-build", { opacity: 0, scale: 1.08, duration: .5, ease: "power3.in" }, 5.55);
+
+      tl.set("#scene-proof", { opacity: 1 }, 6.0);
+      tl.fromTo("#scene-proof .small-label, #scene-proof .headline", { x: -70, opacity: 0 }, { x: 0, opacity: 1, duration: .62, stagger: .08, ease: "power3.out" }, 6.1);
+      tl.fromTo("#proof-grid .frame-card", { y: 96, opacity: 0, scale: .88 }, { y: 0, opacity: 1, scale: 1, duration: .62, stagger: .12, ease: "power3.out" }, 6.7);
+      tl.to("#proof-grid", { x: -42, duration: 4.7, ease: "sine.inOut" }, 7.8);
+      tl.to("#proof-grid .frame-card:nth-child(3)", { scale: 1.04, duration: .7, yoyo: true, repeat: 2, ease: "sine.inOut" }, 9.7);
+      tl.to("#scene-proof", { opacity: 0, y: -80, duration: .5, ease: "power3.in" }, 12.55);
+
+      tl.set("#scene-auth", { opacity: 1 }, 13.0);
+      tl.fromTo("#auth-flow .small-label, #auth-flow .headline, #auth-flow .copy", { x: -80, opacity: 0 }, { x: 0, opacity: 1, duration: .62, stagger: .08, ease: "power3.out" }, 13.1);
+      tl.fromTo(".auth-node", { y: 90, opacity: 0 }, { y: 0, opacity: 1, duration: .55, stagger: .14, ease: "power3.out" }, 14.45);
+      tl.fromTo(".auth-connector", { scaleX: 0 }, { scaleX: 1, duration: 1.1, ease: "power2.inOut" }, 15.2);
+      tl.to(".auth-node.problem", { scale: 1.035, duration: .58, yoyo: true, repeat: 1, ease: "sine.inOut" }, 16.45);
+      tl.to(".auth-node:not(.problem)", { y: -18, duration: .5, stagger: .1, yoyo: true, repeat: 1, ease: "sine.inOut" }, 18.15);
+      tl.to("#scene-auth", { opacity: 0, scale: .9, duration: .55, ease: "power3.in" }, 21.45);
+
+      tl.set("#scene-resets", { opacity: 1 }, 22.0);
+      tl.fromTo("#reset-stack .small-label, #reset-stack .headline", { y: 56, opacity: 0 }, { y: 0, opacity: 1, duration: .55, stagger: .08, ease: "power3.out" }, 22.08);
+      tl.fromTo(".reset-card", { y: 600, rotation: -16, opacity: 0 }, { y: 0, rotation: 0, opacity: 1, duration: .68, stagger: .13, ease: "back.out(1.35)" }, 22.75);
+      tl.fromTo(".rip", { x: 220, opacity: 0 }, { x: 0, opacity: 1, duration: .58, ease: "power3.out" }, 24.45);
+      tl.to(".reset-card", { y: -18, duration: .42, stagger: .1, yoyo: true, repeat: 2, ease: "sine.inOut" }, 25.1);
+      tl.to("#scene-resets", { opacity: 0, rotation: -2, scale: .9, duration: .55, ease: "power3.in" }, 28.45);
+
+      tl.set("#scene-rough", { opacity: 1 }, 29.0);
+      tl.fromTo(".rough-title", { x: -120, opacity: 0 }, { x: 0, opacity: 1, duration: .65, ease: "power3.out" }, 29.1);
+      tl.fromTo(".rough-card", { scale: .6, opacity: 0, rotation: -12 }, { scale: 1, opacity: 1, rotation: 0, duration: .5, stagger: .15, ease: "back.out(1.45)" }, 30.0);
+      tl.fromTo(".test-timer", { x: -160, opacity: 0 }, { x: 0, opacity: 1, duration: .5, ease: "power3.out" }, 31.0);
+      tl.to(".rough-card", { x: "+=16", duration: .14, yoyo: true, repeat: 3, stagger: .06, ease: "sine.inOut" }, 32.8);
+      tl.to(".test-timer", { color: "#e96316", duration: .2, yoyo: true, repeat: 5, ease: "steps(1)" }, 34.2);
+      tl.to(".rough-cards", { y: -30, duration: 5.0, ease: "sine.inOut" }, 34.25);
+      tl.to(".rough-title", { y: 18, duration: 4.7, ease: "sine.inOut" }, 34.45);
+      tl.to("#scene-rough", { opacity: 0, scale: 1.08, duration: .5, ease: "power3.in" }, 39.45);
+
+      tl.set("#scene-repair", { opacity: 1 }, 40.0);
+      tl.fromTo("#repair-system .small-label, #repair-system .headline", { y: 58, opacity: 0 }, { y: 0, opacity: 1, duration: .58, stagger: .08, ease: "power3.out" }, 40.1);
+      tl.fromTo(".repair-card", { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: .58, stagger: .12, ease: "power3.out" }, 41.0);
+      tl.fromTo(".check", { scale: 0, rotation: -60 }, { scale: 1, rotation: 0, duration: .45, stagger: .12, ease: "back.out(1.7)" }, 41.28);
+      tl.to(".repair-card", { borderColor: "rgba(167,179,147,.72)", duration: .42, stagger: .09, yoyo: true, repeat: 1, ease: "sine.inOut" }, 43.2);
+      tl.to(".repair-row", { y: -24, duration: 4.6, ease: "sine.inOut" }, 42.05);
+      tl.to(".check", { scale: 1.08, duration: .7, stagger: .18, yoyo: true, repeat: 2, ease: "sine.inOut" }, 43.4);
+      tl.to("#scene-repair", { opacity: 0, y: -90, duration: .5, ease: "power3.in" }, 46.55);
+
+      tl.set("#scene-final", { opacity: 1 }, 47.0);
+      tl.fromTo("#final-mosaic .small-label", { opacity: 0, x: -48 }, { opacity: 1, x: 0, duration: .42, ease: "power2.out" }, 47.1);
+      tl.fromTo(".mosaic-card", { y: 90, opacity: 0, scale: .88 }, { y: 0, opacity: 1, scale: 1, duration: .55, stagger: .09, ease: "power3.out" }, 47.45);
+      tl.fromTo(".result-panel", { x: 620, opacity: 0 }, { x: 0, opacity: 1, duration: .68, ease: "power4.out" }, 48.1);
+      tl.fromTo(".result-mark", { y: 80, opacity: 0 }, { y: 0, opacity: 1, duration: .5, ease: "power3.out" }, 49.3);
+      tl.to(".mosaic-grid", { x: -32, duration: 4.8, ease: "sine.inOut" }, 49.4);
+      tl.to(".result-panel", { backgroundColor: "#efe7d7", duration: 1.2, yoyo: true, repeat: 2, ease: "sine.inOut" }, 50.2);
+
+      window.__timelines["build-week-reflection"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Buildmates intro - 25 seconds</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #122419; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      .scene { position: absolute; inset: 0; overflow: hidden; color: #f3eee3; }
+      .world {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 18% 24%, rgba(156,171,131,.12), transparent 30%),
+          radial-gradient(circle at 84% 76%, rgba(217,95,32,.11), transparent 32%),
+          #122419;
+      }
+      .world::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        opacity: .12;
+        pointer-events: none;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.28'/%3E%3C/svg%3E");
+        mix-blend-mode: soft-light;
+      }
+      .beat { position: absolute; inset: 0; opacity: 0; }
+
+      /* Beat 1: networking becomes work */
+      .reel { position: absolute; inset: -260px 0; display: grid; align-content: center; gap: 118px; }
+      .echo, .network-word {
+        white-space: nowrap;
+        text-align: center;
+        text-transform: uppercase;
+        font: 900 212px/.82 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        letter-spacing: -.035em;
+      }
+      .echo { color: #a7b393; opacity: .22; }
+      .network-word { display: flex; justify-content: center; align-items: center; color: #f3eee3; }
+      .network-word span { display: block; transform-origin: 50% 62%; }
+      .outer { position: relative; z-index: 2; }
+      .work-wrap { position: relative; isolation: isolate; transform-origin: center; z-index: 3; }
+      .work-label { position: relative; z-index: 2; }
+      .work-slab { position: absolute; inset: -36px -52px -42px; background: #e96316; transform: scaleY(.03); transform-origin: center; opacity: 0; z-index: 1; }
+
+      /* Beat 2: shared work becomes a reason to talk */
+      .voice-stage { position: absolute; inset: 0; }
+      .lab {
+        position: absolute;
+        top: 216px;
+        width: 520px;
+        height: 620px;
+        border: 2px solid rgba(243,238,227,.32);
+        background: rgba(18,36,25,.78);
+        box-shadow: 0 34px 90px rgba(0,0,0,.24);
+        overflow: hidden;
+      }
+      .lab-left { left: 168px; }
+      .lab-right { right: 168px; }
+      .lab-head { height: 104px; border-bottom: 2px solid rgba(243,238,227,.22); display: flex; align-items: center; gap: 18px; padding: 0 34px; }
+      .builder-dot { width: 42px; height: 42px; border-radius: 50%; background: #a7b393; box-shadow: 0 0 0 10px rgba(167,179,147,.1); }
+      .lab-right .builder-dot { background: #e96316; box-shadow: 0 0 0 10px rgba(233,99,22,.1); }
+      .head-lines { display: grid; gap: 10px; }
+      .lab-kicker { display: block; color: #a7b393; font: 700 17px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .lab-title { display: block; margin-top: 9px; color: #f3eee3; font: 700 25px/1.05 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .lab-right .lab-kicker { color: #e96316; }
+      .wave-label { position: absolute; left: 38px; top: 138px; color: rgba(243,238,227,.7); font: 600 16px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; }
+      .wave-field { position: absolute; left: 38px; right: 38px; top: 178px; height: 220px; display: flex; align-items: center; justify-content: center; gap: 14px; }
+      .wave-field i { width: 14px; height: 96px; border-radius: 7px; background: #a7b393; transform-origin: center; }
+      .lab-right .wave-field i { background: #e96316; }
+      .latency-track { position: absolute; left: 38px; right: 38px; bottom: 74px; height: 88px; border-top: 2px solid rgba(243,238,227,.2); display: flex; align-items: flex-end; gap: 10px; padding-top: 26px; }
+      .latency-track i { display: block; flex: 1; height: 14px; background: rgba(243,238,227,.2); }
+      .latency-track i.hot { background: #e96316; }
+      .bridge { position: absolute; left: 690px; top: 485px; width: 540px; height: 100px; }
+      .bridge-line { position: absolute; left: 0; top: 48px; width: 100%; height: 4px; background: #f3eee3; transform: scaleX(0); transform-origin: center; }
+      .signal { position: absolute; top: 21px; width: 58px; height: 58px; border-radius: 50%; background: #e96316; box-shadow: 0 0 0 18px rgba(233,99,22,.12); }
+      .signal-a { left: 0; }
+      .signal-b { right: 0; background: #a7b393; box-shadow: 0 0 0 18px rgba(167,179,147,.12); }
+      .shared-spark { position: absolute; left: 241px; top: -1px; width: 98px; height: 98px; transform: rotate(45deg) scale(0); background: #f3eee3; }
+      .idea-stage { position: absolute; inset: 0; opacity: 0; }
+      .idea-person { position: absolute; top: 255px; width: 500px; height: 520px; }
+      .idea-person.left { left: 190px; }
+      .idea-person.right { right: 190px; }
+      .avatar { width: 108px; height: 108px; border-radius: 50%; background: #a7b393; box-shadow: 0 0 0 18px rgba(167,179,147,.1); }
+      .idea-person.right .avatar { margin-left: auto; background: #e96316; box-shadow: 0 0 0 18px rgba(233,99,22,.1); }
+      .thought-bubble { position: absolute; left: 108px; top: -86px; width: 390px; min-height: 200px; padding: 34px 38px; border-radius: 56px 56px 56px 12px; background: #f3eee3; color: #122419; }
+      .thought-bubble::after { content: ""; position: absolute; left: 28px; bottom: -30px; width: 42px; height: 42px; border-radius: 50%; background: #f3eee3; }
+      .idea-kicker { font: 700 16px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; color: #8a350f; }
+      .idea-title { margin-top: 18px; font: 750 34px/1.08 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.025em; }
+      .laptop { position: absolute; right: 0; top: 118px; width: 430px; height: 270px; padding: 28px; border: 4px solid #f3eee3; border-bottom-width: 18px; border-radius: 16px 16px 8px 8px; background: #1b3022; }
+      .laptop::after { content: ""; position: absolute; left: -38px; right: -38px; bottom: -34px; height: 18px; border-radius: 0 0 28px 28px; background: #f3eee3; }
+      .laptop-tag { color: #f27a38; font: 700 15px/1 ui-monospace, SFMono-Regular, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+      .laptop-title { margin-top: 20px; color: #f3eee3; font: 750 29px/1.12 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .laptop-status { margin-top: 34px; display: inline-flex; gap: 10px; align-items: center; color: #a7b393; font: 650 17px/1 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .laptop-status::before { content: ""; width: 12px; height: 12px; border-radius: 50%; background: #a7b393; }
+      .idea-link { position: absolute; left: 696px; top: 510px; width: 530px; height: 4px; background: #e96316; transform: scaleX(0); transform-origin: center; }
+      .idea-link-label { position: absolute; left: 790px; top: 454px; width: 340px; padding: 13px 18px; background: #f3eee3; color: #122419; text-align: center; font: 800 18px/1 Inter, ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .06em; opacity: 0; }
+
+      /* Beat 3: updating everything becomes another job */
+      .burden-stage { position: absolute; inset: 0; }
+      .person-core { position: absolute; left: 785px; top: 344px; width: 350px; height: 430px; border: 3px solid #f3eee3; background: #1b3022; box-shadow: 0 40px 110px rgba(0,0,0,.35); }
+      .person-core::before { content: ""; position: absolute; left: 54px; top: 58px; width: 92px; height: 92px; border-radius: 50%; background: #a7b393; }
+      .person-core::after { content: ""; position: absolute; left: 54px; right: 54px; bottom: 74px; height: 128px; border-top: 18px solid #f3eee3; border-bottom: 18px solid rgba(243,238,227,.25); }
+      .burden-card { position: absolute; width: 330px; height: 220px; padding: 28px; background: #f3eee3; color: #122419; border: 3px solid #122419; box-shadow: 12px 14px 0 rgba(0,0,0,.16); }
+      .burden-card.orange { background: #f3eee3; border-color: #e96316; box-shadow: 12px 14px 0 #e96316; }
+      .burden-card.sage { background: #a7b393; color: #122419; }
+      .burden-kicker { font: 750 15px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; }
+      .burden-title { margin-top: 16px; font: 800 25px/1.04 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.02em; }
+      .burden-note { margin-top: 12px; font: 600 16px/1.2 Inter, ui-sans-serif, system-ui, sans-serif; opacity: .72; }
+      .person-label { position: absolute; left: 54px; bottom: 68px; color: #f3eee3; font: 800 25px/1 Inter, ui-sans-serif, system-ui, sans-serif; text-transform: uppercase; letter-spacing: .04em; }
+      .person-core::after { display: none; }
+      .card-a { left: 160px; top: 108px; }
+      .card-b { left: 236px; top: 666px; }
+      .card-c { right: 170px; top: 108px; }
+      .card-d { right: 238px; top: 666px; }
+      .message-stack { position: absolute; right: 88px; top: 394px; display: grid; gap: 16px; }
+      .message { width: 390px; min-height: 66px; padding: 19px 22px; border: 3px solid rgba(243,238,227,.7); background: #1b3022; color: #f3eee3; font: 650 17px/1.25 Inter, ui-sans-serif, system-ui, sans-serif; transform-origin: right center; }
+      .clock { position: absolute; left: 588px; top: 118px; width: 150px; height: 150px; border: 5px solid #e96316; border-radius: 50%; }
+      .clock::before, .clock::after { content: ""; position: absolute; left: 70px; top: 70px; width: 4px; height: 52px; background: #e96316; transform-origin: 2px 2px; }
+      .clock::after { height: 38px; transform: rotate(116deg); }
+
+      /* Beat 4: the living profile */
+      .profile-stage { position: absolute; inset: 0; }
+      .profile-canvas { position: absolute; left: 476px; top: 116px; width: 968px; height: 848px; background: #f3eee3; color: #122419; overflow: hidden; box-shadow: 0 50px 140px rgba(0,0,0,.34); }
+      .profile-hero { height: 330px; background: #1b3022; position: relative; overflow: hidden; }
+      .profile-hero::before { content: ""; position: absolute; width: 410px; height: 410px; border-radius: 50%; right: -80px; top: -130px; background: #e96316; }
+      .profile-identity { position: absolute; left: 62px; bottom: 56px; z-index: 2; }
+      .profile-name { color: #f3eee3; font: 800 58px/.96 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.045em; }
+      .profile-headline { margin-top: 18px; width: 600px; color: rgba(243,238,227,.75); font: 560 22px/1.3 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .project-row { height: 160px; display: grid; grid-template-columns: 130px 1fr 230px; align-items: center; gap: 32px; padding: 0 58px; border-bottom: 2px solid rgba(18,36,25,.18); }
+      .project-index { font: 750 18px/1 ui-monospace, SFMono-Regular, Consolas, monospace; color: #e96316; }
+      .project-copy { display: grid; gap: 8px; }
+      .project-title { font: 800 25px/1.05 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .project-note { color: rgba(18,36,25,.65); font: 560 17px/1.25 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .project-media { height: 96px; background: #e96316; }
+      .living-pulse { position: absolute; right: 56px; top: 286px; width: 88px; height: 88px; border-radius: 50%; background: #e96316; box-shadow: 0 0 0 0 rgba(233,99,22,.3); }
+
+      /* Beat 5: Codex keeps the work current */
+      .codex-stage { position: absolute; inset: 0; }
+      .codex-window { position: absolute; left: 92px; top: 150px; width: 650px; height: 760px; border: 2px solid rgba(243,238,227,.32); border-radius: 18px; background: #18231c; box-shadow: 0 42px 120px rgba(0,0,0,.3); overflow: hidden; }
+      .codex-bar { height: 74px; padding: 0 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid rgba(243,238,227,.13); color: #f3eee3; font: 700 18px/1 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .window-dots { display: flex; gap: 9px; }
+      .window-dots i { width: 12px; height: 12px; border-radius: 50%; background: #a7b393; }
+      .window-dots i:nth-child(2) { background: #e96316; }
+      .window-dots i:nth-child(3) { background: rgba(243,238,227,.4); }
+      .codex-chat { padding: 34px; display: grid; gap: 24px; }
+      .chat-bubble { padding: 24px 26px; border-radius: 18px; font: 590 19px/1.35 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .chat-user { margin-left: 78px; background: #f3eee3; color: #122419; }
+      .chat-codex { margin-right: 38px; border: 2px solid rgba(243,238,227,.22); color: #f3eee3; }
+      .context-list { display: grid; gap: 12px; margin-top: 18px; }
+      .context-item { padding: 13px 16px; border-left: 4px solid #a7b393; background: rgba(167,179,147,.1); color: #f3eee3; font: 650 16px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace; }
+      .codex-orbit { position: absolute; left: 786px; top: 340px; width: 348px; height: 348px; border: 3px solid rgba(243,238,227,.28); border-radius: 50%; display: grid; place-items: center; }
+      .codex-core { width: 200px; height: 200px; border-radius: 50%; background: #f3eee3; display: grid; place-items: center; box-shadow: 0 0 0 22px rgba(243,238,227,.08); overflow: hidden; }
+      .codex-core img { width: 196px; height: 196px; object-fit: cover; border-radius: 50%; transform: scale(1.08); }
+      .flow-line { position: absolute; height: 4px; background: #a7b393; transform-origin: left center; }
+      .flow-a { left: 736px; top: 522px; width: 80px; }
+      .flow-b { left: 1104px; top: 522px; width: 80px; }
+      .mini-profile { position: absolute; right: 88px; top: 150px; width: 650px; height: 760px; background: #f3eee3; color: #122419; box-shadow: 0 40px 120px rgba(0,0,0,.32); overflow: hidden; border-radius: 18px; }
+      .mini-profile .mini-hero { height: 224px; background: #e96316; }
+      .mini-profile .mini-hero { padding: 42px; display: flex; flex-direction: column; justify-content: flex-end; }
+      .mini-profile .mini-name { font: 820 49px/.95 Inter, ui-sans-serif, system-ui, sans-serif; letter-spacing: -.045em; }
+      .mini-profile .mini-role { margin-top: 14px; font: 650 18px/1.25 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .mini-profile .mini-body { padding: 38px 42px; display: grid; gap: 18px; }
+      .mini-kicker { color: #8a350f; font: 750 15px/1 ui-monospace, SFMono-Regular, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; }
+      .mini-project { padding: 22px; background: #dfe4d6; }
+      .mini-project strong { display: block; font: 800 21px/1 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .mini-project span { display: block; margin-top: 8px; color: rgba(18,36,25,.65); font: 560 16px/1.25 Inter, ui-sans-serif, system-ui, sans-serif; }
+      .sync-dot { position: absolute; left: 946px; top: 507px; width: 36px; height: 36px; border-radius: 50%; background: #e96316; box-shadow: 0 0 0 14px rgba(233,99,22,.12); }
+
+      /* Beat 6: brand reveal */
+      .brand-stage { position: absolute; inset: 0; display: grid; place-items: center; }
+      .brand-lockup { display: flex; align-items: center; gap: 66px; transform-origin: center; }
+      .brand-mark { width: 310px; height: 242px; overflow: visible; }
+      .brand-name { color: #f3eee3; font: 800 188px/.88 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; letter-spacing: -.06em; }
+      .brand-ring { position: absolute; width: 760px; height: 760px; border: 2px solid rgba(167,179,147,.22); border-radius: 50%; }
+      .brand-ring.two { width: 980px; height: 980px; border-color: rgba(233,99,22,.14); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="buildmates-intro-25" data-start="0" data-duration="25" data-width="1920" data-height="1080">
+      <section id="buildmates-intro-scene" class="clip scene" data-start="0" data-duration="25" data-track-index="1">
+        <div class="world">
+          <div id="beat-network" class="beat">
+            <div id="network-reel" class="reel">
+              <div class="echo">NETWORKING</div>
+              <div id="network-word" class="network-word" aria-label="Networking becomes work">
+                <span id="network-net" class="outer">NET</span>
+                <span id="network-work-wrap" class="work-wrap">
+                  <span id="network-slab" class="work-slab"></span>
+                  <span class="work-label" data-layout-allow-occlusion>WORK</span>
+                </span>
+                <span id="network-ing" class="outer">ING</span>
+              </div>
+              <div class="echo">NETWORKING</div>
+            </div>
+          </div>
+
+          <div id="beat-voice" class="beat">
+            <div class="voice-stage">
+              <div id="lab-left" class="lab lab-left">
+                <div class="lab-head"><span class="builder-dot"></span><span><span class="lab-kicker">Builder one</span><span class="lab-title">Voice agent prototype</span></span></div>
+                <div class="wave-label">Before · robotic cadence</div>
+                <div class="wave-field"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <div class="latency-track"><i></i><i class="hot"></i><i></i><i class="hot"></i><i></i><i></i></div>
+              </div>
+              <div id="lab-right" class="lab lab-right">
+                <div class="lab-head"><span class="builder-dot"></span><span><span class="lab-kicker">Builder two</span><span class="lab-title">Natural turn-taking</span></span></div>
+                <div class="wave-label">After · human rhythm</div>
+                <div class="wave-field"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+                <div class="latency-track"><i></i><i></i><i class="hot"></i><i></i><i class="hot"></i><i></i></div>
+              </div>
+              <div class="bridge"><span id="bridge-line" class="bridge-line"></span><span class="signal signal-a"></span><span class="signal signal-b"></span><span id="shared-spark" class="shared-spark"></span></div>
+              <div id="idea-stage" class="idea-stage">
+                <div class="idea-person left">
+                  <div class="avatar"></div>
+                  <div class="thought-bubble"><div class="idea-kicker">Thinking about</div><div class="idea-title">Memory that survives every conversation</div></div>
+                </div>
+                <div class="idea-person right">
+                  <div class="avatar"></div>
+                  <div class="laptop"><div class="laptop-tag">Building now</div><div class="laptop-title">Persistent memory for AI agents</div><div class="laptop-status">Prototype running</div></div>
+                </div>
+                <div id="idea-link" class="idea-link"></div>
+                <div id="idea-link-label" class="idea-link-label">The same idea</div>
+              </div>
+            </div>
+          </div>
+
+          <div id="beat-burden" class="beat" data-layout-allow-overflow>
+            <div class="burden-stage">
+              <div id="burden-core" class="person-core"><span class="person-label">Still building</span></div>
+              <div id="card-a" class="burden-card card-a"><div class="burden-kicker">Profile</div><div class="burden-title">Update everything again</div><div class="burden-note">New project. Old bio.</div></div>
+              <div id="card-b" class="burden-card sage card-b"><div class="burden-kicker">Build in public</div><div class="burden-title">Post every small ship</div><div class="burden-note">Turn work into content.</div></div>
+              <div id="card-c" class="burden-card orange card-c"><div class="burden-kicker">Portfolio</div><div class="burden-title">Add another project</div><div class="burden-note">Rewrite the story.</div></div>
+              <div id="card-d" class="burden-card card-d"><div class="burden-kicker">Networking</div><div class="burden-title">Explain it all again</div><div class="burden-note">Starting from zero.</div></div>
+              <div class="message-stack"><div class="message">Hey, what are you building?</div><div class="message">Can you send more context?</div><div class="message">What makes this relevant?</div></div>
+              <div id="burden-clock" class="clock"></div>
+            </div>
+          </div>
+
+          <div id="beat-profile" class="beat">
+            <div class="profile-stage">
+              <div id="profile-canvas" class="profile-canvas">
+                <div class="profile-hero"><div class="profile-identity"><div class="profile-name">Yash Serai</div><div class="profile-headline">Building AI-native products and systems for real human connection.</div></div></div>
+                <div class="project-row"><span class="project-index">01</span><span class="project-copy"><span class="project-title">Buildmates</span><span class="project-note">A living builder network powered by Codex.</span></span><span class="project-media"></span></div>
+                <div class="project-row"><span class="project-index">02</span><span class="project-copy"><span class="project-title">Soulspace</span><span class="project-note">AI-native social experiences.</span></span><span class="project-media"></span></div>
+                <div class="project-row"><span class="project-index">03</span><span class="project-copy"><span class="project-title">Safari Gigs</span><span class="project-note">Better tools for tourism hiring.</span></span><span class="project-media"></span></div>
+                <span id="living-pulse" class="living-pulse"></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="beat-codex" class="beat" data-layout-allow-overflow>
+            <div class="codex-stage">
+              <div id="codex-window" class="codex-window">
+                <div class="codex-bar"><span>Codex</span><span class="window-dots"><i></i><i></i><i></i></span></div>
+                <div class="codex-chat">
+                  <div class="chat-bubble chat-user">What have I been building lately?</div>
+                  <div class="chat-bubble chat-codex">I reviewed your active work and connected the projects across your workspace.
+                    <div class="context-list"><div class="context-item">Buildmates · builder network</div><div class="context-item">Soulspace · AI social</div><div class="context-item">Safari Gigs · marketplace</div></div>
+                  </div>
+                  <div class="chat-bubble chat-user">Turn that into my profile.</div>
+                </div>
+              </div>
+              <span class="flow-line flow-a"></span><span class="flow-line flow-b"></span>
+              <div id="codex-orbit" class="codex-orbit"><div class="codex-core"><img src="assets/codex-app.png" alt="Codex" data-layout-allow-overflow /></div></div>
+              <span id="sync-dot" class="sync-dot"></span>
+              <div id="mini-profile" class="mini-profile"><div class="mini-hero"><div class="mini-name">Yash Serai</div><div class="mini-role">Builder of AI-native products and thoughtful social systems.</div></div><div class="mini-body"><div class="mini-kicker">Selected work</div><div class="mini-project"><strong>Buildmates</strong><span>A Codex-native builder network.</span></div><div class="mini-project"><strong>Soulspace</strong><span>AI-native social experiences.</span></div><div class="mini-project"><strong>Safari Gigs</strong><span>Tourism hiring, rebuilt.</span></div></div></div>
+            </div>
+          </div>
+
+          <div id="beat-brand" class="beat">
+            <div class="brand-stage">
+              <span id="brand-ring-a" class="brand-ring"></span><span id="brand-ring-b" class="brand-ring two"></span>
+              <div id="brand-lockup" class="brand-lockup">
+                <svg class="brand-mark" viewBox="0 0 72 56" aria-label="Buildmates">
+                  <path d="M13 43 36 11" fill="none" stroke="#f3eee3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M36 11 59 43" fill="none" stroke="#e96316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M13 43h18v-4a9 9 0 0 1 9-9" fill="none" stroke="#f3eee3" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M40 30a9 9 0 0 1 9 9v4h10" fill="none" stroke="#e96316" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="m32 23 4-5 4 5-4 5z" fill="#a7b393"/>
+                  <circle cx="36" cy="11" r="8" fill="#f3eee3"/>
+                  <circle cx="13" cy="43" r="8" fill="#a7b393"/>
+                  <circle cx="59" cy="43" r="8" fill="#e96316"/>
+                </svg>
+                <div class="brand-name">buildmates</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.set("#beat-network", { opacity: 1 }, 0);
+      tl.fromTo("#network-reel", { y: 420 }, { y: 0, duration: .62, ease: "power4.out" }, .12);
+      tl.fromTo("#network-word", { opacity: 0, scale: .9 }, { opacity: 1, scale: 1, duration: .5, ease: "power3.out" }, .18);
+      tl.to("#network-reel", { y: -72, duration: .65, ease: "power2.inOut" }, .74);
+      tl.to("#network-slab", { opacity: 1, scaleY: 1, duration: .38, ease: "power3.out" }, 1.2);
+      tl.to("#network-net", { y: 780, x: -100, rotation: -14, opacity: 0, duration: 1.02, ease: "power4.in" }, 1.56);
+      tl.to("#network-ing", { y: 780, x: 120, rotation: 15, opacity: 0, duration: 1.02, ease: "power4.in" }, 1.56);
+      tl.to("#network-work-wrap", { scale: 1.22, duration: .76, ease: "back.out(1.3)" }, 1.67);
+      tl.to("#beat-network .echo", { opacity: 0, y: -120, duration: .62, ease: "power3.in" }, 1.6);
+      tl.to("#network-slab", { scaleX: 1.03, scaleY: .96, duration: .65, ease: "power3.inOut" }, 1.6);
+      tl.to("#network-work-wrap", { scale: .18, rotation: 45, duration: .42, ease: "power3.in" }, 3.08);
+      tl.to("#beat-network", { opacity: 0, duration: .24, ease: "power2.in" }, 3.26);
+
+      tl.set("#beat-voice", { opacity: 1 }, 3.34);
+      tl.fromTo("#lab-left", { x: -580, rotation: -7, opacity: 0 }, { x: 0, rotation: 0, opacity: 1, duration: .72, ease: "expo.out" }, 3.38);
+      tl.fromTo("#lab-right", { x: 580, rotation: 7, opacity: 0 }, { x: 0, rotation: 0, opacity: 1, duration: .72, ease: "expo.out" }, 3.5);
+      tl.fromTo(".signal-a", { x: -70, opacity: 0 }, { x: 0, opacity: 1, duration: .44, ease: "back.out(1.8)" }, 4.0);
+      tl.fromTo(".signal-b", { x: 70, opacity: 0 }, { x: 0, opacity: 1, duration: .44, ease: "back.out(1.8)" }, 4.08);
+      tl.to("#bridge-line", { scaleX: 1, duration: .82, ease: "power2.inOut" }, 4.34);
+      tl.to("#lab-left .wave-field i", { scaleY: 1.65, stagger: { each: .035, from: "center" }, duration: .34, yoyo: true, repeat: 5, ease: "sine.inOut" }, 4.2);
+      tl.to("#lab-right .wave-field i", { scaleY: .48, stagger: { each: .04, from: "edges" }, duration: .38, yoyo: true, repeat: 5, ease: "sine.inOut" }, 4.32);
+      tl.fromTo("#shared-spark", { scale: 0, rotation: 45 }, { scale: 1, rotation: 225, duration: .7, ease: "back.out(1.5)" }, 5.12);
+      tl.to("#shared-spark", { scale: 1.18, rotation: 315, duration: .42, ease: "sine.inOut" }, 5.82);
+      tl.to("#lab-left, #lab-right, .bridge", { opacity: 0, scale: .82, duration: .42, ease: "power3.in" }, 5.72);
+      tl.to("#idea-stage", { opacity: 1, duration: .22, ease: "power2.out" }, 5.95);
+      tl.fromTo("#idea-stage .left", { x: -320, opacity: 0 }, { x: 0, opacity: 1, duration: .55, ease: "expo.out" }, 6.0);
+      tl.fromTo("#idea-stage .right", { x: 320, opacity: 0 }, { x: 0, opacity: 1, duration: .55, ease: "expo.out" }, 6.05);
+      tl.fromTo(".thought-bubble", { scale: .55, opacity: 0, transformOrigin: "left bottom" }, { scale: 1, opacity: 1, duration: .45, ease: "back.out(1.5)" }, 6.3);
+      tl.fromTo(".laptop", { y: 120, opacity: 0 }, { y: 0, opacity: 1, duration: .5, ease: "power3.out" }, 6.36);
+      tl.to("#idea-link", { scaleX: 1, duration: .48, ease: "power2.inOut" }, 6.64);
+      tl.to("#idea-link-label", { opacity: 1, y: -8, duration: .35, ease: "power2.out" }, 6.82);
+      tl.to("#beat-voice", { opacity: 0, scale: .86, duration: .42, ease: "power3.in" }, 7.62);
+
+      tl.set("#beat-burden", { opacity: 1 }, 7.9);
+      tl.fromTo("#burden-core", { scale: .7, opacity: 0, rotation: -6 }, { scale: 1, opacity: 1, rotation: 0, duration: .65, ease: "back.out(1.4)" }, 8.0);
+      tl.fromTo("#card-a", { x: -500, y: -90, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: .52, ease: "power4.out" }, 8.28);
+      tl.fromTo("#card-c", { x: 520, y: -70, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: .48, ease: "expo.out" }, 8.5);
+      tl.fromTo("#card-b", { x: -520, y: 100, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: .58, ease: "back.out(1.2)" }, 8.75);
+      tl.fromTo("#card-d", { x: 540, y: 110, opacity: 0 }, { x: 0, y: 0, opacity: 1, duration: .5, ease: "power3.out" }, 8.96);
+      tl.fromTo(".message", { x: 420, opacity: 0, scaleX: .2 }, { x: 0, opacity: 1, scaleX: 1, duration: .42, stagger: .16, ease: "power3.out" }, 9.34);
+      tl.fromTo("#burden-clock", { scale: 0, rotation: -80, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: .5, ease: "back.out(1.8)" }, 9.55);
+      tl.to("#burden-clock", { rotation: 720, duration: 2.8, ease: "power2.in" }, 10.05);
+      tl.to(".burden-card", { scale: 1.08, stagger: .1, duration: .35, yoyo: true, repeat: 3, ease: "sine.inOut" }, 10.0);
+      tl.to("#burden-core", { rotation: 3, scale: .94, duration: 1.8, ease: "sine.inOut" }, 10.2);
+      tl.to("#beat-burden", { scale: .54, rotation: -5, opacity: 0, duration: .7, ease: "power4.in" }, 12.9);
+
+      tl.set("#beat-profile", { opacity: 1 }, 13.12);
+      tl.fromTo("#profile-canvas", { scale: .42, rotation: 5, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: .86, ease: "expo.out" }, 13.18);
+      tl.fromTo("#profile-canvas .profile-hero", { y: -330 }, { y: 0, duration: .7, ease: "power3.out" }, 13.42);
+      tl.fromTo("#profile-canvas .project-row", { x: 440, opacity: 0 }, { x: 0, opacity: 1, duration: .48, stagger: .13, ease: "power2.out" }, 13.72);
+      tl.to("#living-pulse", { scale: 1.3, duration: .72, yoyo: true, repeat: 2, ease: "sine.inOut" }, 14.1);
+      tl.to("#profile-canvas", { scale: .56, x: 460, duration: .68, ease: "power3.inOut" }, 15.62);
+      tl.to("#beat-profile", { opacity: 0, duration: .32, ease: "power2.in" }, 16.0);
+
+      tl.set("#beat-codex", { opacity: 1 }, 16.08);
+      tl.fromTo("#codex-window", { x: -680, opacity: 0 }, { x: 0, opacity: 1, duration: .66, ease: "power4.out" }, 16.18);
+      tl.fromTo("#codex-orbit", { scale: .42, rotation: -90, opacity: 0 }, { scale: 1, rotation: 0, opacity: 1, duration: .76, ease: "back.out(1.35)" }, 16.6);
+      tl.fromTo("#mini-profile", { x: 600, opacity: 0, rotation: 5 }, { x: 0, opacity: 1, rotation: 0, duration: .72, ease: "expo.out" }, 16.82);
+      tl.fromTo(".flow-a", { scaleX: 0 }, { scaleX: 1, duration: .52, ease: "power2.inOut" }, 17.22);
+      tl.fromTo(".flow-b", { scaleX: 0 }, { scaleX: 1, duration: .52, ease: "power2.inOut" }, 17.48);
+      tl.fromTo("#sync-dot", { scale: .4, opacity: 0 }, { scale: 1, opacity: 1, duration: .7, ease: "power3.out" }, 17.66);
+      tl.to("#codex-orbit", { scale: 1.045, duration: .88, yoyo: true, repeat: 3, ease: "sine.inOut" }, 17.37);
+      tl.to("#sync-dot", { scale: 1.3, duration: .46, yoyo: true, repeat: 5, ease: "sine.inOut" }, 18.8);
+      tl.fromTo("#mini-profile .mini-project", { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: .42, stagger: .14, ease: "power2.out" }, 18.55);
+      tl.to("#beat-codex", { scale: 1.24, opacity: 0, duration: .66, ease: "power4.in" }, 21.26);
+
+      tl.set("#beat-brand", { opacity: 1 }, 21.68);
+      tl.fromTo("#brand-ring-a", { scale: .3, opacity: 0, rotation: -20 }, { scale: 1, opacity: 1, rotation: 0, duration: .94, ease: "power3.out" }, 21.72);
+      tl.fromTo("#brand-ring-b", { scale: .5, opacity: 0 }, { scale: 1, opacity: 1, duration: 1.1, ease: "sine.out" }, 21.84);
+      tl.fromTo("#brand-lockup", { scale: .45, opacity: 0, rotation: -4 }, { scale: 1, opacity: 1, rotation: 0, duration: .82, ease: "back.out(1.35)" }, 22.0);
+      tl.to("#brand-ring-a", { scale: 1.06, rotation: 12, duration: 2.2, ease: "sine.inOut" }, 22.7);
+      tl.to("#brand-ring-b", { scale: .94, rotation: -10, duration: 2.05, ease: "sine.inOut" }, 22.95);
+
+      window.__timelines["buildmates-intro-25"] = tl;
+    </script>
+  </body>
+</html>

@@ -1,6 +1,7 @@
 import React from 'react';
 import {Composition} from 'remotion';
 import {BuildmatesFilm, SceneLab, type BuildmatesFilmProps, type SceneLabProps} from './film';
+import {BuildmatesHook, type BuildmatesHookProps} from './hook';
 import {FPS, HEIGHT, TOTAL_FRAMES, WIDTH, selectedVariants} from './timing';
 
 const allVariants = (variant: 1 | 2 | 3): BuildmatesFilmProps['variantMap'] =>
@@ -8,6 +9,18 @@ const allVariants = (variant: 1 | 2 | 3): BuildmatesFilmProps['variantMap'] =>
 
 export const Root: React.FC = () => (
   <>
+    {([1, 2, 3] as const).map((variant) => (
+      <Composition
+        key={variant}
+        id={`BuildmatesHook${variant}`}
+        component={BuildmatesHook as React.FC<BuildmatesHookProps>}
+        durationInFrames={6 * FPS}
+        fps={FPS}
+        width={1920}
+        height={1080}
+        defaultProps={{variant}}
+      />
+    ))}
     <Composition
       id="BuildmatesBuildWeek"
       component={BuildmatesFilm}

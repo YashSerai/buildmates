@@ -1,0 +1,13 @@
+{
+  "duration": 55,
+  "assertions": [
+    { "kind": "appearsBy", "selector": "#build-week-lockup", "bySec": 1.2 },
+    { "kind": "appearsBy", "selector": "#proof-grid", "bySec": 7.5 },
+    { "kind": "appearsBy", "selector": "#auth-flow", "bySec": 15.5 },
+    { "kind": "appearsBy", "selector": "#rough-stack", "bySec": 31.0 },
+    { "kind": "appearsBy", "selector": "#final-mosaic", "bySec": 48.5 },
+    { "kind": "staysInFrame", "selector": "#proof-grid .frame-card:nth-child(1)" },
+    { "kind": "staysInFrame", "selector": "#auth-flow .auth-node:nth-child(1)" },
+    { "kind": "keepsMoving", "withinSelector": "#root", "maxStaticSec": 2.2 }
+  ]
+}

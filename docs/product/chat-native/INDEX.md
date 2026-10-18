@@ -1,6 +1,6 @@
 # Buildmates in ChatGPT and Codex
 
-Status: expanded local QA complete; candidate pushed and website version 104 saved. Linux backend verification and six targeted browser repair checks passed. The complete repaired CI gate, deployment and real-host acceptance remain open.
+Status: candidate pushed; full CI passed; website version 105 and the existing MCP Worker deployed. Public browser and anonymous protection checks passed within recorded scope. Signed-in, generated-profile quality and actual-host acceptance remain open. Restart from the checkpoint for exact boundaries.
 
 Restart authority: [Current checkpoint](CURRENT.md).
 

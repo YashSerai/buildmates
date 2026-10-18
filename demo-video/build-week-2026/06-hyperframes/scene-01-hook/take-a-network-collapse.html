@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Buildmates Hook Take A</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #122419; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      .scene { position: absolute; inset: 0; overflow: hidden; background: #122419; }
+      .wash { position: absolute; inset: 0; background: linear-gradient(115deg, #122419 0%, #1b3022 52%, #102016 100%); }
+      .network { position: absolute; inset: 0; opacity: .56; }
+      .network line { stroke: #a7b393; stroke-width: 2; vector-effect: non-scaling-stroke; }
+      .network circle { fill: #a7b393; }
+      .network .accent { fill: #e96316; }
+      .word {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        display: flex;
+        align-items: center;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+        color: #f3eee3;
+        font: 900 220px/.82 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        letter-spacing: -.035em;
+        text-transform: uppercase;
+      }
+      .word span { display: block; transform-origin: 50% 65%; }
+      .work { color: #e96316; position: relative; z-index: 3; }
+      .net, .ing { position: relative; z-index: 2; color: #f3eee3; }
+      .work-lock {
+        position: absolute;
+        left: 50%; top: 50%;
+        width: 710px; height: 300px;
+        transform: translate(-50%, -50%) scaleX(.06);
+        transform-origin: center;
+        border: 3px solid #e96316;
+        opacity: 0;
+      }
+      .grain {
+        position: absolute; inset: 0; opacity: .12;
+        background-image: repeating-linear-gradient(97deg, transparent 0 23px, rgba(243,238,227,.05) 24px 25px);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="take-a" data-start="0" data-duration="3.5" data-width="1920" data-height="1080">
+      <section id="take-a-scene" class="clip scene" data-start="0" data-duration="3.5" data-track-index="1">
+        <div class="wash"></div>
+        <svg class="network" viewBox="0 0 1920 1080" aria-hidden="true">
+          <line x1="90" y1="240" x2="430" y2="390"/><line x1="430" y1="390" x2="760" y2="205"/>
+          <line x1="760" y1="205" x2="960" y2="540"/><line x1="90" y1="810" x2="430" y2="650"/>
+          <line x1="430" y1="650" x2="960" y2="540"/><line x1="1830" y1="225" x2="1490" y2="390"/>
+          <line x1="1490" y1="390" x2="1160" y2="205"/><line x1="1160" y1="205" x2="960" y2="540"/>
+          <line x1="1830" y1="820" x2="1490" y2="650"/><line x1="1490" y1="650" x2="960" y2="540"/>
+          <circle cx="90" cy="240" r="10"/><circle cx="430" cy="390" r="18"/><circle cx="760" cy="205" r="9"/>
+          <circle cx="90" cy="810" r="8"/><circle cx="430" cy="650" r="14"/><circle class="accent" cx="960" cy="540" r="20"/>
+          <circle cx="1830" cy="225" r="9"/><circle cx="1490" cy="390" r="17"/><circle cx="1160" cy="205" r="10"/>
+          <circle cx="1830" cy="820" r="8"/><circle cx="1490" cy="650" r="14"/>
+        </svg>
+        <div class="grain"></div>
+        <div id="take-a-lock" class="work-lock"></div>
+        <div id="take-a-word" class="word" aria-label="Networking becomes work">
+          <span id="take-a-net" class="net">NET</span>
+          <span id="take-a-work" class="work">WORK</span>
+          <span id="take-a-ing" class="ing">ING</span>
+        </div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.from("#take-a-word", { y: 180, opacity: 0, scale: .84, duration: .62, ease: "power4.out" }, 0);
+      tl.from(".network line", { opacity: 0, scale: .72, transformOrigin: "50% 50%", duration: .8, stagger: .035, ease: "power2.out" }, .05);
+      tl.from(".network circle", { opacity: 0, scale: 0, transformOrigin: "50% 50%", duration: .5, stagger: .045, ease: "back.out(1.7)" }, .16);
+      tl.to("#take-a-lock", { opacity: 1, scaleX: 1, duration: .42, ease: "power3.out" }, 1.03);
+      tl.to("#take-a-net", { y: 820, x: -130, rotation: -18, opacity: 0, duration: 1.12, ease: "power4.in" }, 1.38);
+      tl.to("#take-a-ing", { y: 820, x: 150, rotation: 17, opacity: 0, duration: 1.12, ease: "power4.in" }, 1.38);
+      tl.to("#take-a-work", { scale: 1.24, color: "#f3eee3", duration: .78, ease: "back.out(1.35)" }, 1.58);
+      tl.to("#take-a-lock", { backgroundColor: "#e96316", scaleX: .88, scaleY: .9, duration: .72, ease: "power3.inOut" }, 1.52);
+      tl.to(".network", { opacity: .18, scale: .88, transformOrigin: "50% 50%", duration: .8, ease: "power2.inOut" }, 1.5);
+      window.__timelines["take-a"] = tl;
+    </script>
+  </body>
+</html>

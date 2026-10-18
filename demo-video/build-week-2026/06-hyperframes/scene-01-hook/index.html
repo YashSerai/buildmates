@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Buildmates — At the center of networking is work</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --paper: #f3efe5;
+        --forest: #14261a;
+        --sage: #7f8b72;
+        --orange: #e96414;
+        --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        --sans: "Segoe UI", system-ui, sans-serif;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        background: var(--paper);
+      }
+      body {
+        font-family: var(--sans);
+      }
+      #root {
+        position: relative;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+      }
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+        background: var(--paper);
+        color: var(--forest);
+      }
+      .rule {
+        position: absolute;
+        left: 84px;
+        right: 84px;
+        height: 1px;
+        background: rgba(20, 38, 26, 0.28);
+      }
+      .rule-top { top: 82px; }
+      .rule-bottom { bottom: 82px; }
+      .kicker {
+        position: absolute;
+        left: 50%;
+        top: 225px;
+        transform: translateX(-50%);
+        font: 500 55px/1 var(--serif);
+        letter-spacing: -0.035em;
+        white-space: nowrap;
+      }
+      .network-word {
+        position: absolute;
+        left: 50%;
+        top: 51%;
+        display: flex;
+        align-items: baseline;
+        justify-content: center;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+        font: 800 205px/.78 var(--sans);
+        letter-spacing: -0.085em;
+        perspective: 900px;
+      }
+      .network-word span {
+        display: inline-block;
+        position: relative;
+        z-index: 2;
+        transform-origin: center;
+      }
+      .outer { color: var(--sage); }
+      .work {
+        padding: 28px 42px 38px;
+        color: var(--forest);
+        background: var(--paper);
+        transform-origin: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="6"
+      data-width="1920"
+      data-height="1080"
+    >
+      <section id="scene-hook" class="clip scene" data-start="0" data-duration="6" data-track-index="1">
+        <div class="rule rule-top" aria-hidden="true"></div>
+        <p id="kicker" class="kicker">At the center of</p>
+        <div class="network-word" aria-label="networking is work">
+          <span id="net" class="outer" data-layout-allow-overflow>NET</span>
+          <span id="work" class="work">WORK</span>
+          <span id="ing" class="outer" data-layout-allow-overflow>ING</span>
+        </div>
+        <div class="rule rule-bottom" aria-hidden="true"></div>
+      </section>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      tl.to("#kicker", { y: -16, duration: 1.6, ease: "power2.inOut" }, 1.27);
+      tl.to("#work", { backgroundColor: "#e96414", scaleY: 1.03, duration: 1.6, ease: "power3.inOut" }, 1.27);
+      tl.to("#net", { x: -520, y: 190, rotation: -13, scale: 0.72, opacity: 0, duration: 2.13, ease: "power3.in" }, 3.0);
+      tl.to("#ing", { x: 540, y: 190, rotation: 13, scale: 0.72, opacity: 0, duration: 2.13, ease: "power3.in" }, 3.0);
+      tl.to("#work", { scaleX: 1.3, scaleY: 1.3, duration: 1.3, ease: "back.out(1.18)" }, 3.72);
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

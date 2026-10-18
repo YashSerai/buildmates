@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>Buildmates Hook Take B</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #122419; }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; }
+      .scene {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background: linear-gradient(115deg, #122419 0%, #1b3022 52%, #102016 100%);
+        color: #f3eee3;
+      }
+      .reel { position: absolute; inset: -260px 0; z-index: 2; display: grid; align-content: center; gap: 118px; }
+      .echo, .word {
+        white-space: nowrap;
+        text-align: center;
+        text-transform: uppercase;
+        font: 900 212px/.82 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+        letter-spacing: -.035em;
+      }
+      .echo { color: #a7b393; opacity: .22; }
+      .word { display: flex; justify-content: center; align-items: center; color: #f3eee3; }
+      .word span { display: block; transform-origin: 50% 62%; }
+      .outer { position: relative; z-index: 2; }
+      .work-wrap {
+        position: relative;
+        isolation: isolate;
+        transform-origin: center;
+        z-index: 3;
+      }
+      .work {
+        position: relative;
+        z-index: 2;
+      }
+      .work-slab {
+        position: absolute;
+        inset: -36px -52px -42px;
+        background: #e96316;
+        transform: scaleY(.03);
+        transform-origin: center;
+        opacity: 0;
+        z-index: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="take-b" data-start="0" data-duration="3.5" data-width="1920" data-height="1080">
+      <section id="take-b-scene" class="clip scene" data-start="0" data-duration="3.5" data-track-index="1">
+        <div id="take-b-reel" class="reel">
+          <div class="echo">NETWORKING</div>
+          <div id="take-b-word" class="word" aria-label="Networking becomes work">
+            <span id="take-b-net" class="outer">NET</span>
+            <span id="take-b-work-wrap" class="work-wrap">
+              <span id="take-b-slab" class="work-slab"></span>
+              <span id="take-b-work" class="work">WORK</span>
+            </span>
+            <span id="take-b-ing" class="outer">ING</span>
+          </div>
+          <div class="echo">NETWORKING</div>
+        </div>
+      </section>
+    </div>
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+      tl.from("#take-b-reel", { y: 420, duration: .62, ease: "power4.out" }, 0);
+      tl.from("#take-b-word", { opacity: 0, scale: .9, duration: .5, ease: "power3.out" }, .05);
+      tl.to("#take-b-reel", { y: -72, duration: .65, ease: "power2.inOut" }, .62);
+      tl.to("#take-b-slab", { opacity: 1, scaleY: 1, duration: .38, ease: "power3.out" }, 1.08);
+      tl.to("#take-b-net", { y: 780, x: -100, rotation: -14, opacity: 0, duration: 1.02, ease: "power4.in" }, 1.44);
+      tl.to("#take-b-ing", { y: 780, x: 120, rotation: 15, opacity: 0, duration: 1.02, ease: "power4.in" }, 1.44);
+      tl.to("#take-b-work-wrap", { scale: 1.22, duration: .76, ease: "back.out(1.3)" }, 1.55);
+      tl.to(".echo", { opacity: 0, y: -120, duration: .62, ease: "power3.in" }, 1.48);
+      tl.to("#take-b-slab", { scaleX: 1.03, scaleY: .96, duration: .65, ease: "power3.inOut" }, 1.48);
+      window.__timelines["take-b"] = tl;
+    </script>
+  </body>
+</html>

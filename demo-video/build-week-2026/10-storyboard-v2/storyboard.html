@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Buildmates film storyboard v2</title>
+  <link rel="stylesheet" href="storyboard.css">
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">Build Week film · storyboard v2 · 16:9</p>
+      <h1>The real product is the spectacle.</h1>
+      <p class="intro">A 2:57 film cut into fifty-nine 3-second shots. Motion graphics frame the idea. Real Codex and Buildmates footage prove it. Every transition carries a meaningful object or interface state into the next shot.</p>
+    </div>
+    <div class="principles">
+      <div class="principle"><span class="principle-index">01</span><div><strong>No wandering transition motif.</strong><p>Orange marks approvals, state changes, and active focus. It does not travel across unrelated scenes.</p></div></div>
+      <div class="principle"><span class="principle-index">02</span><div><strong>Product footage stays readable.</strong><p>One screenshot fills the frame. When comparison matters, two equal views sit side by side.</p></div></div>
+      <div class="principle"><span class="principle-index">03</span><div><strong>Codex is shown, not summarized.</strong><p>Setup, profile generation, Work Pulse, and shared-tool creation use native Codex captures. Any unavailable task moment remains explicitly labelled as an excerpt.</p></div></div>
+    </div>
+  </header>
+
+  <section class="direction">
+    <img src="imagegen-direction-board.png" alt="Image-generated visual direction board for the Buildmates film">
+    <div class="direction-copy">
+      <p class="eyebrow">ImageGen direction study</p>
+      <h2>Editorial clarity, then product proof.</h2>
+      <p>This is a mood and composition reference, not the final sequence. The shot board below replaces its broad chapters with exact 3-second beats and identifies every genuine Codex task used in the film.</p>
+    </div>
+  </section>
+
+  <div class="board-heading">
+    <h2>Fifty-nine shots.</h2>
+    <p>Each card places the image above the matching script, motion, and handoff. Product shots use the real captures already saved in the demo package.</p>
+  </div>
+  <section class="storyboard" id="storyboard" aria-label="Shot-by-shot storyboard"></section>
+</main>
+
+<script>
+const base = './storyboard-crops/';
+const codexBase = './codex-crops/';
+const shots = [
+  {s:'At the center of', v:'NETWORKING fills the frame.', m:'Typeset the full word with WORK optically centered.', t:'Hold long enough to read before anything moves.', tone:'light'},
+  {s:'networking is work.', v:'NET and ING lose weight. WORK remains solid.', m:'The outer syllables fall backward in depth, not sideways off-screen.', t:'WORK snaps to the true center.', tone:'light'},
+  {s:'Work gives builders', v:'WORK becomes a stack of active project cards.', m:'The letters flatten into four real project labels.', t:'Two cards separate toward opposite sides.', tone:'sage'},
+  {s:'a real reason to talk.', v:'Two builders, one shared problem.', m:'Equal portraits face the same voice-agent latency card.', t:'The problem card expands into a waveform.', tone:'light', type:'nodes'},
+  {s:'Maybe they are both trying to make', v:'A waveform jitters with robotic pauses.', m:'Show interruptions, latency spikes, and a clipped response.', t:'The waveform becomes smoother.', tone:'forest'},
+  {s:'voice agents feel less robotic.', v:'The same waveform now behaves naturally.', m:'Remove jitter and let conversational turns breathe.', t:'The waveform resolves into a real work update.', tone:'forest'},
+  {s:'Maybe one is building the thing the other has been thinking about for weeks.', v:'A project update aligns with another builder’s saved note.', m:'Show the exact work-to-interest match without a decorative connector.', t:'Both cards become stale profile snapshots.', tone:'light', type:'stack'},
+  {s:'Nobody has time to keep a profile current,', v:'A polished profile freezes in place.', m:'Add an old timestamp while live work continues behind it.', t:'The stale card stays still as activity moves.', tone:'light'},
+  {s:'post every small thing they ship, then explain each project again in a cold message.', v:'A rapid feed collapses into the same project explanation typed twice.', m:'Show repetition and fatigue without imitating a social platform.', t:'Delete both drafts with one clean wipe.', tone:'sage', type:'stack'},
+  {s:'There should be a better way to share what you are working on.', v:'The workspace becomes the source.', m:'Project folders and tasks settle into one clear context view.', t:'Cut on the Codex cursor entering the prompt.', tone:'forest'},
+  {s:'So why not let the platform you already use to build', v:'Account connection succeeded. Buildmates is 1/10 complete and explains exactly what stays local before continuing.', m:'Hold the native Codex capture long enough to read the first three privacy points.', t:'The next real response begins the workspace review.', tone:'forest', type:'task', task:'Buildmates setup · account and privacy', native:'setup-account-and-privacy.png'},
+  {s:'keep track of what you are building?', v:'The full approved workspace review is complete: all 47 product tasks were reviewed, the three utility tasks stayed excluded, and high-signal project and GBrain files were checked.', m:'Use the native Codex capture full-frame and let the proof line land before moving into the proposed context.', t:'The private draft becomes the next shot.', tone:'forest', type:'task', task:'Buildmates setup · workspace review', native:'setup-workspace-review.png'},
+  {s:'People say X is the best place to find builders.', v:'A noisy stream of self-promotion.', m:'Abstract posts pass too quickly to understand the work.', t:'The feed recedes and the Codex task remains.', tone:'light'},
+  {s:'But I think the people using Codex every day are a much better place to start.', v:'Codex project cards reveal depth over time.', m:'Buildmates, Soulspace, Safari Gigs, AfterYou, and Serai Labs appear as real context.', t:'Cards arrange into a profile architecture.', tone:'sage', type:'stack'},
+  {s:'Buildmates turns the context Codex already has', v:'The proposed profile draft connects Buildmates, Soulspace, AfterYou, Safari Gigs, Marketing Carousel Factory, Aloe Wellness, Serai Labs, and X-growth tooling.', m:'Use the native proposed-profile response. A slow vertical move may reveal more approved fields in the finished film.', t:'The draft resolves into the generated profile.', tone:'forest', type:'task', task:'Buildmates setup · profile draft', native:'profile-draft.png'},
+  {s:'into a living profile.', v:'Codex proposes a specific direction from the person and all eight approved projects before it generates the private page.', m:'Show the native design-direction capture, including the chosen references, project plan, and explicit approval.', t:'The approval becomes the rendered profile.', tone:'forest', type:'task', task:'Buildmates setup · profile design direction', native:'profile-design-direction.png'},
+  {s:'It reviews the projects you are actively building,', v:'The generated Yash profile fills the entire frame.', m:'Reveal the real page immediately after the approval, with no placeholder or conceptual interlude.', t:'Scroll once to show that the approved projects became page content.', tone:'light', media:['profile/yashns-desktop-hero.png']},
+  {s:'connects the pieces across them, and builds a profile around what you are actually doing now.', v:'The real profile connects current work, project detail, and lasting ambition.', m:'Use a readable full-page viewport and animate one purposeful scroll in the finished film.', t:'The profile settles at a complete project section.', tone:'forest', media:['profile/profile-desktop-viewport.png']},
+  {s:'The profile is generative UI.', v:'The complete generated page, not a fixed Buildmates template.', m:'Hold on the real custom composition long enough for its art direction to register.', t:'The browser width begins to contract.', tone:'forest', media:['profile/yashns-desktop-hero.png']},
+  {s:'Codex writes a responsive page around you,', v:'The same generated profile works at desktop and phone widths.', m:'Use two equal panels. Never turn the phone into a tiny inset.', t:'Both views finish at the same identity treatment.', tone:'light', media:['profile/yashns-desktop-hero.png','profile/yashns-mobile-hero.png']},
+  {s:'with its own layout, visual style, and way of telling your story.', v:'The desktop page returns full-frame with its project treatment and visual identity intact.', m:'Let the generated page itself prove the claim. Do not substitute speculative template silhouettes.', t:'The published profile resolves into the ranked Introductions page.', tone:'sage', media:['profile/profile-desktop-viewport.png']},
+  {s:"Buildmates' matching algorithm then ranks people", v:'The real Introductions page fills the frame.', m:'Show the ranked shortlist and in-progress introduction.', t:'Focus lands on the strongest candidate.', tone:'light', media:['introductions/introductions-desktop-viewport.png']},
+  {s:'whose work or ambitions overlap with yours.', v:'Approved overlap, not private raw context.', m:'Highlight only the plain-language relevance explanation.', t:'The explanation separates into two review cards.', tone:'light', media:['introductions/introductions-desktop-viewport.png']},
+  {s:'Your Codex and the other person\'s Codex', v:'Two equal Codex review panels.', m:'Both reviews have equal visual weight and independent timing.', t:'First review completes, second remains pending.', tone:'forest'},
+  {s:'review the match independently using GPT-5.6. Each one looks for a reason its person would genuinely care.', v:'Two independent reviews complete with different reciprocal reasons.', m:'Use restrained completion states and real plain-language relevance.', t:'The two cards fold into one invitation.', tone:'forest'},
+  {s:'You can review introductions yourself', v:'Manual mode shows a clear Interested action.', m:'Keep the decision human and legible.', t:'The action label changes into an Autopilot toggle.', tone:'light', media:['introductions/introductions-desktop-full.png']},
+  {s:'or turn on Full Autopilot and let Codex take the wheel.', v:'A driving wheel is built from the two Codex review circles.', m:'Brief visual metaphor, then return immediately to product proof.', t:'The wheel contracts into two mutual approvals.', tone:'orange'},
+  {s:'Once the interest is mutual, Buildmates opens a persistent one-to-one chat.', v:'The real Connection and room open full-frame.', m:'Show the persistent relationship, not just a notification.', t:'A conversation message becomes a tool request.', tone:'light', media:['connections/connections-desktop-viewport.png']},
+  {s:'That room is generative UI too.', v:'The real generated room preview fills the frame.', m:'Use the actual private preview at full size, cropped to the generated surface rather than the surrounding editor.', t:'The generated surface separates into two equal room states.', tone:'forest', media:['room/room-custom-design-workspace-desktop-full.png']},
+  {s:'Two people working on voice agents could turn it into', v:'The real chat and generated room sit side by side.', m:'Equal panels: conversation context and the generated private preview.', t:'The shared-work signal becomes the testing lab.', tone:'light', media:['room/room-desktop-viewport.png','room/room-custom-design-workspace-desktop-full.png']},
+  {s:'a shared testing lab with a latency timer, call-test board, and interruption tracker.', v:'Three working tools update from one test run.', m:'Numbers may change only when backed by the demo fixture.', t:'Tool rows become Circle member rows.', tone:'forest'},
+  {s:'The people in the room tell Codex what would help,', v:'Codex completes the Reliability Runs tracker inside the live Circle, with three real planned experiments and the approved visual direction.', m:'Use the native completion capture. It proves the tool was created through an ordinary request rather than a staged mockup.', t:'The live Circle link hands off to the published tracker.', tone:'forest', type:'task', task:'Reliable Agents Lab · shared tracker', native:'circle-tool-complete.png'},
+  {s:'and Codex builds it into the space.', v:'The real Reliability Runs tracker fills the frame.', m:'Show planned entries and readable status rails.', t:'Tracker cards regroup into a Circle board.', tone:'light', media:['circle/reliability-runs-focused-desktop.png']},
+  {s:'Circles bring the same idea to group chats.', v:'The Reliable Agents Lab Circle appears full-frame.', m:'Keep the generated Circle identity and the real member context visible.', t:'Member avatars form the next navigation row.', tone:'light', media:['circle/reliability-runs-desktop-viewport.png']},
+  {s:'A group focused on shipping might add a sprint tracker and timer.', v:'The active Reliability Runs tracker fills the frame.', m:'Use the live generated tool as the concrete shipping-group example.', t:'The tracker cards simplify into an event board.', tone:'forest', media:['circle/reliability-runs-focused-desktop.png']},
+  {s:'A local builder community might create an event board.', v:'A simple event board grows from the same governed Circle surface.', m:'Use restrained motion and no invented attendance or event metrics.', t:'The board expands back into the complete Circle.', tone:'sage'},
+  {s:'The interface grows around what the group is doing.', v:'Two equal Circle views show the generated space and its active tool.', m:'Use equal halves so the relationship between the group and its interface is immediate.', t:'The tracker status ring becomes the Work Pulse.', tone:'forest', media:['circle/reliability-runs-desktop-viewport.png','circle/reliability-runs-focused-desktop.png']},
+  {s:'A Codex automation called Work Pulse', v:'The real scheduled prompt refreshes approved work, evaluates a bounded candidate shortlist, checks conversations, and never invents activity.', m:'Use the native automation prompt full-frame and pan just enough to show its scope without making the viewer read every rule.', t:'The prompt hands off to the completed run.', tone:'forest', type:'task', task:'Buildmates Work Pulse · scheduled prompt', native:'work-pulse-prompt.png'},
+  {s:'keeps your profile and network current. You decide how often it runs.', v:'Profile, matches, conversations, and schedule appear as one bounded automation run.', m:'Show Tuesday and Friday as an editable recommendation, not a fixed promise.', t:'The next-run date becomes a task timestamp.', tone:'sage'},
+  {s:'It reviews recent work, refreshes your profile,', v:'Buildmates Work Pulse completed: nothing changed. It checked approved sources, Work Signals, watches, candidates, rooms, Circles, and Connections.', m:'Use the native no-change result to prove the automation reports a quiet run instead of fabricating updates.', t:'The next shot shows the real introduction and activity surfaces.', tone:'forest', type:'task', task:'Buildmates Work Pulse · no-change result', native:'work-pulse-result.png'},
+  {s:'looks for new matches, and follows up on introductions.', v:'Two equal product states: new introduction and conversation follow-up.', m:'No tiny inset. Both surfaces receive half the frame.', t:'City name in the follow-up becomes a map label.', tone:'light', media:['introductions/introductions-desktop-viewport.png','activity/activity-desktop-viewport.png']},
+  {s:'The City Map shows where builders are active.', v:'The live City Map fills the frame.', m:'Record pan and zoom with city bubbles remaining legible.', t:'A city bubble grows into a topic bubble.', tone:'light', media:['map/map-desktop-viewport.png']},
+  {s:'The Build Graph shows what the network is working on', v:'The topic atlas fills the frame.', m:'Click AI and record the real hierarchy drill-down.', t:'One child bubble becomes a 3D node.', tone:'forest', media:['graph/topic-atlas-ai-drill-desktop.png']},
+  {s:'and where those topics overlap.', v:'The relationship web fills the frame.', m:'Rotate slightly, select a node, and fade unrelated topics.', t:'Two related nodes remain as two builders.', tone:'forest', media:['graph/relationship-web-desktop-viewport.png']},
+  {s:'Buildmates helps the work you are already doing find someone worth talking to.', v:'Two builder nodes meet through one shared piece of work.', m:'Return to the opening idea with no network vanity metrics.', t:'The shared work card becomes the Buildmates mark.', tone:'light', type:'nodes'},
+  {s:'I built Buildmates end to end with Codex and GPT-5.6 for OpenAI Build Week.', v:'Real product montage: home, profile, room, graph.', m:'Use a precise four-beat montage tied to the spoken list.', t:'End on the real Codex task.', tone:'light', media:['home/home-desktop-viewport.png','graph/graph-desktop-viewport.png']},
+  {s:'Since the theme was building with Codex, I thought, why not build for Codex too?', v:'The live home and generated profile sit side by side as the product thesis resolves.', m:'Use real product captures only. The missing natural-match screenshot is not recreated or implied here.', t:'The profile gives way to the native workspace inventory.', tone:'forest', media:['home/home-desktop-viewport.png','profile/yashns-desktop-hero.png']},
+  {s:'Codex helped me plan the product, build the web app and MCP,', v:'Planning decisions and the working product share equal weight.', m:'Use real product artifacts only. Keep local paths and internal implementation detail out of the frame.', t:'The product surface becomes the live ChatGPT Site.', tone:'light'},
+  {s:'learn ChatGPT Sites for the first time, and test the full flow.', v:'Real live Site and QA evidence.', m:'Show a desktop and phone QA pair at equal size.', t:'QA checks become four reset marks.', tone:'light', media:['profile/yashns-desktop-hero.png','profile/yashns-mobile-hero.png']},
+  {s:'It took four usage resets, so thanks to Thibault for those.', v:'04 resets. RIP my banked resets.', m:'One quick human beat. Keep it visually dry, not meme-heavy.', t:'The 04 breaks into four defect examples.', tone:'forest'},
+  {s:'GPT-5.6 is capable, but it still has rough edges.', v:'A real onboarding run stops because the saved profile had all eight projects but the design brief exposed none of them.', m:'Use the historical native blocker capture as evidence. Label it as an earlier QA run in the finished film.', t:'The blocker becomes the first visible defect example.', tone:'forest', type:'task', task:'Earlier Buildmates QA · renderer blocker', native:'profile-renderer-blocker.png'},
+  {s:'It would sometimes leak my instructions into the website copy.', v:'A real page annotation escapes into the audience-facing copy.', m:'Show only the exact failure, without adding a comic fake interface.', t:'The leaked instruction becomes the next quoted line.', tone:'light'},
+  {s:'If I asked it to move something slightly to the right, the page might literally end up with subtext saying, “moved to the right.”', v:'“moved to the right” appears as the bad copy example.', m:'Use the exact failure as evidence, then cross it out once.', t:'The crossed line becomes a QA annotation.', tone:'light'},
+  {s:'Some early UI passes were genuinely ugly.', v:'The old broken composition is shown honestly.', m:'Hold briefly, without turning failure into spectacle.', t:'A browser capture frame aligns over it.', tone:'light'},
+  {s:'I saw white text on white backgrounds, overlapping elements, and huge empty spaces.', v:'Three equal defect crops.', m:'Equal comparison cells. No dominant image plus tiny inset.', t:'Each crop receives one precise repair marker.', tone:'light'},
+  {s:'Design skills and screenshot QA made the difference.', v:'Desktop and phone screenshots pass side by side.', m:'Show real responsive evidence and a clean console state.', t:'The two frames close into one final page.', tone:'sage', media:['profile/yashns-desktop-hero.png','profile/yashns-mobile-hero.png']},
+  {s:'Once I gave Codex direct visual feedback', v:'Before and after receive equal halves.', m:'Use one targeted change with stable content.', t:'The repaired half becomes a QA capture.', tone:'light', media:['profile/profile-desktop-viewport.png','profile/yashns-desktop-hero.png']},
+  {s:'and made it inspect what it had built,', v:'Revision 7 passes post-deploy desktop and phone QA with every approved project intact.', m:'Use the real visual-QA excerpt and pair it with the verified desktop and phone renders.', t:'The QA result collapses into the repaired page.', tone:'forest', type:'task', task:'Buildmates setup · visual QA excerpt'},
+  {s:'it could fix those issues and keep going.', v:'Buildmates mark and live URL.', m:'End quietly. No oversized claim, no decorative line.', t:'Hold for two seconds, then clean fade to forest.', tone:'forest'}
+];
+
+function timecode(index) {
+  const start = index * 3;
+  const end = start + 3;
+  const fmt = value => {
+    const minutes = Math.floor(value / 60);
+    const seconds = value % 60;
+    return `${String(minutes).padStart(2,'0')}:${seconds.toFixed(1).padStart(4,'0')}`;
+  };
+  return `${fmt(start)}-${fmt(end)}`;
+}
+
+function visual(shot, index) {
+  const tone = shot.tone === 'forest' ? '' : shot.tone;
+  const meta = `<div class="shot-meta"><span class="shot-number">Shot ${String(index + 1).padStart(2,'0')}</span><span class="timecode">${timecode(index)}</span></div>`;
+  if (shot.native) {
+    return `<div class="frame ${tone} native-frame">${meta}<img class="capture native-codex-capture" src="${codexBase + shot.native}" alt="Native Codex capture for ${shot.task}"></div>`;
+  }
+  if (shot.media?.length === 2) {
+    return `<div class="frame ${tone}">${meta}<div class="split-captures">${shot.media.map(src => `<img src="${base + src}" alt="">`).join('')}</div></div>`;
+  }
+  if (shot.media?.length === 1) {
+    return `<div class="frame ${tone}">${meta}<img class="capture" src="${base + shot.media[0]}" alt=""></div>`;
+  }
+  if (shot.type === 'task') {
+    return `<div class="frame ${tone}">${meta}<div class="task-excerpt"><div class="task-bar"><span class="task-dot"></span><strong>Codex task</strong><span>${shot.task}</span></div><p>${shot.v}</p><small>Exact excerpt from the real task · replace with the native Codex-window capture at edit time</small></div></div>`;
+  }
+  if (shot.type === 'nodes') {
+    return `<div class="frame ${tone}">${meta}<div class="nodes"><span class="node"></span><span class="node"></span><span class="node"></span><span class="node-label">${shot.v}</span></div></div>`;
+  }
+  if (shot.type === 'stack') {
+    return `<div class="frame ${tone}">${meta}<div class="project-stack"><div class="project-row"><span>Current work</span><b>Now</b></div><div class="project-row"><span>Experiment shipped</span><b>Today</b></div><div class="project-row"><span>Open question</span><b>Active</b></div></div></div>`;
+  }
+  return `<div class="frame ${tone}">${meta}<p class="frame-copy">${shot.v.replace(/WORK|Codex|Buildmates/g, value => `<em class="accent-word">${value}</em>`)}</p><p class="frame-note">${shot.m}</p></div>`;
+}
+
+document.getElementById('storyboard').innerHTML = shots.map((shot, index) => `
+  <article class="shot">
+    ${visual(shot, index)}
+    <div class="shot-body">
+      <span class="label">Script</span>
+      <p class="script">“${shot.s}”</p>
+      <div class="instructions">
+        <div><span class="label">Animation</span><p>${shot.m}</p></div>
+        <div><span class="label">Handoff</span><p>${shot.t}</p></div>
+      </div>
+    </div>
+  </article>
+`).join('');
+</script>
+</body>
+</html>

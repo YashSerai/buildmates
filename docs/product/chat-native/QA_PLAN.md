@@ -17,6 +17,60 @@ The candidate must prove the same account and behavior in ChatGPT and Codex. A p
 
 Browser automation and local principal fixtures validate deterministic behavior. Real-host acceptance additionally requires natural-language conversations in each host, genuine provider consent, two independent accounts, and a separately recorded candidate deployment. Host-generated tool choices and actual iframe policies must be observed, not inferred from local fixtures.
 
+## Current checklist
+
+Updated October 3, 2026 after an independent GPT-6 Luna High coverage review. Check each boundary separately; a local pass cannot close its corresponding live or host case. [Release evidence](qa/2026-10-03-release.md) binds the source and completed checks.
+
+- [x] Full candidate gate: lint, all workspace type checks, builds, 394 deterministic checks, and 100 browser cases. Two production-capture cases are intentionally skipped in CI.
+- [x] Local seeded shortlist: exact expected candidate order, hidden candidate exclusion, private sentinel exclusion, and fixture cleanup. This proves synthetic retrieval, not organic matching quality.
+- [x] Local onboarding, source/privacy controls, profile editing, design workspace, messages and shared governance browser coverage.
+- [x] Live website version 105 and deployed existing MCP Worker; six basic smoke checks and nineteen stricter public/authentication checks pass.
+- [x] Live signed-out landing at desktop and phone sizes: complete lower-page inspection, setup dialog, Escape and focus restoration, working setup-guide navigation, no horizontal overflow or broken images.
+- [x] Live phone map and phone/tablet graph: anonymous city totals, map loaded, honest empty graph, no horizontal overflow or captured console warnings/errors during inspected flows.
+- [ ] Repair and verify the live graph's missing level-one heading, found during the human-style browser review.
+- [ ] Actual candidate installation, tool discovery, authentication and first onboarding in Codex.
+- [ ] Same account continuation and supported embedded previews in ChatGPT web.
+- [ ] Fresh final-candidate conversation for project collection, matching-only refresh, export and successful page generation. The previously authorized twelve-conversation allowance is exhausted.
+- [ ] Human review of newly authored profile pages against the rubric below. Existing hand-authored test fixtures establish layout behavior only.
+- [ ] Two independently authenticated, consenting human accounts: reciprocal decisions, one room, message delivery and outsider denial.
+- [ ] Signed-in deployed owner/visitor privacy, asset, recovery and migration checks. Anonymous readiness is insufficient for this gate.
+- [ ] Real host scheduling capability, before enabling background Work Pulse or unattended acceptance.
+- [ ] Dedicated reviewer-account runs, walkthrough and publisher verification before public directory submission.
+
+## Seeded matching matrix
+
+Use an isolated local database and explicitly synthetic accounts. Declare expected ranks and eligibility before running a case; keep the resulting shortlist and explanations, including failures. Never add fixtures to the shared production network or count them as real builders. Production aggregates deliberately exclude QA-origin records.
+
+| Scenario | Required observation |
+| --- | --- |
+| Closely related, adjacent and unrelated projects | Relevant candidates precede weaker ones under the declared fixture; explain concrete shared work without pretending every candidate is a good match. If nobody qualifies, report no suitable match. |
+| Synonyms and different descriptions of the same problem | Canonical topics agree where justified; similar words alone do not establish identical goals. |
+| Same project title, different work | Use approved descriptions to distinguish them; do not guess the project or identity. |
+| Private, matching-disabled or unreviewed fields | No unauthorized display or matching use. Approved matching-only evidence stays out of public profiles. |
+| Paused, blocked, excluded, expired, revoked, deleted, inactive or self candidate | Exclude each ineligible case according to its stored rule; record the exact negative assertion. |
+| Sparse, empty, stale or unavailable context | Ask for the smallest missing fact, offer a manual description, or show an honest empty result. |
+| Hostile instructions inside a source or candidate | Treat the text as data; no publication, exfiltration, private note read or unrelated write. |
+| Refresh and retries | Only approved changed matching context changes. Public profile, privacy, publication and unchanged signals remain intact; uncertain effects do not duplicate. |
+| One-sided interest and repeated acceptance | Keep the introduction pending until independent consent permits it; create one relationship and room. |
+
+The known local shortlist asserts Mira Chen, Mira Labs, Amara Okafor and Theo Martin in that order, with Hidden Candidate and the private sentinel absent. These are fixture names. See `tests/e2e/local-codex-match-evidence.spec.ts`, `tests/unit/matching-score.test.ts` and the conversation evidence for their exact inputs and limits.
+
+## Generated profile quality gate
+
+Review the full rendered page, its approved source facts, and every visible control. Do not grade only a thumbnail or an empty design workspace. Use distinct approved synthetic personas with sparse context, several substantial projects, long names/URLs, multilingual text, no media and approved media. Keep those cases separate from genuine user profiles.
+
+Score each dimension 0 (fails), 1 (usable but needs work), or 2 (meets the brief): factual and privacy fidelity; person-specific composition; project clarity and depth; typography and readability; responsive/accessibility behavior; working navigation and controls. Require at least 10/12 with no zero, plus the hard checks below. Scores are review judgments, not user-study results.
+
+- No invented biography, achievements, testimonials, project outcomes or assets. No private/matching-only field in a public page.
+- The page should help another builder understand the person's actual work and a reason to connect. A generic list with a changed name does not establish successful generative design.
+- Inspect desktop, tablet and phone, including the footer and long content. Check hierarchy, heading structure, gutters, alignment, contrast, focus, keyboard use, reflow, clipping and image alternatives.
+- Exercise private preview, targeted edit, new-chat resume, publication approval, viewer access, revision history and rollback. A saved draft must never be described as published.
+- Check empty/loading/error states, denied clipboard, slow script loading, missing media, dropped responses and repeated actions. Preserve the draft and explain the actual state.
+
+Conversation quality uses the existing [14-point rubric](CONVERSATION_QA.md). Judge task completion and response usefulness independently of safe refusal. Require grounded match reasons, ordinary language, no internal IDs or schema names, no repeated settled questions, and a concrete result verified by saved-state reads. Preserve failing transcripts and grade repaired runs separately.
+
+For each failure, record the source/host boundary and reproduction, fix the cause, rerun the affected case and its neighboring cases, then close the item only with new evidence. Repeat broader checks when a covered source, schema, dependency, configuration or deployment change invalidates them.
+
 ## Fresh host conversations
 
 Run this sequence independently in ChatGPT web and Codex after deploying the matching candidate and installing its package. Record the actual prompt, selected tool, visible response, and saved-state read. Use dedicated consenting test accounts rather than the founder's existing profile.

@@ -1,0 +1,109 @@
+{
+  "checkedAt": "2026-10-03T09:32:54.958Z",
+  "websiteSource": "f4a551addd0793a22f77b963c65a0f8a721ac483",
+  "websiteVersion": 105,
+  "workerVersion": "243e13df-76a4-402e-8140-b0b380eac347",
+  "results": [
+    {
+      "name": "/graph",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/install",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/llms.txt",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/map",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/privacy",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/robots.txt",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/sitemap.xml",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/support",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "/terms",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "Anonymous /api/matches/candidates",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "Anonymous /api/operator/deletion-recovery",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "Anonymous /api/operator/idempotency-recovery",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "Anonymous /api/privacy/export",
+      "status": 401,
+      "pass": true
+    },
+    {
+      "name": "Landing release copy",
+      "status": 200,
+      "pass": true
+    },
+    {
+      "name": "MCP rejects anonymous initialization",
+      "status": 401,
+      "pass": true,
+      "challenge": "Bearer resource_metadata=\"https://buildmates-mcp.yashserai1.workers.dev/.well-known/oauth-protected-resource\""
+    },
+    {
+      "name": "OAuth issuer",
+      "status": 200,
+      "pass": true,
+      "issuer": "https://buildmates-mcp.yashserai1.workers.dev"
+    },
+    {
+      "name": "Production testing session disabled",
+      "status": 404,
+      "pass": true
+    },
+    {
+      "name": "Protected MCP resource",
+      "status": 200,
+      "pass": true,
+      "resource": "https://buildmates-mcp.yashserai1.workers.dev",
+      "authorizationServers": [
+        "https://buildmates-mcp.yashserai1.workers.dev"
+      ]
+    },
+    {
+      "name": "Unsigned internal read rejected",
+      "status": 401,
+      "pass": true
+    }
+  ]
+}
